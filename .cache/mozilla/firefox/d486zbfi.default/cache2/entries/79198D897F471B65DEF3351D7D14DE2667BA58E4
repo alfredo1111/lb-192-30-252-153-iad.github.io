@@ -1,0 +1,1547 @@
+var __extends = (this && this.__extends) || (function () {
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    }
+    return function (d, b) {
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
+define(["require", "exports", "knockout", "q", "../../../Common/Constants", "./D3ForceGraph", "./GraphData", "../../WaitsForTemplateViewModel", "../../Menus/NotificationConsole/NotificationConsole", "../../../Utils/NotificationConsoleUtils", "./GremlinClient", "../../../Shared/Telemetry/TelemetryConstants", "../../../Shared/StorageUtility", "../../../Shared/Telemetry/TelemetryProcessor", "../../Controls/Toolbar/Toolbar", "./RightPaneAdapter", "./ArraysByKeyCache", "./EdgeInfoCache"], function (require, exports, ko, Q, Constants, D3ForceGraph_1, GraphData_1, WaitsForTemplateViewModel_1, NotificationConsole_1, NotificationConsoleUtils_1, GremlinClient_1, TelemetryConstants_1, StorageUtility_1, TelemetryProcessor_1, Toolbar_1, RightPaneAdapter_1, ArraysByKeyCache_1, EdgeInfoCache_1) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    /**
+     * Helper class to use for registration
+     */
+    var GraphExplorerComponent = /** @class */ (function () {
+        function GraphExplorerComponent() {
+            return {
+                viewModel: GraphExplorerViewModel,
+                template: { require: "text!graph-explorer.html" }
+            };
+        }
+        return GraphExplorerComponent;
+    }());
+    exports.GraphExplorerComponent = GraphExplorerComponent;
+    exports.VERTEX_PROPERTY_TYPES = ['string', 'number', 'boolean'];
+    var GraphExplorerViewModel = /** @class */ (function (_super) {
+        __extends(GraphExplorerViewModel, _super);
+        function GraphExplorerViewModel(params) {
+            var _this = _super.call(this) || this;
+            _this.onShowNewVertexDialog = function () {
+                return new Promise(function (resolve, reject) {
+                    _this.daytonaContext.hostProxy.executeProviderOperation("Environment.Dialogs.getDialogResult", {
+                        id: "newVertex",
+                        parameters: {
+                            newVertexData: {
+                                label: "",
+                                properties: []
+                            },
+                            partitionKeyProperty: _this.collectionPartitionKeyProperty,
+                            firstFieldHasFocus: true
+                        }
+                    }).then(function (result) {
+                        if (result) {
+                            return _this.addVertex(result);
+                        }
+                    });
+                });
+            };
+            _super.prototype.onTemplateReady.call(_this, function (isTemplateReady) {
+                if (isTemplateReady) {
+                    if (params.onLoadStartKey() != null && params.onLoadStartKey() != undefined) {
+                        TelemetryProcessor_1.default.traceSuccess(TelemetryConstants_1.Action.Tab, {
+                            databaseAccountName: params.resourceId(),
+                            databaseName: params.databaseId(),
+                            collectionName: params.collectionId,
+                            defaultExperience: Constants.DefaultAccountExperience.Graph,
+                            dataExplorerArea: Constants.Areas.Tab,
+                            tabTitle: "Graph",
+                        }, params.onLoadStartKey());
+                        params.onLoadStartKey(null);
+                    }
+                    if (params.onTemplateReady) {
+                        params.onTemplateReady();
+                    }
+                }
+            });
+            // Parameters passed to this container in explorer.html
+            if (params) {
+                _this.resourceId = params.resourceId;
+                _this.endpoint = params.endpoint;
+                _this.databaseId = params.databaseId;
+                _this.graphBackendEndpoint = params.graphBackendEndpoint;
+                _this.stylingPane = params.stylingpane;
+                _this.documentClientUtility = params.documentClientUtility;
+                _this.newVertexPane = params.newVertexPane;
+                _this.collectionId = params.collectionId;
+                _this.collectionRid = params.collectionRid;
+                _this.collectionSelfLink = params.collectionSelfLink;
+                _this.collectionPartitionKeyProperty = params.collectionPartitionKeyProperty;
+                _this.masterKey = params.masterKey;
+                _this.isTabsContentExpanded = params.isTabsContentExpanded;
+                _this.isTabsContentExpanded.subscribe(function (newVal) {
+                    _this.isPropertiesCollapsed(newVal);
+                    _this.isResultsCollapsed(newVal);
+                });
+                _this.toolbarViewModel = params.toolbarViewModel;
+                _this.isRunningOnDaytona = params.isRunningOnDaytona;
+                _this.daytonaContext = params.daytonaContext;
+            }
+            // Initialization
+            _this.isValidQuery = ko.observable(true);
+            _this.query = ko.observable(GraphExplorerViewModel.DEFAULT_QUERY);
+            _this.query.subscribe(function (query) { return _this.isValidQuery(GraphExplorerViewModel.isValidQuery(query)); });
+            _this.executeCounter = ko.observable(0);
+            _this.isBackendExecuting = ko.computed(function () { return _this.executeCounter() > 0; });
+            _this.originalGraphData = new GraphData_1.GraphData();
+            _this.graphData = ko.observable(null);
+            _this.latestPartialQueries = ko.observableArray([]);
+            _this.possibleVertices = ko.observableArray([]);
+            _this.possibleEdgeLabels = ko.observableArray([]);
+            // Initialize d3 graph through custom bindings
+            _this.d3ForceGraph = new D3ForceGraph_1.D3ForceGraph(_this.graphData);
+            _this.highlightedNode = ko.observable(null);
+            _this.graphConfigUiData = {
+                showNeighborType: ko.observable(_this.d3ForceGraph.graphConfig.showNeighborType()),
+                nodeProperties: ko.observableArray([]),
+                nodePropertiesWithNone: ko.observableArray([]),
+                nodeCaptionChoice: ko.observable(_this.d3ForceGraph.graphConfig.nodeCaption()),
+                nodeColorKeyChoice: ko.observable(_this.d3ForceGraph.graphConfig.nodeColorKey()),
+                nodeIconChoice: ko.observable(_this.d3ForceGraph.graphConfig.nodeIconKey()),
+                nodeIconSet: ko.observable(null)
+            };
+            _this.graphConfigUiData.nodeCaptionChoice.subscribe(function (key) {
+                _this.d3ForceGraph.graphConfig.nodeCaption(key);
+                _this.rootMap.valueHasMutated();
+                var selectedNode = _this.highlightedNode();
+                if (selectedNode) {
+                    _this.updatePropertiesPane(selectedNode.id);
+                }
+            });
+            _this.graphConfigUiData.nodeColorKeyChoice.subscribe(function (val) {
+                _this.d3ForceGraph.graphConfig.nodeColorKey(val === GraphExplorerViewModel.NONE_CHOICE ? null : val);
+            });
+            _this.graphConfigUiData.showNeighborType.subscribe(_this.d3ForceGraph.graphConfig.showNeighborType);
+            _this.graphConfigUiData.nodeIconChoice.subscribe(function (val) {
+                _this.updateNodeIcons(val, _this.graphConfigUiData.nodeIconSet());
+            });
+            _this.graphConfigUiData.nodeIconSet.subscribe(function (val) {
+                _this.updateNodeIcons(_this.graphConfigUiData.nodeIconChoice(), val);
+            });
+            _this.rootMap = ko.observable({});
+            _this.possibleRootNodes = ko.computed(function () {
+                var key = _this.graphConfigUiData.nodeCaptionChoice();
+                return $.map(_this.rootMap(), function (value, index) {
+                    // TODO a bit awkward to call D3ForceGraph from here, but avoid code duplication
+                    var result = D3ForceGraph_1.D3ForceGraph.getNodePropValue(value, key);
+                    return {
+                        caption: result !== undefined ? result : value.id,
+                        id: value.id
+                    };
+                });
+            });
+            _this.isEditorContentValid = ko.observable(false);
+            _this.filterQueryStatus = ko.observable(0 /* NO_RESULT */);
+            _this.filterQueryStatus.subscribe(function (status) {
+                switch (status) {
+                    case 0 /* NO_RESULT */:
+                    case 3 /* LOADING */:
+                        _this.resultDisplay(0 /* NONE */);
+                        _this.filterQueryError(null);
+                        _this.filterQueryWarning(null);
+                        break;
+                    case 4 /* NON_GRAPH_RESULT */:
+                    case 1 /* GRAPH_EMPTY_RESULT */:
+                    case 2 /* GRAPH_RESULT */:
+                        _this.resultDisplay(2 /* JSON */);
+                        break;
+                    case 5 /* ERROR_RESULT */:
+                        _this.resultDisplay(0 /* NONE */);
+                        break;
+                }
+            });
+            _this.filterQueryError = ko.observable(null);
+            _this.filterQueryWarning = ko.observable(null);
+            _this.selectedRootId = ko.observable(null);
+            // Subscribe to changes: a new node has been highlighted in the graph
+            _this.d3ForceGraph.highlightedNode.subscribe(function (nodeData) {
+                if (!nodeData) {
+                    _this.highlightedNode(null);
+                    return;
+                }
+                _this.updatePropertiesPane(nodeData.id);
+            });
+            _this.d3ForceGraph.loadMoreData.subscribe(function (data) {
+                var v = _this.originalGraphData.getVertexById(data.nodeId);
+                _this.originalGraphData.setAsRoot(v.id);
+                var pageInfo = v._pagination;
+                var currentOffset = pageInfo ? pageInfo.currentPage.start : 0;
+                var newOffset = (function (pageAction) {
+                    switch (pageAction) {
+                        default:
+                        case D3ForceGraph_1.PAGE_ACTION.FIRST_PAGE: return 0;
+                        case D3ForceGraph_1.PAGE_ACTION.PREVIOUS_PAGE: return currentOffset - GraphExplorerViewModel.LOAD_PAGE_SIZE;
+                        case D3ForceGraph_1.PAGE_ACTION.NEXT_PAGE: return currentOffset + GraphExplorerViewModel.LOAD_PAGE_SIZE;
+                    }
+                })(data.pageAction);
+                _this.loadNeighborsPage(v, _this.originalGraphData, newOffset)
+                    .then(function () {
+                    _this.updatePropertiesPane(v.id);
+                });
+            });
+            // Register custom handler
+            ko.bindingHandlers.d3forcegraph = {
+                init: function (element, valueAccessor, allBindingsAccessor, viewModel, bindingContext) {
+                    _this.d3ForceGraph.init(element, valueAccessor, allBindingsAccessor, viewModel, bindingContext);
+                },
+                update: function (element, valueAccessor, allBindingsAccessor, viewModel, bindingContext) {
+                    _this.d3ForceGraph.update(element, valueAccessor, allBindingsAccessor, viewModel, bindingContext);
+                }
+            };
+            _this.isPropertiesCollapsed = ko.observable(false);
+            _this.isResultsCollapsed = ko.observable(false);
+            _this.expandedRightPaneTitle = ko.computed(function () { return _this.getPropertyPaneTitle(); });
+            _this.leftPaneTitle = ko.computed(function () { return 'Results'; });
+            _this.queryRawData = null;
+            _this.jsonEditorContent = ko.observable();
+            _this.resultDisplay = ko.observable(0 /* NONE */);
+            _this.resultDisplay.subscribe(function (newValue) {
+                if (newValue === 2 /* JSON */) {
+                    _this.jsonEditorContent(_this.queryRawData);
+                }
+                else if (newValue === 1 /* GRAPH */) {
+                    var rootMap_1 = _this.rootMap();
+                    _this.collectNodeProperties(Object.keys(rootMap_1).map(function (id) { return rootMap_1[id]; }));
+                    if (_this.graphConfigUiData.nodeProperties().indexOf(GraphExplorerViewModel.DISPLAY_DEFAULT_PROPERTY_KEY) !== -1) {
+                        _this.graphConfigUiData.nodeCaptionChoice(GraphExplorerViewModel.DISPLAY_DEFAULT_PROPERTY_KEY);
+                    }
+                    // Auto-select root, if none has been selected before
+                    if (_this.originalGraphData.vertices.length === 0 && _this.possibleRootNodes().length > 0) {
+                        _this.selectRootNode(_this.possibleRootNodes()[0].id);
+                    }
+                }
+            });
+            _this.gremlinClient = new GremlinClient_1.GremlinClient();
+            if (_this.graphBackendEndpoint()) {
+                _this.setGremlinParams();
+            }
+            _this.graphBackendEndpoint.subscribe(function () {
+                _this.setGremlinParams();
+            });
+            _this.hasMoreRoots = ko.observable(false);
+            if (_this.isRunningOnDaytona) {
+                _this._buildDaytonaToolbar();
+            }
+            _this.nodePropertiesViewMode = ko.observable(0 /* READONLY_PROP */);
+            _this.nodePropertiesViewMode.subscribe(_this.onPropertyModeChanged.bind(_this));
+            _this.rightPaneAdapter = new RightPaneAdapter_1.RightPaneAdapter({
+                nodePropertiesProp: {
+                    collapsiblePanel: {
+                        expandedTitle: _this.expandedRightPaneTitle,
+                        isCollapsed: _this.isPropertiesCollapsed,
+                    },
+                    node: _this.highlightedNode,
+                    getPkIdFromNodeData: _this.getPkIdFromNodeData.bind(_this),
+                    collectionPartitionKeyProperty: _this.collectionPartitionKeyProperty,
+                    updateVertexProperties: _this.updateVertexProperties.bind(_this),
+                    selectNode: _this.selectNode.bind(_this),
+                    updatePossibleVertices: _this.updatePossibleVertices.bind(_this),
+                    possibleEdgeLabels: _this.possibleEdgeLabels,
+                    editGraphEdges: _this.editGraphEdges.bind(_this),
+                    deleteHighlightedNode: _this.deleteHighlightedNode.bind(_this),
+                    viewMode: _this.nodePropertiesViewMode
+                }
+            });
+            _this.isGraphAutoVizDisabled = StorageUtility_1.LocalStorageUtility.hasItem(StorageUtility_1.StorageKey.IsGraphAutoVizDisabled) ? StorageUtility_1.LocalStorageUtility.getEntryBoolean(StorageUtility_1.StorageKey.IsGraphAutoVizDisabled) : false;
+            _this.outECache = new ArraysByKeyCache_1.ArraysByKeyCache(GraphExplorerViewModel.EDGE_VERTEX_CACHE_MAX_SIZE);
+            _this.inECache = new ArraysByKeyCache_1.ArraysByKeyCache(GraphExplorerViewModel.EDGE_VERTEX_CACHE_MAX_SIZE);
+            _this.edgeInfoCache = new EdgeInfoCache_1.EdgeInfoCache(GraphExplorerViewModel.VERTEX_CACHE_SIZE);
+            return _this;
+        } // constructor
+        GraphExplorerViewModel.prototype.isPropertyPaneEditing = function () {
+            return this.nodePropertiesViewMode() !== 0 /* READONLY_PROP */;
+        };
+        GraphExplorerViewModel.prototype.onPropertyModeChanged = function (newMode) {
+            switch (newMode) {
+                case 2 /* EDIT_SOURCES */:
+                case 3 /* EDIT_TARGETS */:
+                case 1 /* PROPERTY_EDITOR */:
+                    this.d3ForceGraph.isHighlightDisabled = true;
+                    break;
+                case 0 /* READONLY_PROP */:
+                default:
+                    this.d3ForceGraph.isHighlightDisabled = false;
+                    break;
+            }
+        };
+        GraphExplorerViewModel.prototype.setGremlinParams = function () {
+            this.gremlinClient.initialize({
+                endpoint: "wss://" + this.graphBackendEndpoint(),
+                databaseId: this.databaseId(),
+                collectionId: this.collectionId,
+                masterKey: this.masterKey(),
+                maxResultSize: GraphExplorerViewModel.MAX_RESULT_SIZE
+            });
+        };
+        /**
+         * Update possible vertices to display in UI
+         */
+        GraphExplorerViewModel.prototype.updatePossibleVertices = function () {
+            var _this = this;
+            var highlightedNodeId = this.highlightedNode() ? this.highlightedNode().id : null;
+            var q = "SELECT c.id, c[\"" + (this.graphConfigUiData.nodeCaptionChoice() || 'id') + "\"] AS p FROM c WHERE NOT IS_DEFINED(c._isEdge)";
+            return this.executeNonPagedDocDbQuery(q).then(function (documents) {
+                var possibleVertices = [];
+                $.each(documents, function (index, item) {
+                    if (highlightedNodeId && item.id === highlightedNodeId) {
+                        // Exclude highlighed node in the list
+                        return;
+                    }
+                    // item.p can be a string (if label or id) or an object (if property)
+                    if (typeof item.p === 'string' || item.p instanceof String) {
+                        possibleVertices.push({
+                            value: item.id,
+                            caption: item.p
+                        });
+                    }
+                    else {
+                        if (item.hasOwnProperty('p')) {
+                            possibleVertices.push({
+                                value: item.id,
+                                caption: item.p[0]['_value']
+                            });
+                        }
+                    }
+                });
+                _this.possibleVertices(possibleVertices);
+                return possibleVertices;
+            }, function () {
+                GraphExplorerViewModel.reportToConsole(NotificationConsole_1.ConsoleDataType.Error, 'Failed to retrieve list of possible vertices');
+                return [];
+            });
+        };
+        /**
+         * Update node property pane from this node id
+         * @param id node id
+         */
+        GraphExplorerViewModel.prototype.updatePropertiesPane = function (id) {
+            if (!id || !this.originalGraphData.hasVertexId(id)) {
+                this.highlightedNode(null);
+                return;
+            }
+            var data = this.originalGraphData.getVertexById(id);
+            // A bit of translation to make it easier to display
+            var props = {};
+            for (var p in data.properties) {
+                props[p] = data.properties[p][0].value;
+            }
+            // update neighbors
+            var sources = [];
+            var targets = [];
+            this.setDefaultGraphConfigValues();
+            var nodeCaption = this.graphConfigUiData.nodeCaptionChoice();
+            this.updateSelectedNodeNeighbors(data.id, nodeCaption, sources, targets);
+            var sData = {
+                id: data.id,
+                label: data.label,
+                properties: props,
+                areNeighborsUnknown: !data._inEdgeIds || !data._outEdgeIds,
+                sources: sources,
+                targets: targets //<VertexBasicInfo[]>[]
+            };
+            // Update KO
+            this.highlightedNode(sData);
+        };
+        /**
+         * Retrieve property title based on the graph style preferences
+         */
+        GraphExplorerViewModel.prototype.getPropertyPaneTitle = function () {
+            if (!this.highlightedNode()) {
+                return '';
+            }
+            var nodeCaption = this.graphConfigUiData.nodeCaptionChoice();
+            var node = this.originalGraphData.getVertexById(this.highlightedNode().id);
+            return D3ForceGraph_1.D3ForceGraph.getNodePropValue(node, nodeCaption);
+        };
+        /**
+         * Update graph icon
+         * @param nodeProp to map to icon
+         * @param iconSet _graph_icon_set field in document
+         */
+        GraphExplorerViewModel.prototype.updateNodeIcons = function (nodeProp, iconSet) {
+            var _this = this;
+            if (nodeProp === GraphExplorerViewModel.NONE_CHOICE) {
+                this.d3ForceGraph.graphConfig.nodeIconKey(null);
+                return;
+            }
+            if (!iconSet) {
+                iconSet = this.collectionId;
+            }
+            // load icon set and update graph
+            var newIconsMap = {};
+            this.executeNonPagedDocDbQuery("SELECT c._graph_icon_property_value, c.format, c.icon FROM c WHERE c._graph_icon_set = \"" + GraphExplorerViewModel.escapeDoubleQuotes(iconSet) + "\"")
+                .then(function (documents) {
+                $.each(documents, function (index, doc) {
+                    newIconsMap[doc['_graph_icon_property_value']] = {
+                        data: doc['icon'],
+                        format: doc['format']
+                    };
+                });
+                // Update graph configuration
+                _this.d3ForceGraph.graphConfig.iconsMap(newIconsMap);
+                _this.d3ForceGraph.graphConfig.nodeIconKey(nodeProp);
+            }, function () {
+                GraphExplorerViewModel.reportToConsole(NotificationConsole_1.ConsoleDataType.Error, "Failed to retrieve icons. iconSet:" + iconSet);
+            });
+        };
+        /**
+         * TODO Perform minimal substitution to prevent breaking gremlin query and allow \' for now.
+         * @param value
+         */
+        GraphExplorerViewModel.escapeSingleQuotes = function (value) {
+            return value == null ? value : value.replace(/'/g, "\\'");
+        };
+        /**
+         * TODO Perform minimal substitution to prevent breaking gremlin query and allow \"" for now.
+         * @param value
+         */
+        GraphExplorerViewModel.escapeDoubleQuotes = function (value) {
+            return value == null ? value : value.replace(/"/g, '\\"');
+        };
+        /**
+         * Create a new edge in docdb and update graph
+         * @param e
+         */
+        GraphExplorerViewModel.prototype.createNewEdge = function (e) {
+            var _this = this;
+            // If nodeCaptionChoice is 'id', user can enter any id, even id of a node that is not loaded in the graph.
+            // Otherwise, user must select from list of choices
+            var q;
+            if (this.graphConfigUiData.nodeCaptionChoice() === 'id') {
+                q = "g.V('" + GraphExplorerViewModel.escapeSingleQuotes(e.inputOutV) + "').addE('" + GraphExplorerViewModel.escapeSingleQuotes(e.label) + "').To(g.V('" + GraphExplorerViewModel.escapeSingleQuotes(e.inputInV) + "'))";
+            }
+            else {
+                if (e.selectedOutV === null || e.selectedInV === null) {
+                    GraphExplorerViewModel.reportToConsole(NotificationConsole_1.ConsoleDataType.Error, 'Failed to create edge (either outV or inV is not selected)', e.selectedOutV, e.selectedInV);
+                    return Q.reject();
+                }
+                q = "g.V('" + GraphExplorerViewModel.escapeSingleQuotes(e.selectedOutV.value) + "').addE('" + GraphExplorerViewModel.escapeSingleQuotes(e.label) + "').To(g.V('" + GraphExplorerViewModel.escapeSingleQuotes(e.selectedInV.value) + "'))";
+            }
+            return this.submitToBackend(q).then(function (result) {
+                var edges = result.data;
+                if (!edges) {
+                    GraphExplorerViewModel.reportToConsole(NotificationConsole_1.ConsoleDataType.Error, 'Failed to create edge (empty response).');
+                    return;
+                }
+                // update graph
+                if (!edges || edges.length < 1) {
+                    GraphExplorerViewModel.reportToConsole(NotificationConsole_1.ConsoleDataType.Error, 'Failed to create edge (no edge in response).');
+                    return;
+                }
+                var edge = edges[0];
+                var graphData = _this.originalGraphData;
+                graphData.addEdge(edge);
+                _this.updateGraphData(graphData);
+            }, function (error) {
+                GraphExplorerViewModel.reportToConsole(NotificationConsole_1.ConsoleDataType.Error, 'Failed to create edge (Gremlin query failed to execute): ' + error);
+            });
+        };
+        /**
+         * This opposite of createNewEdge.
+         * Manually update in-memory graph.
+         * @param edgeId
+         */
+        GraphExplorerViewModel.prototype.removeEdge = function (edgeId) {
+            var _this = this;
+            return this.submitToBackend("g.E('" + GraphExplorerViewModel.escapeSingleQuotes(edgeId) + "').drop()").then(function () {
+                var graphData = _this.originalGraphData;
+                graphData.removeEdge(edgeId, false);
+                _this.updateGraphData(graphData);
+            }, function (error) {
+                GraphExplorerViewModel.reportToConsole(NotificationConsole_1.ConsoleDataType.Error, 'Failed to remove edge (Gremlin query failed to execute): ' + error);
+            });
+        };
+        /**
+         * TODO Implement real validation
+         * @param q query
+         * @return
+         */
+        GraphExplorerViewModel.isValidQuery = function (q) {
+            return true;
+        };
+        /**
+         * Clone object and keep the original untouched (by d3)
+         */
+        GraphExplorerViewModel.prototype.updateGraphData = function (graphData) {
+            this.originalGraphData = graphData;
+            var gd = JSON.parse(JSON.stringify(this.originalGraphData));
+            this.graphData(gd);
+        };
+        /**
+         * Update neighbors array of this node by id
+         * TODO Move part of this to GraphUtil
+         * @param id
+         * @param sources
+         * @param target
+         */
+        GraphExplorerViewModel.prototype.updateSelectedNodeNeighbors = function (id, nodeCaption, sources, targets) {
+            // update neighbors
+            var gd = this.originalGraphData;
+            var v = gd.getVertexById(id);
+            // Clear the array while keeping the references
+            sources.length = 0;
+            targets.length = 0;
+            var possibleEdgeLabels = {}; // Collect all edge labels in a hashset
+            var _loop_1 = function (p) {
+                possibleEdgeLabels[p] = true;
+                var edges = v.inE[p];
+                $.each(edges, function (index, edge) {
+                    var neighborId = edge.outV;
+                    if (!gd.getVertexById(neighborId)) {
+                        // If id not known, it must be an edge node whose neighbor hasn't been loaded into the graph, yet
+                        return;
+                    }
+                    var caption = D3ForceGraph_1.D3ForceGraph.getNodePropValue(gd.getVertexById(neighborId), nodeCaption);
+                    sources.push({ name: caption, id: neighborId, edgeId: edge.id, edgeLabel: p });
+                });
+            };
+            for (var p in v.inE) {
+                _loop_1(p);
+            }
+            var _loop_2 = function (p) {
+                possibleEdgeLabels[p] = true;
+                var edges = v.outE[p];
+                $.each(edges, function (index, edge) {
+                    var neighborId = edge.inV;
+                    if (!gd.getVertexById(neighborId)) {
+                        // If id not known, it must be an edge node whose neighbor hasn't been loaded into the graph, yet
+                        return;
+                    }
+                    var caption = D3ForceGraph_1.D3ForceGraph.getNodePropValue(gd.getVertexById(neighborId), nodeCaption);
+                    targets.push({ name: caption, id: neighborId, edgeId: edge.id, edgeLabel: p });
+                });
+            };
+            for (var p in v.outE) {
+                _loop_2(p);
+            }
+            this.possibleEdgeLabels(Object.keys(possibleEdgeLabels).map(function (value, index, array) {
+                return { caption: value, value: value };
+            }));
+        };
+        /**
+         * Check if these data is an array of vertices
+         * @param data
+         */
+        GraphExplorerViewModel.isVerticesNonEmptyArray = function (data) {
+            if (!(data instanceof Array)) {
+                GraphExplorerViewModel.reportToConsole(NotificationConsole_1.ConsoleDataType.Error, 'Query result not an array', data);
+                return false;
+            }
+            var vertices = data;
+            if (vertices.length > 0) {
+                var v0 = vertices[0];
+                if (!v0.hasOwnProperty('id') || !v0.hasOwnProperty('type') || v0.type !== 'vertex') {
+                    return false;
+                }
+            }
+            return true;
+        };
+        /**
+         * Is of type: {e: GremlinEdge, v: GremlinVertex}[]
+         * @param data
+         */
+        GraphExplorerViewModel.isEdgeVertexPairArray = function (data) {
+            if (!(data instanceof Array)) {
+                GraphExplorerViewModel.reportToConsole(NotificationConsole_1.ConsoleDataType.Info, 'Query result not an array', data);
+                return false;
+            }
+            var pairs = data;
+            for (var i = 0; i < pairs.length; i++) {
+                var item = pairs[i];
+                if (!item.hasOwnProperty('e') || !item.hasOwnProperty('v') ||
+                    !item['e'].hasOwnProperty('id') || !item['e'].hasOwnProperty('type') || item['e'].type !== 'edge' ||
+                    !item['v'].hasOwnProperty('id') || !item['v'].hasOwnProperty('type') || item['v'].type !== 'vertex') {
+                    return false;
+                }
+            }
+            return true;
+        };
+        GraphExplorerViewModel.prototype.pushToLatestQueryFragments = function (q) {
+            if (q.length === 0) {
+                return;
+            }
+            var lq = this.latestPartialQueries();
+            for (var i = 0; i < lq.length; i++) {
+                if (lq[i].value === q) {
+                    // no dupes
+                    return;
+                }
+            }
+            lq.unshift({ caption: q, value: q });
+            lq = lq.slice(0, GraphExplorerViewModel.MAX_LATEST_QUERIES - 1);
+            this.latestPartialQueries(lq);
+        };
+        GraphExplorerViewModel.prototype.onClearFilterClick = function () {
+            this.query('');
+        };
+        GraphExplorerViewModel.prototype.onApplyFilterClick = function () {
+            var query = this.query();
+            this.submitQuery(query);
+        };
+        /**
+         * User executes query
+         */
+        GraphExplorerViewModel.prototype.submitQuery = function (query) {
+            this.filterQueryStatus(3 /* LOADING */);
+            // Clear any progress indicator
+            this.executeCounter(0);
+            // Close any edit
+            this.nodePropertiesViewMode(0 /* READONLY_PROP */);
+            // Clean graph and results
+            this.updateGraphData(new GraphData_1.GraphData());
+            this.rootMap({});
+            this.hasMoreRoots(false);
+            // Clear cache
+            this.outECache.clear();
+            this.inECache.clear();
+            this.edgeInfoCache.clear();
+            // Remember query
+            this.pushToLatestQueryFragments(query);
+            var backendPromise;
+            if (query.toLocaleLowerCase() === 'g.V()'.toLocaleLowerCase()) {
+                backendPromise = this.executeDocDbGVQuery();
+            }
+            else {
+                backendPromise = this.executeGremlinQuery(query);
+            }
+            return backendPromise;
+        };
+        GraphExplorerViewModel.prototype.executeDocDbGVQuery = function () {
+            var _this = this;
+            var query = 'select root.id from root where IS_DEFINED(root._isEdge) = false order by root._ts desc';
+            if (this.collectionPartitionKeyProperty) {
+                query = "select root.id, root." + this.collectionPartitionKeyProperty + " from root where IS_DEFINED(root._isEdge) = false order by root._ts asc";
+            }
+            GraphExplorerViewModel.reportToConsole(NotificationConsole_1.ConsoleDataType.Info, "Execute CosmosDB query: " + query);
+            return this.documentClientUtility.queryDocuments({ self: this.collectionSelfLink, rid: this.collectionRid }, query, { maxItemCount: GraphExplorerViewModel.PAGE_ALL, enableCrossPartitionQuery: StorageUtility_1.LocalStorageUtility.getEntryString(StorageUtility_1.StorageKey.IsCrossPartitionQueryEnabled) === "true" })
+                .then(function (iterator) {
+                _this.queryResultIterator = iterator;
+            }, function (reason) {
+                GraphExplorerViewModel.reportToConsole(NotificationConsole_1.ConsoleDataType.Error, "Failed to execute CosmosDB query: " + query + " reason:" + reason);
+            })
+                .then(this.loadMoreRootNodes.bind(this));
+        };
+        GraphExplorerViewModel.prototype.loadMoreRootNodes = function () {
+            var _this = this;
+            var deferred = Q.defer();
+            if (!this.queryResultIterator) {
+                var result = Q.defer();
+                result.resolve(null);
+                return result.promise;
+            }
+            this.documentClientUtility.nextIteratorItem(this.queryResultIterator, GraphExplorerViewModel.ROOT_LIST_PAGE_SIZE, [], deferred);
+            return deferred.promise.then(function (documents) {
+                _this.hasMoreRoots(_this.queryResultIterator.hasMoreResults());
+                return documents.map(function (item) {
+                    return _this.getPkIdFromDocumentId(item);
+                }, function (reason) {
+                    GraphExplorerViewModel.reportToConsole(NotificationConsole_1.ConsoleDataType.Error, "Failed to get more CosmosDB results. Reason:" + reason);
+                });
+            }).then(function (pkIds) {
+                var arg = pkIds.join(',');
+                return _this.executeGremlinQuery("g.V(" + arg + ")");
+            });
+        };
+        GraphExplorerViewModel.prototype.executeGremlinQuery = function (query) {
+            var _this = this;
+            return this.submitToBackend(query).then(function (result) {
+                _this.queryRawData = JSON.stringify(result.data, null, '  ');
+                // This is an optimisation: showing the JSON editor takes a while to instantiate the first time
+                if (_this.mustShowJson()) {
+                    _this.jsonEditorContent(_this.queryRawData);
+                }
+                return result;
+            }, function (error) {
+                // Failure
+                var errorMsg = "Failed to execute query: " + query + ": " + error;
+                GraphExplorerViewModel.reportToConsole(NotificationConsole_1.ConsoleDataType.Error, errorMsg);
+                _this.filterQueryError(errorMsg);
+                _this.filterQueryStatus(5 /* ERROR_RESULT */);
+                throw error;
+            })
+                .then(this.processGremlinQueryResults.bind(this));
+        };
+        GraphExplorerViewModel.prototype.processGremlinQueryResults = function (result) {
+            var data = result.data;
+            var vertices = [];
+            this.filterQueryStatus(1 /* GRAPH_EMPTY_RESULT */);
+            if (data === null) {
+                GraphExplorerViewModel.reportToConsole(NotificationConsole_1.ConsoleDataType.Error, 'Filter query result is null.');
+            }
+            else {
+                // Check if result is an array of vertices
+                if (!GraphExplorerViewModel.isVerticesNonEmptyArray(data)) {
+                    GraphExplorerViewModel.reportToConsole(NotificationConsole_1.ConsoleDataType.Info, 'Query result is not a graph');
+                    this.filterQueryStatus(4 /* NON_GRAPH_RESULT */);
+                }
+                else {
+                    vertices = data;
+                    this.filterQueryStatus(2 /* GRAPH_RESULT */);
+                }
+            }
+            this.addToPossibleRootNodesList(vertices);
+            if (vertices.length === 0) {
+                // Clean graph
+                this.updateGraphData(new GraphData_1.GraphData());
+                this.highlightedNode(null);
+                GraphExplorerViewModel.reportToConsole(NotificationConsole_1.ConsoleDataType.Info, 'Query result is empty');
+                return;
+            }
+            // TODO user config to turn off auto-select graph here
+            if (!this.isGraphAutoVizDisabled && this.filterQueryStatus() === 2 /* GRAPH_RESULT */) {
+                this.showGraph();
+            }
+        };
+        /**
+         * Selecting a root node means
+         * @param node
+         */
+        GraphExplorerViewModel.prototype.selectRootNode = function (id) {
+            var _this = this;
+            this.d3ForceGraph.resetZoom();
+            if (id === null) {
+                var deferred = Q.defer();
+                deferred.reject();
+                return deferred.promise;
+            }
+            // Find the root node
+            var root = this.rootMap()[id];
+            if (!root) {
+                GraphExplorerViewModel.reportToConsole(NotificationConsole_1.ConsoleDataType.Error, 'Failed to select root node: no known vertex with id:' + id);
+                var deferred = Q.defer();
+                deferred.reject();
+                return deferred.promise;
+            }
+            // For ui purposes
+            this.selectedRootId(id);
+            var graphData = new GraphData_1.GraphData();
+            // Add root node to list
+            graphData.addVertex(root);
+            graphData.setAsRoot(id);
+            // Reset paging if number of links > page size
+            if (root._outEAllLoaded && root._inEAllLoaded &&
+                (root._outEdgeIds.length + root._inEdgeIds.length) > GraphExplorerViewModel.LOAD_PAGE_SIZE) {
+                delete root._outEdgeIds;
+                delete root._inEdgeIds;
+                root._outEAllLoaded = false;
+                root._inEAllLoaded = false;
+            }
+            // Load neighbors
+            return this.loadNeighborsPage(root, graphData, 0).then(function () {
+                _this.collectNodeProperties(_this.originalGraphData.vertices);
+                _this.updatePropertiesPane(id);
+            }, function (reason) {
+                GraphExplorerViewModel.reportToConsole(NotificationConsole_1.ConsoleDataType.Error, "Failed to auto-select root node. Reason:" + reason);
+            });
+        };
+        /**
+         * Collect all edges from this node
+         * @param vertex
+         * @param graphData
+         * @param newNodes (optional) object describing new nodes encountered
+         */
+        GraphExplorerViewModel.createEdgesfromNode = function (vertex, graphData, newNodes) {
+            if (vertex.hasOwnProperty('outE')) {
+                var outE = vertex.outE;
+                for (var label in outE) {
+                    $.each(outE[label], function (index, edge) {
+                        // We create our own edge. No need to fetch
+                        var e = {
+                            id: edge.id,
+                            label: label,
+                            inV: edge.inV,
+                            outV: vertex.id,
+                        };
+                        graphData.addEdge(e);
+                        if (newNodes) {
+                            newNodes[edge.inV] = true;
+                        }
+                    });
+                }
+            }
+            if (vertex.hasOwnProperty('inE')) {
+                var inE = vertex.inE;
+                for (var label in inE) {
+                    $.each(inE[label], function (index, edge) {
+                        // We create our own edge. No need to fetch
+                        var e = {
+                            id: edge.id,
+                            label: label,
+                            inV: vertex.id,
+                            outV: edge.outV,
+                        };
+                        graphData.addEdge(e);
+                        if (newNodes) {
+                            newNodes[edge.outV] = true;
+                        }
+                    });
+                }
+            }
+        };
+        /**
+         * From ['id1', 'id2', 'idn'] build the following string "'id1','id2','idn'".
+         * The string length cannot exceed maxSize.
+         *  @param array
+         * @param maxSize
+         * @return
+         */
+        GraphExplorerViewModel.getLimitedArrayString = function (array, maxSize) {
+            if (!array || array.length === 0 || (array[0].length + 2) > maxSize) {
+                return { result: '', consumedCount: 0 };
+            }
+            var end = array.length - 1;
+            var output = "'" + array[0] + "'";
+            var i = 0;
+            for (; i < end; i++) {
+                var candidate = output + ",'" + array[i + 1] + "'";
+                if (candidate.length <= maxSize) {
+                    output = candidate;
+                }
+                else {
+                    break;
+                }
+            }
+            return {
+                result: output,
+                consumedCount: i + 1
+            };
+        };
+        GraphExplorerViewModel.createFetchEdgePairQuery = function (outE, pkid, excludedEdgeIds, startIndex, pageSize, withoutStepArgMaxLenght) {
+            var gremlinQuery;
+            if (excludedEdgeIds.length > 0) {
+                // build a string up to max char
+                var joined = GraphExplorerViewModel.getLimitedArrayString(excludedEdgeIds, withoutStepArgMaxLenght);
+                var hasWithoutStep = !!joined.result ? ".has(id, without(" + joined.result + "))" : '';
+                if (joined.consumedCount === excludedEdgeIds.length) {
+                    gremlinQuery = "g.V(" + pkid + ")." + (outE ? 'outE' : 'inE') + "()" + hasWithoutStep + ".limit(" + pageSize + ").as('e')." + (outE ? 'inV' : 'outV') + "().as('v').select('e', 'v')";
+                }
+                else {
+                    var start = startIndex - joined.consumedCount;
+                    gremlinQuery = "g.V(" + pkid + ")." + (outE ? 'outE' : 'inE') + "()" + hasWithoutStep + ".range(" + start + "," + (start + pageSize) + ").as('e')." + (outE ? 'inV' : 'outV') + "().as('v').select('e', 'v')";
+                }
+            }
+            else {
+                gremlinQuery = "g.V(" + pkid + ")." + (outE ? 'outE' : 'inE') + "().limit(" + pageSize + ").as('e')." + (outE ? 'inV' : 'outV') + "().as('v').select('e', 'v')";
+            }
+            return gremlinQuery;
+        };
+        ;
+        /**
+         * Query outgoing edge + vertex pairs: starting from startIndex and fetch pageSize items
+         * @param outE true: fetch outE, false: fetch inE
+         * @param vertex
+         * @param startIndex
+         * @param pageSize
+         */
+        GraphExplorerViewModel.prototype.fetchEdgeVertexPairs = function (outE, vertex, startIndex, pageSize) {
+            var _this = this;
+            if (startIndex < 0) {
+                var error = "Attempt to fetch edge-vertex pairs with negative index: outE:" + outE + ", vertex id:" + vertex.id + ", startIndex:" + startIndex + ", pageSize:" + pageSize;
+                GraphExplorerViewModel.reportToConsole(NotificationConsole_1.ConsoleDataType.Error, error);
+                throw error;
+            }
+            // Try hitting cache first
+            var cache = outE ? this.outECache : this.inECache;
+            var pairs = cache.retrieve(vertex.id, startIndex, pageSize);
+            if (pairs != null && pairs.length === pageSize) {
+                var msg = "Retrieved " + pairs.length + " " + (outE ? 'outE' : 'inE') + " edges from cache for vertex id: " + vertex.id;
+                GraphExplorerViewModel.reportToConsole(NotificationConsole_1.ConsoleDataType.Info, msg);
+                return Q.resolve(pairs);
+            }
+            var excludedEdgeIds = outE ? vertex._outEdgeIds : vertex._inEdgeIds;
+            var gremlinQuery = GraphExplorerViewModel.createFetchEdgePairQuery(outE, this.getPkIdFromVertex(vertex), excludedEdgeIds, startIndex, pageSize, GraphExplorerViewModel.WITHOUT_STEP_ARGS_MAX_CHARS);
+            return this.submitToBackend(gremlinQuery)
+                .then(function (result) {
+                var data = result.data;
+                if (data === null) {
+                    var error = "Failed to load incoming edge/pairs for " + vertex.id + " (query result is null)";
+                    GraphExplorerViewModel.reportToConsole(NotificationConsole_1.ConsoleDataType.Error, error);
+                    throw error;
+                }
+                // Check if result is an array of edge/vertex pairs
+                if (!GraphExplorerViewModel.isEdgeVertexPairArray(data)) {
+                    var error = "Failed to load incoming edge/pairs for " + vertex.id + " (query result not a valid array of edge/vertex pairs)";
+                    GraphExplorerViewModel.reportToConsole(NotificationConsole_1.ConsoleDataType.Error, error, data);
+                    throw error;
+                }
+                // Cache result
+                var pairs = data;
+                for (var i = 0; i < pairs.length; i++) {
+                    var pair = pairs[i];
+                    cache.insert(vertex.id, startIndex + i, pair);
+                    // Merge with possible cached edge information
+                    _this.edgeInfoCache.mergeEdgeInfo(pair.v);
+                }
+                return pairs;
+            });
+        };
+        /**
+         * Trim graph
+         */
+        GraphExplorerViewModel.trimGraph = function (currentRoot, graphData) {
+            var importantNodes = [currentRoot.id].concat(currentRoot._ancestorsId);
+            graphData.unloadAllVertices(importantNodes);
+            // Keep only ancestors node in fixed position
+            $.each(graphData.ids, function (index, id) {
+                graphData.getVertexById(id)._isFixedPosition = importantNodes.indexOf(id) !== -1;
+            });
+        };
+        GraphExplorerViewModel.addRootChildToGraph = function (root, child, graphData) {
+            child._ancestorsId = (root._ancestorsId || []).concat([root.id]);
+            graphData.addVertex(child);
+            GraphExplorerViewModel.createEdgesfromNode(child, graphData);
+            graphData.addNeighborInfo(child);
+        };
+        /**
+         * Query a page of neighbors using Gremlin and update what to show in the graph
+         * Always fetch all outE first, because they live in the same partition as vertex. inE() is a fan-out expensive query.
+         * @param vertex Vertex whose neighbors we want to load
+         * @param graphData loaded vertices are stored in there
+         * @param generation Generation of vertex parameter. This method is recursive, keep track of distance from root node. 0=root node
+         * @param offsetIndex Index at which we start loading the nodes (in case of paging)
+         * @param return promise: for caller to execute code when fetching is done
+         */
+        GraphExplorerViewModel.prototype.loadNeighborsPage = function (vertex, graphData, offsetIndex) {
+            var _this = this;
+            vertex._outEdgeIds = vertex._outEdgeIds || [];
+            vertex._inEdgeIds = vertex._inEdgeIds || [];
+            if (offsetIndex >= (vertex._outEdgeIds.length + vertex._inEdgeIds.length) &&
+                vertex._outEAllLoaded && vertex._inEAllLoaded) {
+                console.info('No more edges to load for vertex ' + vertex.id);
+                return Q.resolve(graphData);
+            }
+            // TODO For now, discard previously loaded edges and fetch again.
+            // The following assumes that outE's are loaded before inE's
+            if (offsetIndex <= vertex._outEdgeIds.length) {
+                vertex._outEdgeIds.splice(offsetIndex, vertex._outEdgeIds.length - offsetIndex);
+                vertex._inEdgeIds = [];
+                vertex._outEAllLoaded = false;
+                vertex._inEAllLoaded = false;
+            }
+            else if (offsetIndex <= (vertex._outEdgeIds.length + vertex._inEdgeIds.length)) {
+                var relativeOffset = offsetIndex - vertex._outEdgeIds.length;
+                vertex._inEdgeIds.splice(relativeOffset, vertex._inEdgeIds.length - relativeOffset);
+            }
+            GraphExplorerViewModel.trimGraph(vertex, graphData);
+            var totalEdgesToFetch = GraphExplorerViewModel.LOAD_PAGE_SIZE + 1;
+            var addedEdgesNb = 0;
+            var promise = null;
+            if (!vertex._outEAllLoaded) {
+                promise = this.fetchEdgeVertexPairs(true, vertex, offsetIndex, totalEdgesToFetch)
+                    .then(function (pairs) {
+                    vertex._outEAllLoaded = pairs.length < totalEdgesToFetch;
+                    var pairsToAdd = pairs.slice(0, GraphExplorerViewModel.LOAD_PAGE_SIZE);
+                    pairsToAdd.forEach(function (p) {
+                        GraphData_1.GraphData.addOutE(vertex, p.e.label, p.e);
+                        GraphExplorerViewModel.addRootChildToGraph(vertex, p.v, graphData);
+                        graphData.addEdge(p.e);
+                        vertex._outEdgeIds.push(p.e.id);
+                        // Cache results (graphdata now contains a vertex with inE's filled in)
+                        _this.edgeInfoCache.addVertex(graphData.getVertexById(p.v.id));
+                    });
+                    addedEdgesNb += pairsToAdd.length;
+                    return pairs.length;
+                });
+            }
+            else {
+                promise = Q.resolve(0);
+            }
+            promise = promise.then(function (outEPairsNb) {
+                var inEdgesToFetch = totalEdgesToFetch - outEPairsNb;
+                if (!vertex._inEAllLoaded && inEdgesToFetch > 0) {
+                    var start = void 0;
+                    if (offsetIndex <= vertex._outEdgeIds.length) {
+                        start = 0;
+                    }
+                    else {
+                        start = offsetIndex - vertex._outEdgeIds.length;
+                    }
+                    return _this.fetchEdgeVertexPairs(false, vertex, start, inEdgesToFetch)
+                        .then(function (pairs) {
+                        vertex._inEAllLoaded = pairs.length < inEdgesToFetch;
+                        var pairsToAdd = pairs.slice(0, GraphExplorerViewModel.LOAD_PAGE_SIZE - outEPairsNb);
+                        pairsToAdd.forEach(function (p) {
+                            GraphData_1.GraphData.addInE(vertex, p.e.label, p.e);
+                            GraphExplorerViewModel.addRootChildToGraph(vertex, p.v, graphData);
+                            graphData.addEdge(p.e);
+                            vertex._inEdgeIds.push(p.e.id);
+                            // Cache results (graphdata now contains a vertex with outE's filled in)
+                            _this.edgeInfoCache.addVertex(graphData.getVertexById(p.v.id));
+                        });
+                        addedEdgesNb += pairsToAdd.length;
+                        return outEPairsNb + pairs.length;
+                    });
+                }
+                else {
+                    return Q.resolve(outEPairsNb);
+                }
+            });
+            return promise.then(function (nbPairsFetched) {
+                if (offsetIndex >= GraphExplorerViewModel.LOAD_PAGE_SIZE || !vertex._outEAllLoaded || !vertex._inEAllLoaded) {
+                    vertex._pagination = {
+                        total: (vertex._pagination && vertex._pagination.total) ||
+                            (vertex._outEAllLoaded && vertex._inEAllLoaded ? vertex._outEdgeIds.length + vertex._inEdgeIds.length : null),
+                        currentPage: {
+                            start: offsetIndex,
+                            end: offsetIndex + addedEdgesNb
+                        }
+                    };
+                }
+                // Cache results
+                _this.edgeInfoCache.addVertex(vertex);
+                graphData.setAsRoot(vertex.id);
+                _this.updateGraphData(graphData);
+                return graphData;
+            });
+        };
+        /**
+         * Get node properties for styling purposes. Result is the union of all properties of all nodes.
+         */
+        GraphExplorerViewModel.prototype.collectNodeProperties = function (vertices) {
+            var props = {}; // Hashset
+            $.each(vertices, function (index, item) {
+                for (var p in item) {
+                    // DocDB: Exclude type because it's always 'vertex'
+                    if (p !== 'type' && (typeof (item[p]) === 'string')) {
+                        props[p] = true;
+                    }
+                }
+                // Inspect properties
+                if (item.hasOwnProperty('properties')) {
+                    // TODO This is DocDB-graph specific
+                    // Assume each property value is [{value:... }]
+                    for (var f in item.properties) {
+                        props[f] = true;
+                    }
+                }
+            });
+            var values = Object.keys(props);
+            this.graphConfigUiData.nodeProperties(values);
+            this.graphConfigUiData.nodePropertiesWithNone([GraphExplorerViewModel.NONE_CHOICE].concat(values));
+        };
+        /**
+         * Submit graph query to Gremlin backend
+         * @param cmd
+         */
+        GraphExplorerViewModel.prototype.submitToBackend = function (cmd) {
+            var _this = this;
+            var executeCounter = this.executeCounter;
+            console.log('submit:', cmd);
+            GraphExplorerViewModel.reportToConsole(NotificationConsole_1.ConsoleDataType.Info, "Execute query: " + cmd);
+            var id = GraphExplorerViewModel.reportToConsole(NotificationConsole_1.ConsoleDataType.InProgress, "Executing: " + cmd);
+            executeCounter(executeCounter() + 1);
+            return this.gremlinClient.execute(cmd).then(function (result) {
+                executeCounter(executeCounter() - 1);
+                GraphExplorerViewModel.clearConsoleProgress(id);
+                if (result.isIncomplete) {
+                    var msg = "The query results are too large and only partial results are displayed for: " + cmd;
+                    GraphExplorerViewModel.reportToConsole(NotificationConsole_1.ConsoleDataType.Error, msg);
+                    _this.filterQueryWarning(msg);
+                }
+                return result;
+            }, function (err) {
+                executeCounter(executeCounter() - 1);
+                GraphExplorerViewModel.reportToConsole(NotificationConsole_1.ConsoleDataType.Error, "Gremlin query failed: " + cmd, err);
+                GraphExplorerViewModel.clearConsoleProgress(id);
+                throw err;
+            });
+        };
+        /**
+         * Called from ko binding
+         * @param id
+         */
+        GraphExplorerViewModel.prototype.selectNode = function (id) {
+            this.d3ForceGraph.idToSelect(id);
+        };
+        /**
+         * Make sure graph config values are not null
+         */
+        GraphExplorerViewModel.prototype.setDefaultGraphConfigValues = function () {
+            // Assign default values if null
+            if (this.graphConfigUiData.nodeCaptionChoice() === null && this.graphConfigUiData.nodeProperties().length > 1) {
+                this.graphConfigUiData.nodeCaptionChoice(this.graphConfigUiData.nodeProperties()[0]);
+            }
+            if (this.graphConfigUiData.nodeColorKeyChoice() === null && this.graphConfigUiData.nodePropertiesWithNone().length > 1) {
+                this.graphConfigUiData.nodeColorKeyChoice(this.graphConfigUiData.nodePropertiesWithNone()[0]);
+            }
+            if (this.graphConfigUiData.nodeIconChoice() === null && this.graphConfigUiData.nodePropertiesWithNone().length > 1) {
+                this.graphConfigUiData.nodeIconChoice(this.graphConfigUiData.nodePropertiesWithNone()[0]);
+            }
+        };
+        GraphExplorerViewModel.prototype.openStyling = function () {
+            this.setDefaultGraphConfigValues();
+            // Update the styling pane with this instance
+            this.stylingPane.setData(this.graphConfigUiData);
+            this.stylingPane.open();
+        };
+        /**
+         * Surround with double-quotes if val is a string.
+         * @param val
+         */
+        GraphExplorerViewModel.getQuotedPropValue = function (ip) {
+            switch (ip.type) {
+                case 'number':
+                case 'boolean':
+                    return "" + ip.value;
+                default:
+                    return "\"" + GraphExplorerViewModel.escapeDoubleQuotes(ip.value) + "\"";
+            }
+        };
+        /**
+         * Update in-memory graph
+         * @param data from submitToBackend()
+         */
+        GraphExplorerViewModel.prototype.updateInMemoryGraph = function (vertices) {
+            if (!vertices) {
+                GraphExplorerViewModel.reportToConsole(NotificationConsole_1.ConsoleDataType.Error, 'Failed to update graph (no data)', vertices);
+                return;
+            }
+            if (!vertices || vertices.length < 1) {
+                GraphExplorerViewModel.reportToConsole(NotificationConsole_1.ConsoleDataType.Error, 'Failed to update graph (no vertex in response)');
+                return;
+            }
+            var updatedVertex = vertices[0];
+            if (this.originalGraphData.hasVertexId(updatedVertex.id)) {
+                var currentVertex = this.originalGraphData.getVertexById(updatedVertex.id);
+                // Copy updated properties
+                if (currentVertex.hasOwnProperty('properties')) {
+                    delete currentVertex['properties'];
+                }
+                for (var p in updatedVertex) {
+                    currentVertex[p] = updatedVertex[p];
+                }
+            }
+            // TODO This kind of assumes saveVertexProperty is done from property panes.
+            var hn = this.highlightedNode();
+            if (hn && hn.id === updatedVertex.id) {
+                this.updatePropertiesPane(hn.id);
+            }
+        };
+        GraphExplorerViewModel.prototype.updateVertexProperties = function (editedProperties) {
+            var _this = this;
+            var partitionKeyProperty = this.collectionPartitionKeyProperty;
+            // aggregate all the properties, remove dropped ones
+            var finalProperties = editedProperties.existingProperties.concat(editedProperties.addedProperties);
+            // Compose the query
+            var pkId = editedProperties.pkId;
+            var updateQueryFragment = '';
+            $.each(finalProperties, function (index, p) {
+                // Partition key cannot be updated
+                if (p.key === partitionKeyProperty) {
+                    return;
+                }
+                updateQueryFragment += ".Property(\"" + GraphExplorerViewModel.escapeDoubleQuotes(p.key) + "\", " + GraphExplorerViewModel.getQuotedPropValue(p) + ")";
+            });
+            var promise = null;
+            // Compute dropped keys (partition key cannot be dropped)
+            var droppedKeys = [];
+            $.each(editedProperties.droppedKeys, function (index, key) {
+                if (key !== partitionKeyProperty) {
+                    droppedKeys.push(key);
+                }
+            });
+            if (updateQueryFragment.length === 0 && droppedKeys.length === 0) {
+                GraphExplorerViewModel.reportToConsole(NotificationConsole_1.ConsoleDataType.Info, 'Nothing to update');
+                this.nodePropertiesViewMode(0 /* READONLY_PROP */);
+                return Q.resolve({ data: [], isIncomplete: false });
+            }
+            if (droppedKeys.length > 0) {
+                // TODO Wait for dropping to end. Can we drop all of them in a single query?
+                // Must execute these drops sequentially to avoid a 500 "{"Message":"An error has occurred."}"
+                promise = this.submitToBackend("g.V(" + pkId + ").properties(\"" + GraphExplorerViewModel.escapeDoubleQuotes(droppedKeys[0]) + "\").drop()");
+                var _loop_3 = function (i) {
+                    promise = promise.then(function () {
+                        return _this.submitToBackend("g.V(" + pkId + ").properties(\"" + GraphExplorerViewModel.escapeDoubleQuotes(droppedKeys[i]) + "\").drop()");
+                    });
+                };
+                for (var i = 1; i < droppedKeys.length; i++) {
+                    _loop_3(i);
+                }
+            }
+            else {
+                promise = Q.resolve({ data: [], isIncomplete: false });
+            }
+            // Now when drops are done, update remaining properties
+            // Note: execute g.V(id) if updateQueryFragment is '' (nothing to update), in order to get a vertex response
+            // to update the in-memory graph
+            promise = promise.then(function () {
+                return _this.submitToBackend("g.V(" + pkId + ")" + updateQueryFragment);
+            });
+            // Update in-memory graph and close editor
+            promise.then(function (result) {
+                // Update graph style dropdown options
+                _this.collectNodeProperties(_this.originalGraphData.vertices);
+                // Update graph (in case property is being shown)
+                _this.updateInMemoryGraph(result.data);
+                _this.updateGraphData(_this.originalGraphData);
+                // Update left pane
+                _this.rootMap.valueHasMutated();
+            }).then(function () {
+                _this.nodePropertiesViewMode(0 /* READONLY_PROP */);
+            }, function (error) {
+                GraphExplorerViewModel.reportToConsole(NotificationConsole_1.ConsoleDataType.Error, 'Failed to update vertex properties: ' + error);
+            });
+            return promise;
+        };
+        /**
+         * If collection is not partitioned, return 'id'.
+         * If collection is partitioned, return pk-id pair.
+         * @param vertex
+         * @return id
+         */
+        GraphExplorerViewModel.prototype.getPkIdFromVertex = function (v) {
+            if (this.collectionPartitionKeyProperty &&
+                v.hasOwnProperty('properties') &&
+                v.properties.hasOwnProperty(this.collectionPartitionKeyProperty) &&
+                v.properties[this.collectionPartitionKeyProperty].length > 0 &&
+                v.properties[this.collectionPartitionKeyProperty][0].hasOwnProperty('value')) {
+                var pk = v.properties[this.collectionPartitionKeyProperty][0].value;
+                return GraphExplorerViewModel.generatePkIdPair(pk, v.id);
+            }
+            else {
+                return "\"" + GraphExplorerViewModel.escapeDoubleQuotes(v.id) + "\"";
+            }
+        };
+        /**
+         * If collection is not partitioned, return 'id'.
+         * If collection is partitioned, return pk-id pair.
+         * @param vertex
+         * @return id
+         */
+        GraphExplorerViewModel.prototype.getPkIdFromNodeData = function (v) {
+            if (this.collectionPartitionKeyProperty &&
+                v.hasOwnProperty('properties') &&
+                v.properties.hasOwnProperty(this.collectionPartitionKeyProperty)) {
+                var pk = v.properties[this.collectionPartitionKeyProperty];
+                return GraphExplorerViewModel.generatePkIdPair(pk, v.id);
+            }
+            else {
+                return "\"" + GraphExplorerViewModel.escapeDoubleQuotes(v.id) + "\"";
+            }
+        };
+        /**
+         * If collection is not partitioned, return 'id'.
+         * If collection is partitioned, return pk-id pair.
+         * @param vertex
+         * @return id
+         */
+        GraphExplorerViewModel.prototype.getPkIdFromDocumentId = function (d) {
+            if (this.collectionPartitionKeyProperty &&
+                d.hasOwnProperty(this.collectionPartitionKeyProperty)) {
+                var pk = d[this.collectionPartitionKeyProperty];
+                return GraphExplorerViewModel.generatePkIdPair(pk, d.id);
+            }
+            else {
+                return "\"" + GraphExplorerViewModel.escapeDoubleQuotes(d.id) + "\"";
+            }
+        };
+        /**
+         * If pk is a string, return ["pk", "id"]
+         * else return [pk, "id"]
+         * @param pk
+         * @param id
+         */
+        GraphExplorerViewModel.generatePkIdPair = function (pk, id) {
+            var pkStr = typeof pk === 'string' ? "\"" + pk + "\"" : "" + pk;
+            return "[" + pkStr + ", \"" + GraphExplorerViewModel.escapeDoubleQuotes(id) + "\"]";
+        };
+        /* ****** New vertex editor *************** */
+        GraphExplorerViewModel.prototype.showNewVertexEditor = function () {
+            this.newVertexPane.open();
+            this.newVertexPane.setPartitionKeyProperty(this.collectionPartitionKeyProperty);
+            this.newVertexPane.subscribeOnSubmitCreate(this.addVertex.bind(this));
+        };
+        GraphExplorerViewModel.prototype.closeNewVertexEditor = function () {
+            if (!!this.newVertexPane) {
+                this.newVertexPane.cancel();
+            }
+        };
+        GraphExplorerViewModel.prototype.addToPossibleRootNodesList = function (vertices) {
+            var rootMap = this.rootMap();
+            $.each(vertices, function (index, v) {
+                rootMap[v.id] = v;
+            });
+            this.rootMap(rootMap);
+        };
+        /**
+        * Create a new vertex in the graph
+        * TODO: take the update newVertexPane code out
+        * @param v
+        */
+        GraphExplorerViewModel.prototype.addVertex = function (v) {
+            var _this = this;
+            if (!v) {
+                return;
+            }
+            var q = "g.AddV('" + GraphExplorerViewModel.escapeSingleQuotes(v.label) + "')";
+            $.each(v.properties, function (index, item) {
+                q += ".Property('" + GraphExplorerViewModel.escapeSingleQuotes(item.key) + "', '" + GraphExplorerViewModel.escapeSingleQuotes(item.value) + "')";
+            });
+            this.submitToBackend(q).then(function (result) {
+                var vertices = result.data;
+                if (!vertices) {
+                    var err = 'Failed to create vertex (no data in new vertex response)';
+                    GraphExplorerViewModel.reportToConsole(NotificationConsole_1.ConsoleDataType.Error, err, vertices);
+                    _this.newVertexPane.formErrors(err);
+                    return;
+                }
+                if (vertices == null || vertices.length < 1) {
+                    var err = 'Failed to create vertex (no vertex in response)';
+                    GraphExplorerViewModel.reportToConsole(NotificationConsole_1.ConsoleDataType.Error, err, vertices);
+                    return;
+                }
+                var vertex = vertices[0];
+                var graphData = _this.originalGraphData;
+                graphData.addVertex(vertex);
+                _this.updateGraphData(graphData);
+                _this.collectNodeProperties(_this.originalGraphData.vertices);
+                // Keep new vertex selected
+                _this.updatePropertiesPane(vertex.id);
+                // Once successful, reset new vertex and close pane
+                _this.closeNewVertexEditor();
+                _this.filterQueryStatus(2 /* GRAPH_RESULT */);
+                // Add to Results list
+                _this.rootMap()[vertex.id] = vertex;
+                _this.rootMap.valueHasMutated();
+                setTimeout(function () {
+                    _this.selectRootNode(vertex.id);
+                }, 0);
+            }, function (error) {
+                var title = 'Failed to create vertex (Gremlin query failed to execute)';
+                GraphExplorerViewModel.reportToConsole(NotificationConsole_1.ConsoleDataType.Error, title + ' :' + error);
+                _this.newVertexPane.formErrors(title);
+                _this.newVertexPane.formErrorsDetails(error);
+            });
+        };
+        /**
+         * Execute DocDB query and get all results
+         */
+        GraphExplorerViewModel.prototype.executeNonPagedDocDbQuery = function (query) {
+            var _this = this;
+            // TODO maxItemCount: this reduces throttling, but won't cap the # of results
+            return this.documentClientUtility.queryDocuments({ self: this.collectionSelfLink, rid: this.collectionRid }, query, { maxItemCount: GraphExplorerViewModel.PAGE_ALL, enableCrossPartitionQuery: StorageUtility_1.LocalStorageUtility.getEntryString(StorageUtility_1.StorageKey.IsCrossPartitionQueryEnabled) === "true" })
+                .then(function (iterator) {
+                var deferred = Q.defer();
+                _this.documentClientUtility.nextIteratorItem(iterator, GraphExplorerViewModel.PAGE_ALL, [], deferred);
+                return deferred.promise;
+            }, function (reason) {
+                GraphExplorerViewModel.reportToConsole(NotificationConsole_1.ConsoleDataType.Error, "Failed to execute non-paged query " + query + ". Reason:" + reason, reason);
+                return null;
+            });
+        };
+        GraphExplorerViewModel.prototype.deleteHighlightedNode = function () {
+            var _this = this;
+            if (!this.highlightedNode()) {
+                GraphExplorerViewModel.reportToConsole(NotificationConsole_1.ConsoleDataType.Error, 'No highlighted node to remove.');
+                return;
+            }
+            var id = this.highlightedNode().id;
+            this.submitToBackend("g.V(" + this.getPkIdFromNodeData(this.highlightedNode()) + ").drop()").then(function () {
+                // Remove vertex from local cache
+                var graphData = _this.originalGraphData;
+                graphData.removeVertex(id, false);
+                _this.updateGraphData(graphData);
+                _this.highlightedNode(null);
+                // Remove from root map
+                delete _this.rootMap()[id];
+                _this.rootMap.valueHasMutated();
+                if (_this.possibleRootNodes().length > 0) {
+                    _this.selectRootNode(_this.possibleRootNodes()[0].id);
+                }
+            }, function (error) {
+                GraphExplorerViewModel.reportToConsole(NotificationConsole_1.ConsoleDataType.Error, "Failed to remove node (Gremlin failed to execute). id=" + id + " : " + error);
+            });
+        };
+        /**
+         * Perform Gremlin querys to drop and add edges
+         * @param droppedIds
+         * @param addedEdges
+         * @return promise when done
+         */
+        GraphExplorerViewModel.prototype.editGraphEdges = function (editedEdges) {
+            var _this = this;
+            var promises = [];
+            // Drop edges
+            for (var i = 0; i < editedEdges.droppedIds.length; i++) {
+                var id = editedEdges.droppedIds[i];
+                promises.push(this.removeEdge(id));
+            }
+            // Add edges
+            for (var i = 0; i < editedEdges.addedEdges.length; i++) {
+                var e = editedEdges.addedEdges[i];
+                promises.push(this.createNewEdge(e).then(function () {
+                    // Reload neighbors in case we linked to a vertex that isn't loaded in the graph
+                    var highlightedVertex = _this.originalGraphData.getVertexById(_this.highlightedNode().id);
+                    return _this.loadNeighborsPage(highlightedVertex, _this.originalGraphData, 0);
+                }));
+            }
+            return Q.all(promises).then(function () {
+                _this.updatePropertiesPane(_this.highlightedNode().id);
+            });
+        };
+        /**
+         * User hits enter on input
+         * @param inputValue
+         * @param selection
+         */
+        GraphExplorerViewModel.prototype.onInputTypeaheadSubmit = function (inputValue, selection) {
+            if (!this.isValidQuery()) {
+                return;
+            }
+            this.onApplyFilterClick();
+        };
+        GraphExplorerViewModel.prototype.toggleExpandGraph = function () {
+            this.isTabsContentExpanded(!this.isTabsContentExpanded());
+        };
+        GraphExplorerViewModel.prototype.loadDefaultGraph = function () {
+            this.submitQuery('g.V()');
+        };
+        /* ************ Result display ************* */
+        GraphExplorerViewModel.prototype.showGraph = function () {
+            this.resultDisplay(1 /* GRAPH */);
+        };
+        GraphExplorerViewModel.prototype.showJson = function () {
+            this.resultDisplay(2 /* JSON */);
+        };
+        GraphExplorerViewModel.prototype.mustShowGraph = function () {
+            return this.resultDisplay() === 1 /* GRAPH */;
+        };
+        GraphExplorerViewModel.prototype.mustShowJson = function () {
+            return this.resultDisplay() === 2 /* JSON */;
+        };
+        GraphExplorerViewModel.prototype.mustShowGraphHelper = function () {
+            return this.filterQueryStatus() === 0 /* NO_RESULT */;
+        };
+        GraphExplorerViewModel.prototype.isFilterResultAvailable = function () {
+            return this.filterQueryStatus() === 1 /* GRAPH_EMPTY_RESULT */ ||
+                this.filterQueryStatus() === 2 /* GRAPH_RESULT */ ||
+                this.filterQueryStatus() === 4 /* NON_GRAPH_RESULT */;
+        };
+        GraphExplorerViewModel.prototype.isFilterGraphResult = function () {
+            return this.filterQueryStatus() === 1 /* GRAPH_EMPTY_RESULT */ ||
+                this.filterQueryStatus() === 2 /* GRAPH_RESULT */;
+        };
+        GraphExplorerViewModel.prototype.isFilterGraphEmptyResult = function () {
+            return this.filterQueryStatus() === 1 /* GRAPH_EMPTY_RESULT */;
+        };
+        GraphExplorerViewModel.prototype.isFilterQueryLoading = function () {
+            return this.filterQueryStatus() === 3 /* LOADING */;
+        };
+        GraphExplorerViewModel.prototype.isNewVertexDisabled = function () {
+            return this.nodePropertiesViewMode() === 2 /* EDIT_SOURCES */ ||
+                this.nodePropertiesViewMode() === 3 /* EDIT_TARGETS */ ||
+                this.nodePropertiesViewMode() === 1 /* PROPERTY_EDITOR */ ||
+                this.filterQueryStatus() === 3 /* LOADING */;
+        };
+        /**
+         * Central method to report any error
+         * @param msg
+         * @param errorData additional errors
+         * @return id
+         */
+        GraphExplorerViewModel.reportToConsole = function (type, msg) {
+            var errorData = [];
+            for (var _i = 2; _i < arguments.length; _i++) {
+                errorData[_i - 2] = arguments[_i];
+            }
+            var errorDataStr = '';
+            if (errorData && errorData.length > 0) {
+                console.error(msg, errorData);
+                errorDataStr = ': ' + JSON.stringify(errorData);
+            }
+            return NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(type, "" + msg + errorDataStr);
+        };
+        GraphExplorerViewModel.clearConsoleProgress = function (id) {
+            NotificationConsoleUtils_1.NotificationConsoleUtils.clearInProgressMessageWithId(id);
+        };
+        GraphExplorerViewModel.prototype.getArrowHeadSymbolId = function () {
+            return this.d3ForceGraph.getArrowHeadSymbolId();
+        };
+        GraphExplorerViewModel.prototype.dispose = function () {
+            this.gremlinClient.destroy();
+        };
+        GraphExplorerViewModel.prototype.getNeighborTitle = function (neighbor) {
+            return "edge id: " + neighbor.edgeId + ", vertex id: " + neighbor.id;
+        };
+        GraphExplorerViewModel.prototype.loadNextPage = function () {
+            this.loadMoreRootNodes();
+        };
+        /* ******************************** Daytona stuff ********************************************** */
+        GraphExplorerViewModel.prototype._buildDaytonaToolbar = function () {
+            var _this = this;
+            var toolbarActionsConfig = [
+                {
+                    type: "action",
+                    action: function () { return _this.onApplyFilterClick(); },
+                    id: "apply",
+                    title: "Apply",
+                    enabled: ko.computed(function () { return _this.isValidQuery() && !_this.isFilterQueryLoading(); }, this),
+                    visible: ko.observable(true),
+                    icon: "images/apply-bigicon.svg",
+                    displayName: "Apply Filter"
+                },
+                {
+                    type: "action",
+                    action: function () { return _this.onShowNewVertexDialog(); },
+                    id: "New Vertex",
+                    title: "New Vertex",
+                    enabled: ko.computed(function () { return !_this.isNewVertexDisabled(); }, this),
+                    visible: ko.observable(true),
+                    icon: "images/ASX_QueryBuilder.svg",
+                    displayName: "New Vertex"
+                }
+            ];
+            this.toolbarViewModel(new Toolbar_1.default(toolbarActionsConfig, function (id) { }));
+        };
+        // Constants
+        GraphExplorerViewModel.LOAD_PAGE_SIZE = 10; // nb of nodes to load at a time
+        GraphExplorerViewModel.DEFAULT_QUERY = 'g.V()';
+        GraphExplorerViewModel.MAX_LATEST_QUERIES = 10;
+        GraphExplorerViewModel.PAGE_ALL = 1000;
+        GraphExplorerViewModel.NONE_CHOICE = 'None';
+        GraphExplorerViewModel.DISPLAY_DEFAULT_PROPERTY_KEY = 'name'; // display this property by default if exists
+        GraphExplorerViewModel.MAX_RESULT_SIZE = 10000;
+        GraphExplorerViewModel.ROOT_LIST_PAGE_SIZE = 100;
+        GraphExplorerViewModel.WITHOUT_STEP_ARGS_MAX_CHARS = 10000; // maximums char size of the without() step parameter
+        GraphExplorerViewModel.EDGE_VERTEX_CACHE_MAX_SIZE = 500;
+        GraphExplorerViewModel.VERTEX_CACHE_SIZE = 500;
+        return GraphExplorerViewModel;
+    }(WaitsForTemplateViewModel_1.WaitsForTemplateViewModel));
+    exports.GraphExplorerViewModel = GraphExplorerViewModel;
+});
+Æ/ù+xÂ      [Õ¾Ô[Õ¾ç?§¶¹[×kJ   g    :https://cosmos.azure.com/built/Explorer/Graph/GraphExplorerComponent/GraphExplorerComponent.js?v=1.0.1 necko:classified 1 strongly-framed 1 security-info FnhllAKWRHGAlo+ESXykKAAAAAAAAAAAwAAAAAAAAEaphjojH6pBabDSgSnsfLHeAAQAAgAAAAAAAAAAAAAAAAAAAAAB4vFIJp5wRkeyPxAQ9RJGKPqbqVvKO0mKuIl8ec8o/uhmCjImkVxP+7sgiYWmMt8FvcOXmlQiTNWFiWlrbpbqgwAAAAAAAAOMMIIDiDCCAnCgAwIBAgIERTJgUjANBgkqhkiG9w0BAQsFADCBijEUMBIGA1UEBhMLUG9ydFN3aWdnZXIxFDASBgNVBAgTC1BvcnRTd2lnZ2VyMRQwEgYDVQQHEwtQb3J0U3dpZ2dlcjEUMBIGA1UEChMLUG9ydFN3aWdnZXIxFzAVBgNVBAsTDlBvcnRTd2lnZ2VyIENBMRcwFQYDVQQDEw5Qb3J0U3dpZ2dlciBDQTAeFw0xNDEwMjgxMzEyMTBaFw0zODEwMjgxMzEyMTBaMGAxFDASBgNVBAYTC1BvcnRTd2lnZ2VyMRQwEgYDVQQKEwtQb3J0U3dpZ2dlcjEXMBUGA1UECxMOUG9ydFN3aWdnZXIgQ0ExGTAXBgNVBAMTEGNvc21vcy5henVyZS5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCKn7emKINsnWqPZ+C/VsqbQf/l4NsmIh34bXBR0xdNg9bfb+xcoghRlmbPjhZ/A26A2gJ6Rrg2d0GGMLpbqA8nTlRRGXEAD39321zk4ye09ElXClvqguGqdqOJpPQ05DPFD6wSOq+KVAEblE5bi+LMqBLipDERzgUe7xzeqVVk0i0ldh9yQOIk3YuzcBR9igSEuw5qladmMYvXKHYM9YZz0R7axMc8xAtadK7C9KfFPfEI5LS2nhmy4vBrTgFyYhfkEvKfmIj6HTX0ISFCAC2llcBLpEDcuiW76tAHp1pXDeWtSeaV36AeOctdleVgrbmsGs3fu6ppuRcWjEZUbjE3AgMBAAGjHzAdMBsGA1UdEQQUMBKCEGNvc21vcy5henVyZS5jb20wDQYJKoZIhvcNAQELBQADggEBABYikT6Y5YgJJ4IVJldlFDF5MKxp26YegXhvT8EmAbgr0yQBIlY2DtKEiHf7Q8wRoJ9y5Ajst1D7HmRba+XLjS6s3IHJ7gtuvc3fZj9MPKpbqSKRfHDB8bDOVIzmjBseg2BqckHTkcYak3b/pTWCTqKHM3LxKsDwN8F3HNQ2pY4d5ma2kR1EtWdTpRiIbir3QxJDcWVp8CgHONZcoMn33NNwnWWjAQMX6d8e1CPuBZi0t+myaYduCqPgKKox9qMXSubF6uifQkAJ5RdLZrZ2pghENA/4r1oz51wqEmpjPsStSUxRPwJ6wJrB4gwGtX7++ZHLjAaNrTSUCGwIOlAT4LnALwEDAAAAAAEBAAAAAA== request-method GET request-Accept-Encoding gzip, deflate, br response-head HTTP/1.1 200 OK
+Content-Length: 78945
+Content-Type: application/x-javascript
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:39:34 GMT
+ original-response-headers Content-Length: 78945
+Content-Type: application/x-javascript
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:39:34 GMT
+Connection: close
+ uncompressed-len 0 net-response-time-onstart 18985 net-response-time-onstop 18986  4a

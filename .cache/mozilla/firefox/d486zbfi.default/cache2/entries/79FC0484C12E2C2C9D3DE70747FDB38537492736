@@ -1,0 +1,355 @@
+/******************************************************************************
+                                FONTS
+/******************************************************************************/
+@font-face {
+  font-family: wf_segoe-ui_normal;
+  src: url('../fonts/segoe-ui/west-european/normal/latest.woff');
+}
+/******************************************************************************
+                                COLORS
+/******************************************************************************/
+/******************************************************************************
+                                METRICS
+/******************************************************************************/
+/**********************************************************************************
+                              Common Flex Property
+/**********************************************************************************/
+/*************************************************************************************
+                                 High contrast mode active
+**************************************************************************************/
+@media all and (-ms-high-contrast: none), (-ms-high-contrast: active) {
+  .selectedRadio,
+  .selectedRadio:hover,
+  .selectedRadio:active,
+  .selectedRadio.dirty,
+  .tab [type=radio]:checked ~ label,
+  .tab [type=radio]:checked ~ label:hover {
+    -ms-high-contrast-adjust: none;
+    -webkit-text-fill-color: HighlightText;
+    color: HighlightText;
+    border-color: HighlightText;
+    background-color: Highlight;
+  }
+  .queryMetricsSummaryTuple th:nth-child(2),
+  .queryMetricsSummaryTuple td:nth-child(2) {
+    width: 650px;
+  }
+  .queryMetricsSummaryTuple th:nth-child(3),
+  .queryMetricsSummaryTuple td:nth-child(3) {
+    width: 50%;
+  }
+}
+/********************************************************************************************
+                            Common Hover and Active color
+*********************************************************************************************/
+/************************************************************************************************
+                               Common Toggle Switch
+*************************************************************************************************/
+/********************************************************************************************************
+                             Common Data Explorer Icons
+*********************************************************************************************************/
+/*********************************************************************************************************
+                            Info Tooltip
+**********************************************************************************************************/
+/*********************************************************************************************************
+                          Media Queries
+**********************************************************************************************************/
+@media only screen and (max-width: 1920px) {
+  .staticCommandExpand {
+    display: none;
+  }
+}
+@media only screen and (min-width: 1039px) and (max-width: 1112px) {
+  .visibleCommands command-button:nth-child(n+9) {
+    display: none;
+  }
+  .hiddenCommands command-button:not(:nth-child(n+3)) {
+    display: none;
+  }
+  .staticCommandExpand {
+    display: block;
+  }
+}
+@media only screen and (min-width: 874px) and (max-width: 1038px) {
+  .visibleCommands command-button:nth-child(n+8) {
+    display: none;
+  }
+  .hiddenCommands command-button:not(:nth-child(n+2)) {
+    display: none;
+  }
+  .staticCommandExpand {
+    display: block;
+  }
+}
+@media only screen and (min-width: 723px) and (max-width: 873px) {
+  .visibleCommands command-button:nth-child(n+7) {
+    display: none;
+  }
+  .hiddenCommands command-button:not(:nth-child(n+1)) {
+    display: none;
+  }
+  .staticCommandExpand {
+    display: block;
+  }
+}
+@media only screen and (max-width: 722px) {
+  .visibleCommands command-button:nth-child(n+7) {
+    display: none;
+  }
+  .hiddenCommands command-button:not(:nth-child(n+1)) {
+    display: none;
+  }
+  .staticCommandExpand {
+    display: block;
+  }
+}
+.main {
+  width: 100%;
+  float: left;
+  transition: all 0s ease-in-out;
+  -ms-transition: all 0s ease-in-out;
+  -webkit-transition: all 0s ease-in-out;
+  -moz-transition: all 0s ease-in-out;
+  height: 100%;
+  background-color: white;
+  border-left: 0px solid white;
+}
+.resourceTree {
+  height: 100%;
+  flex: 0 0 auto;
+}
+.resourceTreeScroll {
+  height: 100%;
+  display: flex;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 10px;
+}
+.userSelectNone {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+.treeHovermargin {
+  margin-left: 16px;
+}
+.highlight {
+  padding: 4px 2px;
+  outline: 0;
+}
+.highlight:hover {
+  background-color: #EEF7FF;
+}
+.highlight:active {
+  background-color: #DDF0FF;
+}
+.highlight:focus {
+  outline: 1px dashed #004E87;
+}
+.contextmenushowing {
+  background-color: #EEE;
+}
+.collectionstree {
+  width: 100%;
+  margin-top: 8px;
+}
+.collectionstree .databaseList {
+  list-style-type: none;
+  padding-left: 0px;
+}
+.collectionstree .databaseList .collectionList {
+  padding-left: 24px;
+}
+.collectionstree .databaseList .collectionChildList {
+  padding-left: 16px;
+}
+.collectionstree .databaseList .databaseDocuments {
+  padding-left: 60px;
+}
+.collectionstree li {
+  display: block;
+  cursor: pointer;
+  list-style-type: none;
+  line-height: 18px;
+}
+.menuEllipsis {
+  padding-right: 6px;
+  font-weight: bold;
+  font-size: 18px;
+  position: relative;
+  top: -5px;
+  left: 0px;
+  float: right;
+  display: none;
+  padding-left: 6px!important;
+}
+.databaseMenu {
+  display: -webkit-flex;
+  display: -ms-flexbox;
+  display: -ms-flex;
+  display: flex;
+}
+.databaseMenu:hover .menuEllipsis {
+  display: block;
+}
+.databaseCollChildTextOverflow {
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+  flex: 1;
+}
+.collectionMenu {
+  display: -webkit-flex;
+  display: -ms-flexbox;
+  display: -ms-flex;
+  display: flex;
+}
+.collectionMenu:hover .menuEllipsis {
+  display: block;
+}
+.documentsMenu:hover .menuEllipsis {
+  display: block;
+}
+.treeChildMenu {
+  display: flex;
+}
+.storedProcedureMenu:hover .menuEllipsis {
+  display: block;
+}
+.childMenu {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding-left: 72px;
+  width: 100%;
+}
+.storedChildMenu:hover .menuEllipsis {
+  display: block;
+}
+.contextmenu6 {
+  top: -29px;
+}
+.userDefinedMenu:hover .contextmenu6 {
+  display: block;
+}
+.userDefinedchildMenu:hover .menuEllipsis {
+  display: block;
+}
+.triggersMenu:hover .menuEllipsis {
+  display: block;
+}
+.triggersChildMenu:hover .menuEllipsis {
+  display: block;
+}
+.databaseId {
+  font-size: 14px;
+}
+.storedUdfTriggerMenu {
+  padding-left: 0px;
+}
+.collectionstree img {
+  width: 16px;
+  height: 16px;
+  vertical-align: text-top;
+}
+img.collectionsTreeCollapseExpand {
+  width: 10px;
+  height: 10px;
+  vertical-align: middle;
+  margin-bottom: 5px;
+}
+.collapsed::before {
+  content: "\23F5";
+  margin-left: 0px;
+  font-size: 15px;
+}
+.expanded::before {
+  content: '\23F7';
+  margin-left: 0px;
+  font-size: 15px;
+}
+.collectionMenuChildren {
+  padding-left: 42px;
+}
+.main-nav {
+  width: 100vh;
+  height: 40px;
+  background: white;
+  transform-origin: left top;
+  -webkit-transform-origin: left top;
+  -ms-transform-origin: left top;
+  transform: rotate(-90deg) translateX(-100%);
+  -webkit-transform: rotate(-90deg) translateX(-100%);
+  -ms-transform: rotate(-90deg) translateX(-100%);
+  border-bottom: 1px solid #CCC;
+}
+.main-nav-img {
+  width: 16px;
+  height: 16px;
+  margin: -32px 0 0 0;
+  transform: rotate(-90deg) translateX(-100%);
+  -webkit-transform: rotate(-90deg) translateX(-100%);
+  -ms-transform: rotate(-90deg) translateX(-100%);
+}
+.main-nav-img.main-nav-sub-img {
+  width: 16px;
+  height: 16px;
+  margin: 0px 0px 0 0;
+  transform: rotate(180deg) translateX(0%);
+  -webkit-transform: rotate(180deg) translateX(0%);
+  -ms-transform: rotate(180deg) translateX(0%);
+  position: absolute;
+  right: -8px;
+  top: 16px;
+}
+ul.nav {
+  margin: 0 auto;
+  margin-top: 0px;
+  margin-left: 0px;
+}
+.mini ul.nav li {
+  float: right;
+  line-height: 25px;
+  height: auto;
+  margin-top: 3px;
+}
+.spancolchildstyle {
+  padding: 4px;
+}
+.contextmenubutton {
+  float: right;
+  display: none;
+}
+.highlight:hover > .contextmenubutton {
+  display: unset;
+}
+.highlight:hover > .contextmenubutton::after {
+  content: "\2026";
+  font-size: 12px;
+}
+.showEllipsis {
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+}
+}ÙÿAõ      [Õ¾±[Õ¾³?§¶ [×k"   .    :https://cosmos.azure.com/css/tree.css?v=1.0.1 necko:classified 1 strongly-framed 1 security-info FnhllAKWRHGAlo+ESXykKAAAAAAAAAAAwAAAAAAAAEaphjojH6pBabDSgSnsfLHeAAQAAgAAAAAAAAAAAAAAAAAAAAAB4vFIJp5wRkeyPxAQ9RJGKPqbqVvKO0mKuIl8ec8o/uhmCjImkVxP+7sgiYWmMt8FvcOXmlQiTNWFiWlrbpbqgwAAAAAAAAOMMIIDiDCCAnCgAwIBAgIERTJgUjANBgkqhkiG9w0BAQsFADCBijEUMBIGA1UEBhMLUG9ydFN3aWdnZXIxFDASBgNVBAgTC1BvcnRTd2lnZ2VyMRQwEgYDVQQHEwtQb3J0U3dpZ2dlcjEUMBIGA1UEChMLUG9ydFN3aWdnZXIxFzAVBgNVBAsTDlBvcnRTd2lnZ2VyIENBMRcwFQYDVQQDEw5Qb3J0U3dpZ2dlciBDQTAeFw0xNDEwMjgxMzEyMTBaFw0zODEwMjgxMzEyMTBaMGAxFDASBgNVBAYTC1BvcnRTd2lnZ2VyMRQwEgYDVQQKEwtQb3J0U3dpZ2dlcjEXMBUGA1UECxMOUG9ydFN3aWdnZXIgQ0ExGTAXBgNVBAMTEGNvc21vcy5henVyZS5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCKn7emKINsnWqPZ+C/VsqbQf/l4NsmIh34bXBR0xdNg9bfb+xcoghRlmbPjhZ/A26A2gJ6Rrg2d0GGMLpbqA8nTlRRGXEAD39321zk4ye09ElXClvqguGqdqOJpPQ05DPFD6wSOq+KVAEblE5bi+LMqBLipDERzgUe7xzeqVVk0i0ldh9yQOIk3YuzcBR9igSEuw5qladmMYvXKHYM9YZz0R7axMc8xAtadK7C9KfFPfEI5LS2nhmy4vBrTgFyYhfkEvKfmIj6HTX0ISFCAC2llcBLpEDcuiW76tAHp1pXDeWtSeaV36AeOctdleVgrbmsGs3fu6ppuRcWjEZUbjE3AgMBAAGjHzAdMBsGA1UdEQQUMBKCEGNvc21vcy5henVyZS5jb20wDQYJKoZIhvcNAQELBQADggEBABYikT6Y5YgJJ4IVJldlFDF5MKxp26YegXhvT8EmAbgr0yQBIlY2DtKEiHf7Q8wRoJ9y5Ajst1D7HmRba+XLjS6s3IHJ7gtuvc3fZj9MPKpbqSKRfHDB8bDOVIzmjBseg2BqckHTkcYak3b/pTWCTqKHM3LxKsDwN8F3HNQ2pY4d5ma2kR1EtWdTpRiIbir3QxJDcWVp8CgHONZcoMn33NNwnWWjAQMX6d8e1CPuBZi0t+myaYduCqPgKKox9qMXSubF6uifQkAJ5RdLZrZ2pghENA/4r1oz51wqEmpjPsStSUxRPwJ6wJrB4gwGtX7++ZHLjAaNrTSUCGwIOlAT4LnALwEDAAAAAAEBAAAAAA== request-method GET request-Accept-Encoding gzip, deflate, br response-head HTTP/1.1 200 OK
+Content-Length: 8650
+Content-Type: text/css
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:38:43 GMT
+ original-response-headers Content-Length: 8650
+Content-Type: text/css
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:38:43 GMT
+Connection: close
+ uncompressed-len 0 net-response-time-onstart 2614 net-response-time-onstop 2614   !Ê

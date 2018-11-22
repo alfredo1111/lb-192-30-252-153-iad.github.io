@@ -1,0 +1,465 @@
+var __extends = (this && this.__extends) || (function () {
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    }
+    return function (d, b) {
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
+define(["require", "exports", "knockout", "q", "../../Utils/AuthorizationUtils", "../../AuthType", "../../Explorer/Menus/NotificationConsole/NotificationConsole", "../../Common/Constants", "../../Common/EnvironmentUtility", "../../Common/HeadersUtility", "../../Common/Logger", "../../Utils/NotificationConsoleUtils", "./Constants", "./TableEntityProcessor"], function (require, exports, ko, Q, AuthorizationUtils_1, AuthType_1, NotificationConsole_1, Constants, EnvironmentUtility, HeadersUtility, Logger_1, NotificationConsoleUtils_1, TableConstants, TableEntityProcessor) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    var DocumentDB = window.DocumentDB;
+    var TableDataClient = /** @class */ (function () {
+        function TableDataClient(documentClientUtility) {
+            this.documentClientUtility = documentClientUtility;
+        }
+        return TableDataClient;
+    }());
+    exports.TableDataClient = TableDataClient;
+    var TablesAPIDataClient = /** @class */ (function (_super) {
+        __extends(TablesAPIDataClient, _super);
+        function TablesAPIDataClient() {
+            return _super !== null && _super.apply(this, arguments) || this;
+        }
+        TablesAPIDataClient.prototype.createDocument = function (collection, entity) {
+            var deferred = Q.defer();
+            this.documentClientUtility.createDocument({ self: collection.self, resourceName: collection.id(), rid: collection.rid }, TableEntityProcessor.convertEntityToNewDocument(entity), null /*options*/).then(function (newDocument) {
+                var newEntity = TableEntityProcessor.convertDocumentsToEntities([newDocument])[0];
+                deferred.resolve(newEntity);
+            }, function (reason) {
+                deferred.reject(reason);
+            });
+            return deferred.promise;
+        };
+        TablesAPIDataClient.prototype.updateDocument = function (collection, originalDocument, entity) {
+            var deferred = Q.defer();
+            this.documentClientUtility.updateDocument(originalDocument, TableEntityProcessor.convertEntityToNewDocument(entity), null /*options*/).then(function (newDocument) {
+                var newEntity = TableEntityProcessor.convertDocumentsToEntities([newDocument])[0];
+                deferred.resolve(newEntity);
+            }, function (reason) {
+                deferred.reject(reason);
+            });
+            return deferred.promise;
+        };
+        TablesAPIDataClient.prototype.queryDocuments = function (collection, query) {
+            var _this = this;
+            var deferred = Q.defer();
+            var options = {};
+            options.enableCrossPartitionQuery = HeadersUtility.shouldEnableCrossPartitionKeyForResourceWithPartitionKey(collection.partitionKey);
+            this.documentClientUtility.queryDocuments({ self: collection.self, rid: collection.rid }, query, options).then(function (iterator) {
+                var deferred2 = Q.defer();
+                _this.documentClientUtility.nextIteratorItem(iterator, Constants.Queries.itemsPerPage, [], deferred2);
+                deferred2.promise.then(function (documents) {
+                    var entities = TableEntityProcessor.convertDocumentsToEntities(documents);
+                    var finalEntities = {
+                        Results: entities,
+                        ContinuationToken: iterator.hasMoreResults(),
+                        iterator: iterator
+                    };
+                    deferred.resolve(finalEntities);
+                }, function (reason) {
+                    deferred.reject(reason);
+                });
+            }, function (reason) {
+                deferred.reject(reason);
+            });
+            return deferred.promise;
+        };
+        TablesAPIDataClient.prototype.deleteDocuments = function (collection, entitiesToDelete) {
+            var _this = this;
+            var documentsToDelete = TableEntityProcessor.convertEntitiesToDocuments(entitiesToDelete, collection);
+            var promiseArray = [];
+            documentsToDelete.forEach(function (document) {
+                document.id = ko.observable(document.id);
+                var promise = _this.documentClientUtility.deleteDocument(document, null /*options*/);
+                promiseArray.push(promise);
+            });
+            return Q.all(promiseArray);
+        };
+        return TablesAPIDataClient;
+    }(TableDataClient));
+    exports.TablesAPIDataClient = TablesAPIDataClient;
+    var CassandraAPIDataClient = /** @class */ (function (_super) {
+        __extends(CassandraAPIDataClient, _super);
+        function CassandraAPIDataClient() {
+            var _this = _super !== null && _super.apply(this, arguments) || this;
+            _this.setAuthorizationHeader = function (xhr) {
+                var authorizationHeaderMetadata = AuthorizationUtils_1.AuthorizationUtils.getAuthorizationHeader();
+                xhr.setRequestHeader(authorizationHeaderMetadata.header, authorizationHeaderMetadata.token);
+                return true;
+            };
+            _this.handleAjaxError = function (xhrObj, textStatus, errorThrown) {
+                if (!xhrObj) {
+                    return;
+                }
+                AuthorizationUtils_1.AuthorizationUtils.displayTokenRenewalPromptForStatus(xhrObj.status);
+            };
+            return _this;
+        }
+        CassandraAPIDataClient.prototype.createDocument = function (collection, entity) {
+            var _this = this;
+            var notificationId = NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.InProgress, "Adding new row to table " + collection.id());
+            var properties = "(";
+            var values = "(";
+            for (var property in entity) {
+                if (entity[property]._ === null) {
+                    continue;
+                }
+                properties = properties.concat(property + ", ");
+                var propertyType = entity[property].$;
+                if (this.isStringType(propertyType)) {
+                    values = values.concat("'" + entity[property]._ + "', ");
+                }
+                else {
+                    values = values.concat(entity[property]._ + ", ");
+                }
+            }
+            properties = properties.slice(0, properties.length - 2) + ")";
+            values = values.slice(0, values.length - 2) + ")";
+            var query = "INSERT INTO " + collection.database.id() + "." + collection.id() + " " + properties + " VALUES " + values;
+            var deferred = Q.defer();
+            this.queryDocuments(collection, query).then(function (data) {
+                entity[TableConstants.EntityKeyNames.RowKey] = entity[_this.getCassandraPartitionKeyProperty(collection)];
+                entity[TableConstants.EntityKeyNames.RowKey]._ = entity[TableConstants.EntityKeyNames.RowKey]._.toString();
+                NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Info, "Successfully added new row to table " + collection.id());
+                deferred.resolve(entity);
+            }, function (reason) {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Error, "Error while adding new row to table " + collection.id() + ":\n " + JSON.stringify(reason));
+                Logger_1.Logger.logError(JSON.stringify(reason), "AddRowCassandra", reason.code);
+                deferred.reject(reason);
+            }).finally(function () { NotificationConsoleUtils_1.NotificationConsoleUtils.clearInProgressMessageWithId(notificationId); });
+            return deferred.promise;
+        };
+        CassandraAPIDataClient.prototype.updateDocument = function (collection, originalDocument, newEntity) {
+            var notificationId = NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.InProgress, "Updating row " + originalDocument.RowKey._);
+            var deferred = Q.defer();
+            var promiseArray = [];
+            var query = "UPDATE " + collection.database.id() + "." + collection.id();
+            var isChange = false;
+            for (var property in newEntity) {
+                if (!originalDocument[property] || newEntity[property]._.toString() !== originalDocument[property]._.toString()) {
+                    if (this.isStringType(newEntity[property].$)) {
+                        query = query + " SET " + property + " = '" + newEntity[property]._ + "',";
+                    }
+                    else {
+                        query = query + " SET " + property + " = " + newEntity[property]._ + ",";
+                    }
+                    isChange = true;
+                }
+            }
+            query = query.slice(0, query.length - 1);
+            var whereSegment = " WHERE";
+            var keys = collection.cassandraKeys.partitionKeys.concat(collection.cassandraKeys.clusteringKeys);
+            for (var keyIndex in keys) {
+                var key = keys[keyIndex].property;
+                var keyType = keys[keyIndex].type;
+                if (this.isStringType(keyType)) {
+                    whereSegment = whereSegment + " " + key + " = '" + newEntity[key]._ + "' AND";
+                }
+                else {
+                    whereSegment = whereSegment + " " + key + " = " + newEntity[key]._ + " AND";
+                }
+            }
+            whereSegment = whereSegment.slice(0, whereSegment.length - 4);
+            query = query + whereSegment;
+            if (isChange) {
+                promiseArray.push(this.queryDocuments(collection, query));
+            }
+            query = "DELETE ";
+            for (var property in originalDocument) {
+                if (property !== TableConstants.EntityKeyNames.RowKey && !newEntity[property] && !!originalDocument[property]) {
+                    query = query + " " + property + ",";
+                }
+            }
+            if (query.length > 7) {
+                query = query.slice(0, query.length - 1);
+                query = query + " FROM " + collection.database.id() + "." + collection.id() + whereSegment;
+                promiseArray.push(this.queryDocuments(collection, query));
+            }
+            Q.all(promiseArray).then(function (data) {
+                newEntity[TableConstants.EntityKeyNames.RowKey] = originalDocument[TableConstants.EntityKeyNames.RowKey];
+                NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Info, "Successfully updated row " + newEntity.RowKey._);
+                deferred.resolve(newEntity);
+            }, function (reason) {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Error, "Failed to update row " + newEntity.RowKey._ + ": " + JSON.stringify(reason));
+                Logger_1.Logger.logError(JSON.stringify(reason), "UpdateRowCassandra", reason.code);
+                deferred.reject(reason);
+            }).finally(function () { NotificationConsoleUtils_1.NotificationConsoleUtils.clearInProgressMessageWithId(notificationId); });
+            return deferred.promise;
+        };
+        CassandraAPIDataClient.prototype.queryDocuments = function (collection, query, shouldNotify, paginationToken) {
+            var notificationId;
+            if (shouldNotify) {
+                notificationId = NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.InProgress, "Querying rows for table " + collection.id());
+            }
+            var deferred = Q.defer();
+            var authType = window.authType;
+            var apiEndpoint = (authType === AuthType_1.AuthType.EncryptedToken) ? Constants.CassandraBackend.guestQueryApi : Constants.CassandraBackend.queryApi;
+            $.ajax("" + EnvironmentUtility.getCassandraBackendEndpoint(collection.container) + apiEndpoint, {
+                type: 'POST',
+                data: {
+                    'accountName': collection && collection.container.databaseAccount && collection.container.databaseAccount().name,
+                    'cassandraEndpoint': this.trimCassandraEndpoint(collection.container.databaseAccount().properties.cassandraEndpoint),
+                    'resourceId': collection.container.databaseAccount().id,
+                    'keyspaceId': collection.database.id(),
+                    'tableId': collection.id(),
+                    'query': query,
+                    'paginationToken': paginationToken
+                },
+                beforeSend: this.setAuthorizationHeader,
+                error: this.handleAjaxError,
+                cache: false
+            }).then(function (data) {
+                if (shouldNotify) {
+                    NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Info, "Successfully fetched " + data.result.length + " rows for table " + collection.id());
+                }
+                deferred.resolve({
+                    Results: data.result,
+                    ContinuationToken: data.paginationToken
+                });
+            }, function (reason) {
+                if (shouldNotify) {
+                    NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Error, "Failed to query rows for table " + collection.id() + ": " + JSON.stringify(reason));
+                    Logger_1.Logger.logError(JSON.stringify(reason), "QueryDocumentsCassandra", reason.status);
+                }
+                deferred.reject(reason);
+            }).done(function () {
+                if (shouldNotify) {
+                    NotificationConsoleUtils_1.NotificationConsoleUtils.clearInProgressMessageWithId(notificationId);
+                }
+            });
+            return deferred.promise;
+        };
+        CassandraAPIDataClient.prototype.deleteDocuments = function (collection, entitiesToDelete) {
+            var query = "DELETE FROM " + collection.database.id() + "." + collection.id() + " WHERE ";
+            var promiseArray = [];
+            var partitionKeyProperty = this.getCassandraPartitionKeyProperty(collection);
+            var _loop_1 = function (i, len) {
+                var currEntityToDelete = entitiesToDelete[i];
+                var currQuery = query;
+                var partitionKeyValue = currEntityToDelete[partitionKeyProperty];
+                if (partitionKeyValue._ != null && this_1.isStringType(partitionKeyValue.$)) {
+                    currQuery = "" + currQuery + partitionKeyProperty + " = '" + partitionKeyValue._ + "' AND ";
+                }
+                else {
+                    currQuery = "" + currQuery + partitionKeyProperty + " = " + partitionKeyValue._ + " AND ";
+                }
+                currQuery = currQuery.slice(0, currQuery.length - 5);
+                var notificationId = NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.InProgress, "Deleting row " + currEntityToDelete.RowKey._);
+                promiseArray.push(this_1.queryDocuments(collection, currQuery).then(function () {
+                    NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Info, "Successfully deleted row " + currEntityToDelete.RowKey._);
+                }, function (reason) {
+                    NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Error, "Error while deleting row " + currEntityToDelete.RowKey._ + ":\n " + JSON.stringify(reason));
+                    Logger_1.Logger.logError(JSON.stringify(reason), "DeleteRowCassandra", reason.code);
+                }).finally(function () { NotificationConsoleUtils_1.NotificationConsoleUtils.clearInProgressMessageWithId(notificationId); }));
+            };
+            var this_1 = this;
+            for (var i = 0, len = entitiesToDelete.length; i < len; i++) {
+                _loop_1(i, len);
+            }
+            return Q.all(promiseArray);
+        };
+        CassandraAPIDataClient.prototype.createKeyspace = function (cassandraEndpoint, resourceId, explorer, createKeyspaceQuery) {
+            if (!createKeyspaceQuery) {
+                return Q.reject('No query specified');
+            }
+            var deferred = Q.defer();
+            var notificationId = NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.InProgress, "Creating a new keyspace with query " + createKeyspaceQuery);
+            this.createOrDeleteQuery(cassandraEndpoint, resourceId, createKeyspaceQuery, explorer).then(function (data) {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Info, "Successfully created a keyspace with query " + createKeyspaceQuery);
+                explorer.documentClientUtility.refreshCachedResources(null /** options **/).finally(function () { return deferred.resolve(); });
+            }, function (reason) {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Error, "Error while creating a keyspace with query " + createKeyspaceQuery + ":\n " + JSON.stringify(reason));
+                Logger_1.Logger.logError(JSON.stringify(reason), "CreateKeyspaceCassandra", reason.code);
+                deferred.reject(reason);
+            }).finally(function () { NotificationConsoleUtils_1.NotificationConsoleUtils.clearInProgressMessageWithId(notificationId); });
+            return deferred.promise.timeout(Constants.ClientDefaults.requestTimeoutMs);
+        };
+        CassandraAPIDataClient.prototype.createTableAndKeyspace = function (cassandraEndpoint, resourceId, explorer, createTableQuery, createKeyspaceQuery) {
+            var _this = this;
+            var createKeyspacePromise;
+            if (createKeyspaceQuery) {
+                createKeyspacePromise = this.createKeyspace(cassandraEndpoint, resourceId, explorer, createKeyspaceQuery);
+            }
+            else {
+                createKeyspacePromise = Q.resolve(null);
+            }
+            var deferred = Q.defer();
+            createKeyspacePromise.then(function () {
+                var notificationId = NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.InProgress, "Creating a new table with query " + createTableQuery);
+                _this.createOrDeleteQuery(cassandraEndpoint, resourceId, createTableQuery, explorer).then(function (data) {
+                    NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Info, "Successfully created a table with query " + createTableQuery);
+                    _this.documentClientUtility.refreshCachedResources(null).then(function () {
+                        deferred.resolve();
+                    }, function (reason) {
+                        // Still resolve since the keyspace/table was successfully created at this point.
+                        deferred.resolve();
+                    });
+                }, function (reason) {
+                    NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Error, "Error while creating a table with query " + createTableQuery + ":\n " + JSON.stringify(reason));
+                    Logger_1.Logger.logError(JSON.stringify(reason), "CreateTableCassandra", reason.code);
+                    deferred.reject(reason);
+                }).finally(function () { NotificationConsoleUtils_1.NotificationConsoleUtils.clearInProgressMessageWithId(notificationId); });
+            }, function (reason) {
+                deferred.reject(reason);
+            });
+            return deferred.promise;
+        };
+        CassandraAPIDataClient.prototype.deleteTableOrKeyspace = function (cassandraEndpoint, resourceId, deleteQuery, explorer) {
+            var _this = this;
+            var deferred = Q.defer();
+            var notificationId = NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.InProgress, "Deleting resource with query " + deleteQuery);
+            this.createOrDeleteQuery(cassandraEndpoint, resourceId, deleteQuery, explorer).then(function () {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Info, "Successfully deleted resource with query " + deleteQuery);
+                _this.documentClientUtility.refreshCachedResources(null).then(function () {
+                    deferred.resolve();
+                }, function (reason) {
+                    // Still resolve since the keyspace/table was successfully deleted at this point.
+                    deferred.resolve();
+                });
+            }, function (reason) {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Error, "Error while deleting resource with query " + deleteQuery + ":\n " + JSON.stringify(reason));
+                Logger_1.Logger.logError(JSON.stringify(reason), "DeleteKeyspaceOrTableCassandra", reason.code);
+                deferred.reject(reason);
+            }).finally(function () { NotificationConsoleUtils_1.NotificationConsoleUtils.clearInProgressMessageWithId(notificationId); });
+            return deferred.promise;
+        };
+        CassandraAPIDataClient.prototype.getTableKeys = function (collection) {
+            if (!!collection.cassandraKeys) {
+                return Q.resolve(collection.cassandraKeys);
+            }
+            var notificationId = NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.InProgress, "Fetching keys for table " + collection.id());
+            var authType = window.authType;
+            var apiEndpoint = (authType === AuthType_1.AuthType.EncryptedToken) ? Constants.CassandraBackend.guestKeysApi : Constants.CassandraBackend.keysApi;
+            var endpoint = "" + EnvironmentUtility.getCassandraBackendEndpoint(collection.container) + apiEndpoint;
+            var deferred = Q.defer();
+            $.ajax(endpoint, {
+                type: 'POST',
+                data: {
+                    'accountName': collection && collection.container.databaseAccount && collection.container.databaseAccount().name,
+                    'cassandraEndpoint': this.trimCassandraEndpoint(collection.container.databaseAccount().properties.cassandraEndpoint),
+                    'resourceId': collection.container.databaseAccount().id,
+                    'keyspaceId': collection.database.id(),
+                    'tableId': collection.id()
+                },
+                beforeSend: this.setAuthorizationHeader,
+                error: this.handleAjaxError,
+                cache: false
+            }).then(function (data) {
+                collection.cassandraKeys = data;
+                NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Info, "Successfully fetched keys for table " + collection.id());
+                deferred.resolve(data);
+            }, function (reason) {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Error, "Error fetching keys for table " + collection.id() + ":\n " + JSON.stringify(reason));
+                Logger_1.Logger.logError(JSON.stringify(reason), "FetchKeysCassandra", reason.status);
+                deferred.reject(reason);
+            }).done(function () { NotificationConsoleUtils_1.NotificationConsoleUtils.clearInProgressMessageWithId(notificationId); });
+            return deferred.promise;
+        };
+        CassandraAPIDataClient.prototype.getTableSchema = function (collection) {
+            if (!!collection.cassandraSchema) {
+                return Q.resolve(collection.cassandraSchema);
+            }
+            var notificationId = NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.InProgress, "Fetching schema for table " + collection.id());
+            var authType = window.authType;
+            var apiEndpoint = (authType === AuthType_1.AuthType.EncryptedToken) ? Constants.CassandraBackend.guestSchemaApi : Constants.CassandraBackend.schemaApi;
+            var endpoint = "" + EnvironmentUtility.getCassandraBackendEndpoint(collection.container) + apiEndpoint;
+            var deferred = Q.defer();
+            $.ajax(endpoint, {
+                type: 'POST',
+                data: {
+                    'accountName': collection && collection.container.databaseAccount && collection.container.databaseAccount().name,
+                    'cassandraEndpoint': this.trimCassandraEndpoint(collection.container.databaseAccount().properties.cassandraEndpoint),
+                    'resourceId': collection.container.databaseAccount().id,
+                    'keyspaceId': collection.database.id(),
+                    'tableId': collection.id()
+                },
+                beforeSend: this.setAuthorizationHeader,
+                error: this.handleAjaxError,
+                cache: false
+            }).then(function (data) {
+                collection.cassandraSchema = data.columns;
+                NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Info, "Successfully fetched schema for table " + collection.id());
+                deferred.resolve(data.columns);
+            }, function (reason) {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Error, "Error fetching schema for table " + collection.id() + ":\n " + JSON.stringify(reason));
+                Logger_1.Logger.logError(JSON.stringify(reason), "FetchSchemaCassandra", reason.status);
+                deferred.reject(reason);
+            }).done(function () { NotificationConsoleUtils_1.NotificationConsoleUtils.clearInProgressMessageWithId(notificationId); });
+            return deferred.promise;
+        };
+        CassandraAPIDataClient.prototype.createOrDeleteQuery = function (cassandraEndpoint, resourceId, query, explorer) {
+            var deferred = Q.defer();
+            var authType = window.authType;
+            var apiEndpoint = (authType === AuthType_1.AuthType.EncryptedToken) ? Constants.CassandraBackend.guestCreateOrDeleteApi : Constants.CassandraBackend.createOrDeleteApi;
+            $.ajax("" + EnvironmentUtility.getCassandraBackendEndpoint(explorer) + apiEndpoint, {
+                type: 'POST',
+                data: {
+                    'accountName': explorer.databaseAccount() && explorer.databaseAccount().name,
+                    'cassandraEndpoint': this.trimCassandraEndpoint(cassandraEndpoint),
+                    'resourceId': resourceId,
+                    'query': query
+                },
+                beforeSend: this.setAuthorizationHeader,
+                error: this.handleAjaxError,
+                cache: false
+            }).then(function (data) {
+                deferred.resolve();
+            }, function (reason) {
+                deferred.reject(reason);
+            });
+            return deferred.promise;
+        };
+        CassandraAPIDataClient.prototype.trimCassandraEndpoint = function (cassandraEndpoint) {
+            if (!cassandraEndpoint) {
+                return cassandraEndpoint;
+            }
+            if (cassandraEndpoint.indexOf("https://") === 0) {
+                cassandraEndpoint = cassandraEndpoint.slice(8, cassandraEndpoint.length);
+            }
+            if (cassandraEndpoint.indexOf(":443/", cassandraEndpoint.length - 5) !== -1) {
+                cassandraEndpoint = cassandraEndpoint.slice(0, cassandraEndpoint.length - 5);
+            }
+            return cassandraEndpoint;
+        };
+        CassandraAPIDataClient.prototype.isStringType = function (dataType) {
+            // TODO figure out rest of types that are considered strings by Cassandra (if any have been missed)
+            return dataType === TableConstants.CassandraType.Text
+                || dataType === TableConstants.CassandraType.Inet
+                || dataType === TableConstants.CassandraType.Ascii
+                || dataType === TableConstants.CassandraType.Varchar;
+        };
+        CassandraAPIDataClient.prototype.getCassandraPartitionKeyProperty = function (collection) {
+            return collection.cassandraKeys.partitionKeys[0].property;
+        };
+        return CassandraAPIDataClient;
+    }(TableDataClient));
+    exports.CassandraAPIDataClient = CassandraAPIDataClient;
+});
+¸<H”      [Õ¾Ê[Õ¾Ù?§¶²[×k?   J    :https://cosmos.azure.com/built/Explorer/Tables/TableDataClient.js?v=1.0.1 necko:classified 1 strongly-framed 1 security-info FnhllAKWRHGAlo+ESXykKAAAAAAAAAAAwAAAAAAAAEaphjojH6pBabDSgSnsfLHeAAQAAgAAAAAAAAAAAAAAAAAAAAAB4vFIJp5wRkeyPxAQ9RJGKPqbqVvKO0mKuIl8ec8o/uhmCjImkVxP+7sgiYWmMt8FvcOXmlQiTNWFiWlrbpbqgwAAAAAAAAOMMIIDiDCCAnCgAwIBAgIERTJgUjANBgkqhkiG9w0BAQsFADCBijEUMBIGA1UEBhMLUG9ydFN3aWdnZXIxFDASBgNVBAgTC1BvcnRTd2lnZ2VyMRQwEgYDVQQHEwtQb3J0U3dpZ2dlcjEUMBIGA1UEChMLUG9ydFN3aWdnZXIxFzAVBgNVBAsTDlBvcnRTd2lnZ2VyIENBMRcwFQYDVQQDEw5Qb3J0U3dpZ2dlciBDQTAeFw0xNDEwMjgxMzEyMTBaFw0zODEwMjgxMzEyMTBaMGAxFDASBgNVBAYTC1BvcnRTd2lnZ2VyMRQwEgYDVQQKEwtQb3J0U3dpZ2dlcjEXMBUGA1UECxMOUG9ydFN3aWdnZXIgQ0ExGTAXBgNVBAMTEGNvc21vcy5henVyZS5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCKn7emKINsnWqPZ+C/VsqbQf/l4NsmIh34bXBR0xdNg9bfb+xcoghRlmbPjhZ/A26A2gJ6Rrg2d0GGMLpbqA8nTlRRGXEAD39321zk4ye09ElXClvqguGqdqOJpPQ05DPFD6wSOq+KVAEblE5bi+LMqBLipDERzgUe7xzeqVVk0i0ldh9yQOIk3YuzcBR9igSEuw5qladmMYvXKHYM9YZz0R7axMc8xAtadK7C9KfFPfEI5LS2nhmy4vBrTgFyYhfkEvKfmIj6HTX0ISFCAC2llcBLpEDcuiW76tAHp1pXDeWtSeaV36AeOctdleVgrbmsGs3fu6ppuRcWjEZUbjE3AgMBAAGjHzAdMBsGA1UdEQQUMBKCEGNvc21vcy5henVyZS5jb20wDQYJKoZIhvcNAQELBQADggEBABYikT6Y5YgJJ4IVJldlFDF5MKxp26YegXhvT8EmAbgr0yQBIlY2DtKEiHf7Q8wRoJ9y5Ajst1D7HmRba+XLjS6s3IHJ7gtuvc3fZj9MPKpbqSKRfHDB8bDOVIzmjBseg2BqckHTkcYak3b/pTWCTqKHM3LxKsDwN8F3HNQ2pY4d5ma2kR1EtWdTpRiIbir3QxJDcWVp8CgHONZcoMn33NNwnWWjAQMX6d8e1CPuBZi0t+myaYduCqPgKKox9qMXSubF6uifQkAJ5RdLZrZ2pghENA/4r1oz51wqEmpjPsStSUxRPwJ6wJrB4gwGtX7++ZHLjAaNrTSUCGwIOlAT4LnALwEDAAAAAAEBAAAAAA== request-method GET request-Accept-Encoding gzip, deflate, br response-head HTTP/1.1 200 OK
+Content-Length: 29569
+Content-Type: application/x-javascript
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:39:21 GMT
+ original-response-headers Content-Length: 29569
+Content-Type: application/x-javascript
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:39:21 GMT
+Connection: close
+ uncompressed-len 0 net-response-time-onstart 15254 net-response-time-onstop 15256   s

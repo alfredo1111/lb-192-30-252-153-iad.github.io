@@ -1,0 +1,540 @@
+var __extends = (this && this.__extends) || function (d, b) {
+    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+    function __() { this.constructor = d; }
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+};
+define(["require", "exports", "../scripts/Framework/Util/Log", "../_generated/Framework", "text!./Templates/WizardTemplate.html", "css!./CSS/Wizard.css", "css!./CSS/Common.css"], function (require, exports, Log, Framework) {
+    "use strict";
+    var logger = Log.getLogger({ loggerName: "WizardBinding" });
+    var genericErrorMessage = "Please fix the errors on this page before continuing";
+    var Wizard = (function (_super) {
+        __extends(Wizard, _super);
+        function Wizard(wizardConfig, finalAction, finalStep) {
+            var _this = this;
+            _super.call(this);
+            this.nextEnabled = ko.observable(true);
+            this.currentStep = ko.observable();
+            this.currentSubstep = ko.observable();
+            this.stepLoading = ko.observable(false);
+            this.validating = ko.observable(false);
+            this.waitingForOnNextCallback = ko.observable(false);
+            this.loading = ko.computed(function () { return _this.stepLoading() || _this.validating() || _this.waitingForOnNextCallback(); }).extend({ throttle: 100 });
+            this.hasPrevNextButtons = ko.observable(true);
+            this.showFinalNextButton = ko.observable(false);
+            this.navItems = ko.observableArray();
+            this.visibleNavItems = ko.observableArray();
+            this.finalItemIndex = ko.computed(function () {
+                return _this.visibleNavItems().length + 1;
+            });
+            this.pivots = ko.observableArray();
+            this.pivotGroups = ko.observableArray();
+            this.errorMessage = ko.observable();
+            this.wizardSteps = wizardConfig.steps;
+            this.headerTemplate = wizardConfig.headerTemplate;
+            this.headerViewModel = wizardConfig.headerViewModel;
+            this.pivotMap = {};
+            this.pivotGroupsMap = {};
+            this.finalAction = finalAction;
+            this.panelHidden = wizardConfig.panelHidden;
+            this.wizardSteps.forEach(function (step) {
+                if (!step.subheaderText) {
+                    step.subheaderText = ko.observable();
+                }
+                _this.navItems.push({
+                    completed: ko.observable(false),
+                    selected: ko.observable(false),
+                    wizardStep: step,
+                    validating: false
+                });
+                _this.pivotMap[step.name] = ko.observableArray();
+                _this.pivotGroupsMap[step.name] = ko.observableArray();
+                if (step.substeps) {
+                    if (step.viewModel) {
+                        logger.logError("Wizard should not define both view model and sub-steps, view model setting will have no effect");
+                    }
+                    if (step.template) {
+                        logger.logError("Wizard should not define both template and sub-steps, template setting will have no effect");
+                    }
+                    step.substeps.forEach(function (substep) {
+                        _this.pivotMap[step.name].push({
+                            completed: ko.observable(false),
+                            selected: ko.observable(false),
+                            wizardStep: substep,
+                            validating: false,
+                            groupId: substep.groupId
+                        });
+                    });
+                    var processedGroups_1 = {};
+                    _this.pivotMap[step.name]().forEach(function (pivot) {
+                        if (!pivot.groupId) {
+                            _this.pivotGroupsMap[step.name].push({
+                                completed: ko.computed(function () { return pivot.completed(); }),
+                                selected: ko.computed(function () { return pivot.selected(); }),
+                                cloacked: ko.computed(function () { return pivot.wizardStep.cloacked && pivot.wizardStep.cloacked(); }),
+                                displayText: pivot.wizardStep.displayText,
+                                groupId: pivot.groupId,
+                                name: pivot.wizardStep.name
+                            });
+                        }
+                        else {
+                            if (processedGroups_1[pivot.groupId] === undefined) {
+                                _this.pivotGroupsMap[step.name].push({
+                                    completed: ko.computed(function () {
+                                        var completed = true;
+                                        _this.pivotMap[step.name]().forEach(function (p) {
+                                            if (p.groupId === pivot.groupId) {
+                                                completed = completed && (p.completed() || (p.wizardStep.cloacked && p.wizardStep.cloacked()));
+                                            }
+                                        });
+                                        return completed;
+                                    }),
+                                    selected: ko.computed(function () {
+                                        var selected = false;
+                                        _this.pivotMap[step.name]().forEach(function (p) {
+                                            if (p.groupId === pivot.groupId) {
+                                                selected = selected || p.selected();
+                                            }
+                                        });
+                                        return selected;
+                                    }),
+                                    cloacked: ko.computed(function () {
+                                        return _this.pivotMap[step.name]().every(function (s) { return s.wizardStep.cloacked && s.wizardStep.cloacked(); });
+                                    }),
+                                    displayText: pivot.wizardStep.displayText,
+                                    groupId: pivot.groupId,
+                                    name: pivot.wizardStep.name
+                                });
+                                processedGroups_1[pivot.groupId] = "processed";
+                            }
+                        }
+                    });
+                }
+            });
+            var findNextPivot = function (initialIndex) {
+                var index = initialIndex;
+                while (index < _this.pivots().length && _this.pivots()[index].wizardStep.cloacked && _this.pivots()[index].wizardStep.cloacked()) {
+                    index++;
+                }
+                return index;
+            };
+            var findPreviousPivot = function (initialIndex) {
+                var index = initialIndex;
+                while (index >= 0 && _this.pivots()[index].wizardStep.cloacked && _this.pivots()[index].wizardStep.cloacked()) {
+                    index--;
+                }
+                return index;
+            };
+            this.hasFinalStep = false;
+            if (finalStep) {
+                this.finalNavItem = {
+                    completed: ko.observable(false),
+                    selected: ko.observable(false),
+                    wizardStep: finalStep,
+                    validating: false
+                };
+                this.hasFinalStep = true;
+                this.pivotMap[finalStep.name] = ko.observableArray();
+                this.pivotGroupsMap[finalStep.name] = ko.observableArray();
+            }
+            this.selectNavItem = function (item, forward) {
+                _this.currentStep(item.wizardStep.name);
+                var currentIndex = _this.getIndexByName(_this.navItems, _this.currentStep());
+                if (currentIndex === -1) {
+                    currentIndex = _this.navItems().length;
+                }
+                _this.navItems().forEach(function (n, index) {
+                    n.selected(n === item);
+                    if (index > currentIndex && _this.hasPrevNextButtons()) {
+                        n.completed(false);
+                        _this.pivotMap[n.wizardStep.name]().forEach(function (p) { p.completed(false); });
+                    }
+                });
+                if (_this.finalNavItem && _this.finalNavItem !== item) {
+                    _this.finalNavItem.selected(false);
+                    if (_this.hasPrevNextButtons()) {
+                        _this.finalNavItem.completed(false);
+                    }
+                }
+                item.selected(true);
+                var pivots = _this.pivotMap[item.wizardStep.name]();
+                _this.pivots(pivots);
+                _this.pivotGroups(_this.pivotGroupsMap[item.wizardStep.name]());
+                if (pivots && pivots.length > 0) {
+                    if (forward) {
+                        var index = findNextPivot(0);
+                        _this.selectPivot(pivots[index], true);
+                    }
+                    else {
+                        var index = findPreviousPivot(pivots.length - 1);
+                        _this.selectPivot(pivots[index], false);
+                    }
+                }
+                else {
+                    _this.currentSubstep("");
+                    _this.renderItem(item, forward);
+                }
+            };
+            this.selectNavItemByClick = function (item) {
+                if (item.completed() && item.wizardStep.name !== _this.currentStep()) {
+                    _this.selectNavItem(item, true);
+                }
+            };
+            this.selectPivot = function (item, forwardNavigation) {
+                _this.currentSubstep(item.wizardStep.name);
+                _this.pivots().forEach(function (p) {
+                    p.selected(p === item);
+                });
+                _this.renderItem(item, forwardNavigation);
+            };
+            this.selectPivotGroup = function (pivotGroup) {
+                if (pivotGroup.completed()) {
+                    var pivot = _this.pivots().filter(function (p) { return p.wizardStep.name === pivotGroup.name; })[0];
+                    _this.selectPivot(pivot, false);
+                }
+            };
+            var goNext = function () {
+                if (_this.selectedItem.wizardStep.onStepComplete) {
+                    _this.selectedItem.wizardStep.onStepComplete();
+                }
+                if (_this.pivots()) {
+                    var selectedIndex_1 = _this.getSelectedIndex(_this.pivots);
+                    selectedIndex_1 = findNextPivot(selectedIndex_1 + 1);
+                    if (selectedIndex_1 < _this.pivots().length) {
+                        _this.selectedItem.completed(true);
+                        _this.selectPivot(_this.pivots()[selectedIndex_1], true);
+                        return;
+                    }
+                }
+                var selectedIndex = _this.getSelectedIndex(_this.navItems);
+                if (selectedIndex === -1) {
+                    _this.executeFinalAction();
+                    return;
+                }
+                if (selectedIndex < _this.navItems().length - 1) {
+                    _this.selectedItem.completed(true);
+                    _this.navItems()[selectedIndex].completed(true);
+                    do {
+                        selectedIndex++;
+                    } while (selectedIndex < _this.navItems().length &&
+                        _this.navItems()[selectedIndex].wizardStep.cloacked &&
+                        _this.navItems()[selectedIndex].wizardStep.cloacked());
+                    if (selectedIndex === _this.navItems().length) {
+                        _this.executeFinalAction();
+                    }
+                    else {
+                        _this.selectNavItem(_this.navItems()[selectedIndex], true);
+                    }
+                    return;
+                }
+                _this.executeFinalAction();
+            };
+            this.previous = function () {
+                if (_this.selectedItem.wizardStep.onPrevious) {
+                    _this.selectedItem.wizardStep.onPrevious();
+                }
+                if (_this.pivots()) {
+                    var selectedIndex_2 = _this.getSelectedIndex(_this.pivots);
+                    if (selectedIndex_2 > 0) {
+                        selectedIndex_2 = findPreviousPivot(selectedIndex_2 - 1);
+                        if (selectedIndex_2 >= 0) {
+                            _this.selectedItem.validating = false;
+                            _this.selectPivot(_this.pivots()[selectedIndex_2], false);
+                            return;
+                        }
+                    }
+                }
+                var selectedIndex = _this.getSelectedIndex(_this.navItems);
+                selectedIndex = selectedIndex === -1 ? _this.navItems().length : selectedIndex;
+                if (selectedIndex > 0) {
+                    _this.selectedItem.validating = false;
+                    do {
+                        selectedIndex--;
+                    } while (_this.navItems()[selectedIndex].wizardStep.cloacked && _this.navItems()[selectedIndex].wizardStep.cloacked());
+                    _this.selectNavItem(_this.navItems()[selectedIndex], false);
+                }
+            };
+            this.next = function () {
+                _this.selectedItem.validating = true;
+                var onNextPromise = Q(null);
+                if (_this.selectedItem.wizardStep.onNext) {
+                    _this.waitingForOnNextCallback(true);
+                    var promise = _this.selectedItem.wizardStep.onNext();
+                    if (promise) {
+                        onNextPromise = promise;
+                    }
+                }
+                onNextPromise.then(function () {
+                    if (_this.validationObservable) {
+                        if (_this.validationObservable()) {
+                            goNext();
+                        }
+                        else {
+                            _this.errorMessage(genericErrorMessage);
+                            _this.createValidationSubscription();
+                            if (_this.selectedItem.wizardStep.logErrorMessage) {
+                                _this.selectedItem.wizardStep.logErrorMessage(_this.errorMessage());
+                            }
+                        }
+                    }
+                    else if (_this.validateable && _this.validateable()) {
+                        _this.validating(true);
+                        _this.validateable().isValid().then(function (result) {
+                            if (result.valid) {
+                                goNext();
+                            }
+                            else {
+                                if (_this.selectedItem.wizardStep.useCustomErrorMessage) {
+                                    _this.errorMessage(result.message);
+                                }
+                                else {
+                                    _this.errorMessage(genericErrorMessage);
+                                }
+                                _this.createValidationSubscription();
+                                if (_this.selectedItem.wizardStep.logErrorMessage) {
+                                    _this.selectedItem.wizardStep.logErrorMessage(result.message || genericErrorMessage);
+                                }
+                            }
+                        }).finally(function () {
+                            _this.validating(false);
+                        });
+                    }
+                    else {
+                        goNext();
+                    }
+                }, function (reason) {
+                    if (_this.selectedItem.wizardStep.logErrorMessage) {
+                        _this.selectedItem.wizardStep.logErrorMessage(JSON.stringify(reason));
+                    }
+                }).finally(function () {
+                    _this.waitingForOnNextCallback(false);
+                });
+            };
+            this.nextButtonText = ko.pureComputed(function () {
+                var showNext = function (observableArray, nextIndex) {
+                    var shouldShow = false;
+                    for (var i = nextIndex; i < observableArray().length && !shouldShow; i++) {
+                        if (!observableArray()[i].wizardStep.cloacked || !observableArray()[i].wizardStep.cloacked()) {
+                            shouldShow = true;
+                        }
+                    }
+                    return shouldShow;
+                };
+                var selectedIndex = _this.getSelectedIndex(_this.navItems);
+                if (selectedIndex === -1) {
+                    return ClientResources.wizardRetry;
+                }
+                if (_this.hasFinalStep) {
+                    return ClientResources.wizardNext;
+                }
+                var shouldShowNext = showNext(_this.navItems, selectedIndex + 1);
+                if (!shouldShowNext && _this.pivots().length > 0) {
+                    var selectedPivotIndex = _this.getSelectedIndex(_this.pivots);
+                    shouldShowNext = showNext(_this.pivots, selectedPivotIndex + 1);
+                }
+                return shouldShowNext ? ClientResources.wizardNext : ClientResources.wizardFinish;
+            });
+            this._lifetimeManager.registerForDispose(this.nextButtonText);
+            this.previousButtonVisible = ko.pureComputed(function () {
+                var index = 0;
+                while (index < _this.navItems().length && _this.navItems()[index].wizardStep.cloacked && _this.navItems()[index].wizardStep.cloacked()) {
+                    index++;
+                }
+                var firstStep = _this.navItems()[index].wizardStep;
+                if (firstStep.substeps !== undefined && firstStep.substeps.length > 0) {
+                    return firstStep.substeps[0].name !== _this.currentSubstep();
+                }
+                else {
+                    return firstStep.name !== _this.currentStep();
+                }
+            });
+            this.nextButtonVisible = ko.pureComputed(function () {
+                var selectedIndex = _this.getSelectedIndex(_this.navItems);
+                if (selectedIndex === -1 && !_this.showFinalNextButton()) {
+                    return false;
+                }
+                else {
+                    return true;
+                }
+            });
+            this._lifetimeManager.registerForDispose(this.previousButtonVisible);
+            this._lifetimeManager.registerForDispose(this.nextButtonVisible);
+            this._lifetimeManager.registerForDispose(this.finalItemIndex);
+            this.visiblePivotGroupsCount = ko.computed(function () { return _this.pivotGroups().filter(function (pg) { return !pg.cloacked(); }).length; });
+            ko.computed(function () {
+                _this.visibleNavItems(_this.navItems().filter(function (itm) { return !itm.wizardStep.cloacked || !itm.wizardStep.cloacked(); }));
+            });
+        }
+        Wizard.prototype.setElement = function (element) {
+            this.element = element;
+        };
+        Wizard.prototype.dispose = function () {
+            if (this.validationSubscripton) {
+                this.validationSubscripton.dispose();
+            }
+            if (this.errorMessageSubscripton) {
+                this.errorMessageSubscripton.dispose();
+            }
+        };
+        Wizard.prototype.initialize = function () {
+            if (this.headerTemplate && this.headerViewModel) {
+                var headerContentElement = $(this.element).find(".wizardHeader")[0];
+                $(headerContentElement).html(this.headerTemplate);
+                ko.applyBindings(this.headerViewModel, headerContentElement);
+            }
+            this.selectNavItem(this.navItems().filter(function (itm) { return !itm.wizardStep.cloacked || !itm.wizardStep.cloacked(); })[0], true);
+        };
+        Wizard.prototype.executeFinalAction = function () {
+            if (this.finalAction) {
+                this.finalAction();
+                this.selectedItem.completed(true);
+                if (this.finalNavItem) {
+                    this.selectNavItem(this.finalNavItem, true);
+                    this.finalNavItem.completed(true);
+                    this.hasPrevNextButtons(false);
+                    this.showFinalNextButton(false);
+                }
+            }
+        };
+        Wizard.prototype.getSelectedIndex = function (observableArray) {
+            var ret = -1;
+            observableArray().forEach(function (itm, i) {
+                if (itm.selected()) {
+                    ret = i;
+                }
+            });
+            return ret;
+        };
+        Wizard.prototype.getIndexByName = function (observableArray, name) {
+            var ret = -1;
+            observableArray().forEach(function (itm, i) {
+                if (itm.wizardStep.name === name) {
+                    ret = i;
+                }
+            });
+            return ret;
+        };
+        Wizard.prototype.createValidationSubscription = function () {
+            var _this = this;
+            if (this.validationSubscripton) {
+                this.validationSubscripton.dispose();
+                this.validationSubscripton = null;
+            }
+            if (this.errorMessageSubscripton) {
+                this.errorMessageSubscripton.dispose();
+                this.errorMessageSubscripton = null;
+            }
+            var observableToSubscribe = this.validationObservable || (this.validateable() && this.validateable().valid);
+            if (observableToSubscribe) {
+                this.validationSubscripton = observableToSubscribe.subscribe(function (value) {
+                    _this.nextEnabled(value);
+                });
+                this.nextEnabled(observableToSubscribe());
+            }
+            if (this.validateable() && this.validateable().errorMessageOb) {
+                this.errorMessageSubscripton = this.validateable().errorMessageOb.subscribe(function (value) {
+                    _this.errorMessage(value);
+                });
+                this.errorMessage(this.validateable().errorMessageOb());
+            }
+        };
+        Wizard.prototype.renderItem = function (item, forwardNavigation) {
+            var _this = this;
+            item.validating = false;
+            var wizardContentElement = $(this.element).find(".wizardContentClass")[0];
+            ko.cleanNode(wizardContentElement);
+            var templateCopy = item.wizardStep.template;
+            var template;
+            if (typeof templateCopy === "string") {
+                template = templateCopy;
+            }
+            else {
+                template = templateCopy();
+            }
+            $(wizardContentElement).html(template);
+            ko.applyBindings(item.wizardStep.viewModel, wizardContentElement);
+            this.validationObservable = item.wizardStep.validationObservable;
+            this.validateable = item.wizardStep.validateable;
+            if (item.validating) {
+                this.createValidationSubscription();
+            }
+            else {
+                this.nextEnabled(true);
+            }
+            if (this.validatableSubscription) {
+                this.validatableSubscription.dispose();
+            }
+            if (item.wizardStep.validateable) {
+                this.validatableSubscription = item.wizardStep.validateable.subscribe(function (validateable) {
+                    item.validating = false;
+                    _this.nextEnabled(true);
+                });
+            }
+            this.selectedItem = item;
+            var onLoadResult = undefined;
+            if (item.wizardStep.onForwardLoad && forwardNavigation) {
+                onLoadResult = item.wizardStep.onForwardLoad();
+            }
+            else if (item.wizardStep.onLoad) {
+                onLoadResult = item.wizardStep.onLoad(forwardNavigation);
+            }
+            if (onLoadResult) {
+                this.stepLoading(true);
+                onLoadResult.finally(function () {
+                    _this.stepLoading(false);
+                });
+            }
+        };
+        return Wizard;
+    }(Framework.Disposable.RootDisposable));
+    exports.Wizard = Wizard;
+    var WizardBindingHandler = (function () {
+        function WizardBindingHandler() {
+        }
+        WizardBindingHandler.prototype.init = function (element, valueAccessor, allBindingsAccessor, viewModel, bindingContext) {
+            element.innerHTML = WizardBindingHandler.template;
+            var wizardVM = allBindingsAccessor.get(WizardBindingHandler.bindingName);
+            if (!(wizardVM instanceof Wizard)) {
+                logger.logDebug("viewModel has to be instance of Wizard");
+                return;
+            }
+            var bindingElement = $(element).find(".wizardBindingElement")[0];
+            ko.applyBindings(wizardVM, bindingElement);
+            wizardVM.setElement(element);
+            wizardVM.initialize();
+            return { controlsDescendantBindings: false };
+        };
+        WizardBindingHandler.template = require("text!./Templates/WizardTemplate.html");
+        WizardBindingHandler.bindingName = "wizard";
+        return WizardBindingHandler;
+    }());
+    exports.WizardBindingHandler = WizardBindingHandler;
+});
+//# sourceMappingURL=WizardBinding.js.map¤\‹>Í      [Öú[Öû?§çX[ØåS   ‹    :https://datafactory-endpoint.azureedge.net/node_modules/@ms-atlas-module/datastudio-datafactory/bootstrapper/WizardBinding.js?v=1.0.4164.1 necko:classified 1 strongly-framed 1 security-info FnhllAKWRHGAlo+ESXykKAAAAAAAAAAAwAAAAAAAAEaphjojH6pBabDSgSnsfLHeAAQAAgAAAAAAAAAAAAAAAAAAAAAB4vFIJp5wRkeyPxAQ9RJGKPqbqVvKO0mKuIl8ec8o/uhmCjImkVxP+7sgiYWmMt8FvcOXmlQiTNWFiWlrbpbqgwAAAAAAAAOwMIIDrDCCApSgAwIBAgIERTJgTjANBgkqhkiG9w0BAQsFADCBijEUMBIGA1UEBhMLUG9ydFN3aWdnZXIxFDASBgNVBAgTC1BvcnRTd2lnZ2VyMRQwEgYDVQQHEwtQb3J0U3dpZ2dlcjEUMBIGA1UEChMLUG9ydFN3aWdnZXIxFzAVBgNVBAsTDlBvcnRTd2lnZ2VyIENBMRcwFQYDVQQDEw5Qb3J0U3dpZ2dlciBDQTAeFw0xNDEwMjgxMzEyMTBaFw0zODEwMjgxMzEyMTBaMHIxFDASBgNVBAYTC1BvcnRTd2lnZ2VyMRQwEgYDVQQKEwtQb3J0U3dpZ2dlcjEXMBUGA1UECxMOUG9ydFN3aWdnZXIgQ0ExKzApBgNVBAMTImRhdGFmYWN0b3J5LWVuZHBvaW50LmF6dXJlZWRnZS5uZXQwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCKn7emKINsnWqPZ+C/VsqbQf/l4NsmIh34bXBR0xdNg9bfb+xcoghRlmbPjhZ/A26A2gJ6Rrg2d0GGMLpbqA8nTlRRGXEAD39321zk4ye09ElXClvqguGqdqOJpPQ05DPFD6wSOq+KVAEblE5bi+LMqBLipDERzgUe7xzeqVVk0i0ldh9yQOIk3YuzcBR9igSEuw5qladmMYvXKHYM9YZz0R7axMc8xAtadK7C9KfFPfEI5LS2nhmy4vBrTgFyYhfkEvKfmIj6HTX0ISFCAC2llcBLpEDcuiW76tAHp1pXDeWtSeaV36AeOctdleVgrbmsGs3fu6ppuRcWjEZUbjE3AgMBAAGjMTAvMC0GA1UdEQQmMCSCImRhdGFmYWN0b3J5LWVuZHBvaW50LmF6dXJlZWRnZS5uZXQwDQYJKoZIhvcNAQELBQADggEBAD5nTga0zudMitI/u0TfDiXUvU9MHWtnM1QsCR52LG8/P3zHlMPdW01WDRZUWTzCGka9MJHNjppqHPNsxY69i49nAksLYLzG7nK57bfwfvJQH/v27QUFGFMmKZNtpz+523V8pi+RJR9/DcmY0SQslyt1+Cj1SViKKOJYr8DiCwrYSUxWRp0XCM6ACnyoVhILHxIff7DQUE7Qq8eLX2UMcsrHHrlmbWpSCkEMtikIahIK4D2jjHj/CFWVzmKApRGZHRCenGUCvwPc6+mdefq6dna4yuo/9sC8unizedWeSL+sIj+Qxy7egEU4w3ZyvM8xUIozSNHY/VVwXW5ypPYqSlDALwEDAAAAAAEBAAAAAA== request-method GET request-Accept-Encoding gzip, deflate, br response-head HTTP/1.1 200 OK
+Content-Type: application/javascript
+Last-Modified: Sat, 06 Oct 2018 23:13:01 GMT
+Accept-Ranges: bytes
+Etag: "f853d420ca5dd41:0"
+Server: Microsoft-IIS/8.5
+X-Frame-Options: AllowAll
+X-XSS-Protection: 1; mode=block
+X-Content-Type-Options: nosniff
+Strict-Transport-Security: max-age=15724800; includeSubDomains
+Access-Control-Allow-Origin: *
+Vary: Accept-Encoding
+Content-Length: 26152
+Date: Sun, 28 Oct 2018 18:50:35 GMT
+ original-response-headers Content-Type: application/javascript
+Last-Modified: Sat, 06 Oct 2018 23:13:01 GMT
+Accept-Ranges: bytes
+Etag: "f853d420ca5dd41:0"
+Server: Microsoft-IIS/8.5
+X-Frame-Options: AllowAll
+X-XSS-Protection: 1; mode=block
+X-Content-Type-Options: nosniff
+Strict-Transport-Security: max-age=15724800; includeSubDomains
+Access-Control-Allow-Origin: *
+Vary: Accept-Encoding
+Content-Length: 26152
+Date: Sun, 28 Oct 2018 18:50:35 GMT
+Connection: close
+ uncompressed-len 0 net-response-time-onstart 708 net-response-time-onstop 708   f(

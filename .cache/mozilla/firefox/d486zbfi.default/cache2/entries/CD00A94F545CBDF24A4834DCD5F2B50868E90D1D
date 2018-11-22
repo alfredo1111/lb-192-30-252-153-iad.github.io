@@ -1,0 +1,457 @@
+/******************************************************************************
+                                FONTS
+/******************************************************************************/
+@font-face {
+  font-family: wf_segoe-ui_normal;
+  src: url('../fonts/segoe-ui/west-european/normal/latest.woff');
+}
+/******************************************************************************
+                                COLORS
+/******************************************************************************/
+/******************************************************************************
+                                METRICS
+/******************************************************************************/
+/**********************************************************************************
+                              Common Flex Property
+/**********************************************************************************/
+/*************************************************************************************
+                                 High contrast mode active
+**************************************************************************************/
+@media all and (-ms-high-contrast: none), (-ms-high-contrast: active) {
+  .selectedRadio,
+  .selectedRadio:hover,
+  .selectedRadio:active,
+  .selectedRadio.dirty,
+  .tab [type=radio]:checked ~ label,
+  .tab [type=radio]:checked ~ label:hover {
+    -ms-high-contrast-adjust: none;
+    -webkit-text-fill-color: HighlightText;
+    color: HighlightText;
+    border-color: HighlightText;
+    background-color: Highlight;
+  }
+  .queryMetricsSummaryTuple th:nth-child(2),
+  .queryMetricsSummaryTuple td:nth-child(2) {
+    width: 650px;
+  }
+  .queryMetricsSummaryTuple th:nth-child(3),
+  .queryMetricsSummaryTuple td:nth-child(3) {
+    width: 50%;
+  }
+}
+/********************************************************************************************
+                            Common Hover and Active color
+*********************************************************************************************/
+/************************************************************************************************
+                               Common Toggle Switch
+*************************************************************************************************/
+/********************************************************************************************************
+                             Common Data Explorer Icons
+*********************************************************************************************************/
+/*********************************************************************************************************
+                            Info Tooltip
+**********************************************************************************************************/
+/*********************************************************************************************************
+                          Media Queries
+**********************************************************************************************************/
+@media only screen and (max-width: 1920px) {
+  .staticCommandExpand {
+    display: none;
+  }
+}
+@media only screen and (min-width: 1039px) and (max-width: 1112px) {
+  .visibleCommands command-button:nth-child(n+9) {
+    display: none;
+  }
+  .hiddenCommands command-button:not(:nth-child(n+3)) {
+    display: none;
+  }
+  .staticCommandExpand {
+    display: block;
+  }
+}
+@media only screen and (min-width: 874px) and (max-width: 1038px) {
+  .visibleCommands command-button:nth-child(n+8) {
+    display: none;
+  }
+  .hiddenCommands command-button:not(:nth-child(n+2)) {
+    display: none;
+  }
+  .staticCommandExpand {
+    display: block;
+  }
+}
+@media only screen and (min-width: 723px) and (max-width: 873px) {
+  .visibleCommands command-button:nth-child(n+7) {
+    display: none;
+  }
+  .hiddenCommands command-button:not(:nth-child(n+1)) {
+    display: none;
+  }
+  .staticCommandExpand {
+    display: block;
+  }
+}
+@media only screen and (max-width: 722px) {
+  .visibleCommands command-button:nth-child(n+7) {
+    display: none;
+  }
+  .hiddenCommands command-button:not(:nth-child(n+1)) {
+    display: none;
+  }
+  .staticCommandExpand {
+    display: block;
+  }
+}
+/******************************************************************************************************
+                         Common tab-base properties
+*******************************************************************************************************/
+.tab-pane {
+  height: 100%;
+  display: -webkit-flex;
+  display: -ms-flexbox;
+  display: -ms-flex;
+  display: flex;
+  -webkit-flex-direction: column;
+  -ms-flex-direction: column;
+  flex-direction: column;
+}
+.tab-pane .tabPaneContentContainer {
+  height: 100%;
+  display: -webkit-flex;
+  display: -ms-flexbox;
+  display: -ms-flex;
+  display: flex;
+  -webkit-flex-direction: column;
+  -ms-flex-direction: column;
+  flex-direction: column;
+}
+.tab-pane .tabPaneContentContainer .mongoQueryHelper {
+  margin: 8px 0px 0px 44px;
+  position: absolute;
+  top: 115px;
+}
+.tab-pane .tabPaneContentContainer .queryEditorWithSplitter {
+  display: -webkit-flex;
+  display: -ms-flexbox;
+  display: -ms-flex;
+  display: flex;
+  -webkit-flex-direction: column;
+  -ms-flex-direction: column;
+  flex-direction: column;
+  flex-shrink: 0;
+  height: 100%;
+  width: 100%;
+  margin-left: 4px;
+}
+.tab-pane .tabPaneContentContainer .queryEditorWithSplitter .queryEditor {
+  display: -webkit-flex;
+  display: -ms-flexbox;
+  display: -ms-flex;
+  display: flex;
+  height: 100%;
+  width: 100%;
+  margin-top: 4px;
+}
+.tab-pane .tabPaneContentContainer .queryEditorWithSplitter .queryEditor .jsonEditor {
+  border: none;
+  margin-top: 4px;
+}
+.tab-pane .tabPaneContentContainer .queryEditorWithSplitter .queryEditor.mongoQueryEditor {
+  margin-top: 32px;
+  overflow: hidden;
+}
+.tab-pane .tabPaneContentContainer .queryEditorWithSplitter .queryEditorHorizontalSplitter {
+  margin: auto;
+  display: block;
+}
+.tab-pane .tabPaneContentContainer .queryErrorsHeaderContainer {
+  padding: 24px 16px 0px 12px;
+}
+.tab-pane .tabPaneContentContainer .queryErrorsHeaderContainer .queryErrors {
+  font-size: 12px;
+  list-style-type: none;
+  color: #000000;
+  font-weight: bold;
+  margin-left: 24px;
+}
+.tab-pane .tabPaneContentContainer .queryResultErrorContentContainer {
+  display: -webkit-flex;
+  display: -ms-flexbox;
+  display: -ms-flex;
+  display: flex;
+  -webkit-flex-direction: column;
+  -ms-flex-direction: column;
+  flex-direction: column;
+  font-size: 14px;
+  padding: 8px;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+.tab-pane .tabPaneContentContainer .queryResultErrorContentContainer .queryEditorWatermark {
+  text-align: center;
+  margin: auto;
+  height: 25vh;
+}
+.tab-pane .tabPaneContentContainer .queryResultErrorContentContainer .queryEditorWatermark p {
+  margin-bottom: 16px;
+  color: #393939;
+}
+.tab-pane .tabPaneContentContainer .queryResultErrorContentContainer .queryEditorWatermark .queryEditorWatermarkText {
+  color: #393939;
+  font-size: 14px;
+  font-family: wf_segoe-ui_normal, "Segoe UI", "Segoe WP", Tahoma, Arial, sans-serif;
+}
+.tab-pane .tabPaneContentContainer .queryResultErrorContentContainer .queryResultsErrorsContent {
+  height: 100%;
+  margin-left: 12px;
+  display: -webkit-flex;
+  display: -ms-flexbox;
+  display: -ms-flex;
+  display: flex;
+  -webkit-flex-direction: column;
+  -ms-flex-direction: column;
+  flex-direction: column;
+}
+.tab-pane .tabPaneContentContainer .queryResultErrorContentContainer .queryResultsErrorsContent .togglesWithMetadata {
+  margin-top: 12px;
+}
+.tab-pane .tabPaneContentContainer .queryResultErrorContentContainer .queryResultsErrorsContent .togglesWithMetadata .toggles {
+  height: 30px;
+  width: 250px;
+  margin-left: 12px;
+}
+.tab-pane .tabPaneContentContainer .queryResultErrorContentContainer .queryResultsErrorsContent .togglesWithMetadata .toggles:focus {
+  outline: 1px dashed #004E87;
+}
+.tab-pane .tabPaneContentContainer .queryResultErrorContentContainer .queryResultsErrorsContent .togglesWithMetadata .toggles .tab {
+  margin-right: 12px;
+}
+.tab-pane .tabPaneContentContainer .queryResultErrorContentContainer .queryResultsErrorsContent .togglesWithMetadata .toggles .toggleSwitch {
+  max-width: 100%;
+  margin-bottom: 4px;
+  padding: 4px;
+  cursor: pointer;
+  color: #393939;
+  font-weight: 400;
+  font-size: 12px;
+  font-family: wf_segoe-ui_normal, "Segoe UI", "Segoe WP", Tahoma, Arial, sans-serif;
+}
+.tab-pane .tabPaneContentContainer .queryResultErrorContentContainer .queryResultsErrorsContent .togglesWithMetadata .toggles .selectedToggle {
+  border-bottom: 2px solid #393939;
+}
+.tab-pane .tabPaneContentContainer .queryResultErrorContentContainer .queryResultsErrorsContent .togglesWithMetadata .toggles .unselectedToggle {
+  color: #0058AD;
+}
+.tab-pane .tabPaneContentContainer .queryResultErrorContentContainer .queryResultsErrorsContent .result-metadata {
+  padding: 16px 4px 12px 12px;
+}
+.tab-pane .tabPaneContentContainer .queryResultErrorContentContainer .queryResultsErrorsContent .result-metadata .queryResultDivider {
+  margin-left: 4px;
+  margin-right: 4px;
+}
+.tab-pane .tabPaneContentContainer .queryResultErrorContentContainer .queryResultsErrorsContent .result-metadata .queryResultNextEnable {
+  color: #0058AD;
+  font-size: 12px;
+  cursor: pointer;
+}
+.tab-pane .tabPaneContentContainer .queryResultErrorContentContainer .queryResultsErrorsContent .result-metadata .queryResultNextEnable img {
+  height: 14px;
+  width: 14px;
+  margin-left: 4px;
+}
+.tab-pane .tabPaneContentContainer .queryResultErrorContentContainer .queryResultsErrorsContent .result-metadata .queryResultNextDisable {
+  color: #767676;
+  opacity: 0.5;
+  font-size: 12px;
+}
+.tab-pane .tabPaneContentContainer .queryResultErrorContentContainer .queryResultsErrorsContent .result-metadata .queryResultNextDisable img {
+  height: 14px;
+  width: 14px;
+  margin-left: 4px;
+}
+.tab-pane .tabPaneContentContainer .queryResultErrorContentContainer .queryResultsErrorsContent .tab-pane.active {
+  height: 100%;
+  width: 100%;
+}
+.tab-pane .tabPaneContentContainer .queryResultErrorContentContainer .queryResultsErrorsContent .errorContent {
+  display: -webkit-flex;
+  display: -ms-flexbox;
+  display: -ms-flex;
+  display: flex;
+  width: 60%;
+  white-space: nowrap;
+  font-size: 12px;
+  padding: 0px 12px 0px 12px;
+}
+.tab-pane .tabPaneContentContainer .queryResultErrorContentContainer .queryResultsErrorsContent .errorContent .errorMessage {
+  padding: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tab-pane .tabPaneContentContainer .queryResultErrorContentContainer .queryResultsErrorsContent .errorDetailsLink {
+  cursor: pointer;
+  padding: 4px;
+}
+.tab-pane .tabPaneContentContainer .queryResultErrorContentContainer .queryResultsErrorsContent .queryMetricsSummaryContainer {
+  display: -webkit-flex;
+  display: -ms-flexbox;
+  display: -ms-flex;
+  display: flex;
+  -webkit-flex-direction: column;
+  -ms-flex-direction: column;
+  flex-direction: column;
+  overflow: hidden;
+}
+.tab-pane .tabPaneContentContainer .queryResultErrorContentContainer .queryResultsErrorsContent .queryMetricsSummaryContainer .queryMetricsSummary {
+  margin: 16px 16px 0px 8px;
+  table-layout: fixed;
+  display: block;
+  height: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+.tab-pane .tabPaneContentContainer .queryResultErrorContentContainer .queryResultsErrorsContent .queryMetricsSummaryContainer .queryMetricsSummary .queryMetricsSummaryHead {
+  display: -webkit-flex;
+  display: -ms-flexbox;
+  display: -ms-flex;
+  display: flex;
+}
+.tab-pane .tabPaneContentContainer .queryResultErrorContentContainer .queryResultsErrorsContent .queryMetricsSummaryContainer .queryMetricsSummary .queryMetricsSummaryHeader.queryMetricsSummaryTuple {
+  font-size: 10px;
+}
+.tab-pane .tabPaneContentContainer .queryResultErrorContentContainer .queryResultsErrorsContent .queryMetricsSummaryContainer .queryMetricsSummary .queryMetricsSummaryBody {
+  display: -webkit-flex;
+  display: -ms-flexbox;
+  display: -ms-flex;
+  display: flex;
+  -webkit-flex-direction: column;
+  -ms-flex-direction: column;
+  flex-direction: column;
+}
+.tab-pane .tabPaneContentContainer .queryResultErrorContentContainer .queryResultsErrorsContent .queryMetricsSummaryContainer .queryMetricsSummary .queryMetricsSummaryTuple {
+  border-bottom: 1px solid #CCCCCC;
+  height: 32px;
+  font-size: 12px;
+  width: 100%;
+  display: -webkit-flex;
+  display: -ms-flexbox;
+  display: -ms-flex;
+  display: flex;
+}
+.tab-pane .tabPaneContentContainer .queryResultErrorContentContainer .queryResultsErrorsContent .queryMetricsSummaryContainer .queryMetricsSummary .queryMetricsSummaryTuple th,
+.tab-pane .tabPaneContentContainer .queryResultErrorContentContainer .queryResultsErrorsContent .queryMetricsSummaryContainer .queryMetricsSummary .queryMetricsSummaryTuple td {
+  padding: 8px;
+}
+.tab-pane .tabPaneContentContainer .queryResultErrorContentContainer .queryResultsErrorsContent .queryMetricsSummaryContainer .queryMetricsSummary .queryMetricsSummaryTuple th:nth-child(1),
+.tab-pane .tabPaneContentContainer .queryResultErrorContentContainer .queryResultsErrorsContent .queryMetricsSummaryContainer .queryMetricsSummary .queryMetricsSummaryTuple td:nth-child(1) {
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+  flex: 0 1 auto;
+}
+.tab-pane .tabPaneContentContainer .queryResultErrorContentContainer .queryResultsErrorsContent .queryMetricsSummaryContainer .queryMetricsSummary .queryMetricsSummaryTuple th:nth-child(2),
+.tab-pane .tabPaneContentContainer .queryResultErrorContentContainer .queryResultsErrorsContent .queryMetricsSummaryContainer .queryMetricsSummary .queryMetricsSummaryTuple td:nth-child(2) {
+  flex: 1 1 auto;
+}
+.tab-pane .tabPaneContentContainer .queryResultErrorContentContainer .queryResultsErrorsContent .queryMetricsSummaryContainer .queryMetricsSummary .queryMetricsSummaryTuple th:nth-child(3),
+.tab-pane .tabPaneContentContainer .queryResultErrorContentContainer .queryResultsErrorsContent .queryMetricsSummaryContainer .queryMetricsSummary .queryMetricsSummaryTuple td:nth-child(3) {
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+  flex: 0 0 50%;
+}
+.tab-pane .tabPaneContentContainer .queryResultErrorContentContainer .queryResultsErrorsContent .queryMetricsSummaryContainer .queryMetricsSummary .queryMetricsSummaryTuple th .queryMetricInfoTooltip,
+.tab-pane .tabPaneContentContainer .queryResultErrorContentContainer .queryResultsErrorsContent .queryMetricsSummaryContainer .queryMetricsSummary .queryMetricsSummaryTuple td .queryMetricInfoTooltip {
+  position: relative;
+  display: inline-block;
+}
+.tab-pane .tabPaneContentContainer .queryResultErrorContentContainer .queryResultsErrorsContent .queryMetricsSummaryContainer .queryMetricsSummary .queryMetricsSummaryTuple th .queryMetricInfoTooltip:hover .queryMetricTooltipText,
+.tab-pane .tabPaneContentContainer .queryResultErrorContentContainer .queryResultsErrorsContent .queryMetricsSummaryContainer .queryMetricsSummary .queryMetricsSummaryTuple td .queryMetricInfoTooltip:hover .queryMetricTooltipText {
+  visibility: visible;
+}
+.tab-pane .tabPaneContentContainer .queryResultErrorContentContainer .queryResultsErrorsContent .queryMetricsSummaryContainer .queryMetricsSummary .queryMetricsSummaryTuple th .queryMetricInfoTooltip .queryMetricTooltipText,
+.tab-pane .tabPaneContentContainer .queryResultErrorContentContainer .queryResultsErrorsContent .queryMetricsSummaryContainer .queryMetricsSummary .queryMetricsSummaryTuple td .queryMetricInfoTooltip .queryMetricTooltipText {
+  top: -50px;
+  width: auto;
+  white-space: nowrap;
+  left: 6px;
+  visibility: hidden;
+  background-color: #393939;
+  color: #FFFFFF;
+  position: absolute;
+  z-index: 1;
+  padding: 12px;
+}
+.tab-pane .tabPaneContentContainer .queryResultErrorContentContainer .queryResultsErrorsContent .queryMetricsSummaryContainer .queryMetricsSummary .queryMetricsSummaryTuple th .queryMetricInfoTooltip .queryMetricTooltipText::after,
+.tab-pane .tabPaneContentContainer .queryResultErrorContentContainer .queryResultsErrorsContent .queryMetricsSummaryContainer .queryMetricsSummary .queryMetricsSummaryTuple td .queryMetricInfoTooltip .queryMetricTooltipText::after {
+  border-width: 24px 24px 0px 0px;
+  bottom: -14px;
+  content: "";
+  position: absolute;
+  right: 100%;
+  border-style: solid;
+  border-color: transparent #000000 transparent transparent;
+  left: 0px;
+  width: 0;
+  height: 0;
+  border-color: #3b3b3b transparent;
+}
+.tab-pane .tabPaneContentContainer .queryResultErrorContentContainer .queryResultsErrorsContent .queryMetricsSummaryContainer .queryMetricsSummary .queryMetricsSummaryTuple th .queryMetricInfoTooltip .queryEngineExeTimeInfo,
+.tab-pane .tabPaneContentContainer .queryResultErrorContentContainer .queryResultsErrorsContent .queryMetricsSummaryContainer .queryMetricsSummary .queryMetricsSummaryTuple td .queryMetricInfoTooltip .queryEngineExeTimeInfo {
+  width: 305px;
+  top: -85px;
+  white-space: pre-wrap;
+}
+.tab-pane .tabPaneContentContainer .queryResultErrorContentContainer .queryResultsErrorsContent .queryMetricsSummaryContainer .downloadMetricsLinkContainer {
+  margin: 24px 0px 24px 12px;
+}
+.tab-pane .tabPaneContentContainer .queryResultErrorContentContainer .queryResultsErrorsContent .queryMetricsSummaryContainer .downloadMetricsLinkContainer #downloadMetricsLink {
+  color: #393939;
+  padding: 8px;
+  font-size: 12px;
+  border: 1px solid #FFFFFF;
+  cursor: pointer;
+}
+.tab-pane .tabPaneContentContainer .queryResultErrorContentContainer .queryResultsErrorsContent .queryMetricsSummaryContainer .downloadMetricsLinkContainer #downloadMetricsLink:hover {
+  background-color: #EEF7FF;
+}
+.tab-pane .tabPaneContentContainer .queryResultErrorContentContainer .queryResultsErrorsContent .queryMetricsSummaryContainer .downloadMetricsLinkContainer #downloadMetricsLink:active {
+  border: 1px dashed #004E87;
+  background-color: #DDF0FF;
+}
+.tab-pane .tabPaneContentContainer .queryResultErrorContentContainer .queryResultsErrorsContent json-editor {
+  display: -webkit-flex;
+  display: -ms-flexbox;
+  display: -ms-flex;
+  display: flex;
+  -webkit-flex-direction: column;
+  -ms-flex-direction: column;
+  flex-direction: column;
+  overflow: hidden;
+  height: 100%;
+  width: 100%;
+  padding: 4px 0px 4px 12px;
+}
+,{Vg6•      [Õ¾±[Õ¾¹?§¶ [×k"   2    :https://cosmos.azure.com/css/QueryTab.css?v=1.0.1 necko:classified 1 strongly-framed 1 security-info FnhllAKWRHGAlo+ESXykKAAAAAAAAAAAwAAAAAAAAEaphjojH6pBabDSgSnsfLHeAAQAAgAAAAAAAAAAAAAAAAAAAAAB4vFIJp5wRkeyPxAQ9RJGKPqbqVvKO0mKuIl8ec8o/uhmCjImkVxP+7sgiYWmMt8FvcOXmlQiTNWFiWlrbpbqgwAAAAAAAAOMMIIDiDCCAnCgAwIBAgIERTJgUjANBgkqhkiG9w0BAQsFADCBijEUMBIGA1UEBhMLUG9ydFN3aWdnZXIxFDASBgNVBAgTC1BvcnRTd2lnZ2VyMRQwEgYDVQQHEwtQb3J0U3dpZ2dlcjEUMBIGA1UEChMLUG9ydFN3aWdnZXIxFzAVBgNVBAsTDlBvcnRTd2lnZ2VyIENBMRcwFQYDVQQDEw5Qb3J0U3dpZ2dlciBDQTAeFw0xNDEwMjgxMzEyMTBaFw0zODEwMjgxMzEyMTBaMGAxFDASBgNVBAYTC1BvcnRTd2lnZ2VyMRQwEgYDVQQKEwtQb3J0U3dpZ2dlcjEXMBUGA1UECxMOUG9ydFN3aWdnZXIgQ0ExGTAXBgNVBAMTEGNvc21vcy5henVyZS5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCKn7emKINsnWqPZ+C/VsqbQf/l4NsmIh34bXBR0xdNg9bfb+xcoghRlmbPjhZ/A26A2gJ6Rrg2d0GGMLpbqA8nTlRRGXEAD39321zk4ye09ElXClvqguGqdqOJpPQ05DPFD6wSOq+KVAEblE5bi+LMqBLipDERzgUe7xzeqVVk0i0ldh9yQOIk3YuzcBR9igSEuw5qladmMYvXKHYM9YZz0R7axMc8xAtadK7C9KfFPfEI5LS2nhmy4vBrTgFyYhfkEvKfmIj6HTX0ISFCAC2llcBLpEDcuiW76tAHp1pXDeWtSeaV36AeOctdleVgrbmsGs3fu6ppuRcWjEZUbjE3AgMBAAGjHzAdMBsGA1UdEQQUMBKCEGNvc21vcy5henVyZS5jb20wDQYJKoZIhvcNAQELBQADggEBABYikT6Y5YgJJ4IVJldlFDF5MKxp26YegXhvT8EmAbgr0yQBIlY2DtKEiHf7Q8wRoJ9y5Ajst1D7HmRba+XLjS6s3IHJ7gtuvc3fZj9MPKpbqSKRfHDB8bDOVIzmjBseg2BqckHTkcYak3b/pTWCTqKHM3LxKsDwN8F3HNQ2pY4d5ma2kR1EtWdTpRiIbir3QxJDcWVp8CgHONZcoMn33NNwnWWjAQMX6d8e1CPuBZi0t+myaYduCqPgKKox9qMXSubF6uifQkAJ5RdLZrZ2pghENA/4r1oz51wqEmpjPsStSUxRPwJ6wJrB4gwGtX7++ZHLjAaNrTSUCGwIOlAT4LnALwEDAAAAAAEBAAAAAA== request-method GET request-Accept-Encoding gzip, deflate, br response-head HTTP/1.1 200 OK
+Content-Length: 18322
+Content-Type: text/css
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:38:48 GMT
+ original-response-headers Content-Length: 18322
+Content-Type: text/css
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:38:48 GMT
+Connection: close
+ uncompressed-len 0 net-response-time-onstart 8314 net-response-time-onstop 8317   G’

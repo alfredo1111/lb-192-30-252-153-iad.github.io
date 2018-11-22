@@ -1,0 +1,267 @@
+var __extends = (this && this.__extends) || function (d, b) {
+    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+    function __() { this.constructor = d; }
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+};
+define(["require", "exports", "../../_generated/Svg", "../Framework/Views/HoverFlyout", "../Framework/Util/Util"], function (require, exports, Svg, Flyout, Util) {
+    "use strict";
+    var flyoutContentSelector = ".adf-flyoutContent";
+    var calloutContentSelector = ".adf-calloutContent";
+    var dialogContentSelector = ".adf-dialogContent";
+    var FlyoutHandler = (function () {
+        function FlyoutHandler() {
+            var _this = this;
+            this._template = "<div id=\"adf-flyout\"><div class = \"adf-flyoutContent\"></div>";
+            this._requestId = 0;
+            this._onTimeoutMaker = function (requestId) {
+                return function () {
+                    if (requestId === _this._requestId) {
+                        _this._flyout.hide();
+                    }
+                };
+            };
+            this._onHide = function () {
+                if (_this._requests.length === 0) {
+                    _this._currentRequest = null;
+                    return;
+                }
+                _this._executeRequest(_this._requests.shift());
+            };
+            this._requests = [];
+            this._flyout = null;
+        }
+        FlyoutHandler.prototype.dispose = function () {
+        };
+        FlyoutHandler.prototype.addRequest = function (request) {
+            this.createFlyoutHelper(flyoutContentSelector);
+            if (!this._currentRequest && this._requests.length === 0) {
+                this._executeRequest(request);
+            }
+            else {
+                this._requests.push(request);
+            }
+        };
+        FlyoutHandler.prototype.createFlyoutHelper = function (contentSelector) {
+            if (!this._flyout) {
+                this._flyoutHost = $(this._template).appendTo("body")[0];
+                this._flyout = new WinJS.UI.Flyout(this._flyoutHost, {
+                    placement: "auto"
+                });
+                this._flyoutContent = this._flyoutHost.querySelector(contentSelector);
+                this._flyout.addEventListener("afterhide", this._onHide);
+            }
+        };
+        FlyoutHandler.prototype._executeRequest = function (request) {
+            this._requestId++;
+            this._currentRequest = request;
+            this._flyoutContent.innerHTML = request.innerHTML;
+            this._flyout.show(request.anchor);
+            if (this._currentRequest.timeout) {
+                window.setTimeout(this._onTimeoutMaker(this._requestId), this._currentRequest.timeout);
+            }
+        };
+        return FlyoutHandler;
+    }());
+    exports.FlyoutHandler = FlyoutHandler;
+    var CalloutHandler = (function (_super) {
+        __extends(CalloutHandler, _super);
+        function CalloutHandler() {
+            _super.apply(this, arguments);
+            this._template = "<div id=\"adf-callout\"><div id=\"adf-callout-svg\"></div><div class = \"adf-calloutContent\"></div>";
+        }
+        CalloutHandler.prototype.addRequest = function (request) {
+            var _this = this;
+            this.createFlyoutHelper(calloutContentSelector);
+            if (request.autohide) {
+                Flyout.setupFlyoutAutohide(this._flyout, request.anchor);
+            }
+            if (request.placement) {
+                this._flyout.placement = request.placement;
+            }
+            var afterFlyoutShows, beforeFlyoutHides;
+            var caretContainer = $("#adf-callout-svg")[0];
+            afterFlyoutShows = function () {
+                _this._flyout.addEventListener("beforehide", beforeFlyoutHides);
+                var placement = _this.getPlacement(request.anchor, _this._flyout.element);
+                var caret = "";
+                switch (placement) {
+                    case "left":
+                        caret = Svg.caret_right;
+                        $(caretContainer).removeClass().addClass("right");
+                        break;
+                    case "right":
+                        caret = Svg.caret_left;
+                        $(caretContainer).removeClass().addClass("left");
+                        break;
+                    case "top":
+                        caret = Svg.caret_down;
+                        $(caretContainer).removeClass().addClass("bottom");
+                        break;
+                    case "bottom":
+                        caret = Svg.caret_up;
+                        $(caretContainer).removeClass().addClass("top");
+                        break;
+                    default:
+                        break;
+                }
+                $(caretContainer).html(caret);
+            };
+            beforeFlyoutHides = function () {
+                _this._flyout.removeEventListener("aftershow", afterFlyoutShows);
+                _this._flyout.removeEventListener("beforehide", beforeFlyoutHides);
+            };
+            _super.prototype.addRequest.call(this, request);
+        };
+        CalloutHandler.prototype.getPlacement = function (anchor, flyout) {
+            var cXAnchor = $(anchor).offset().left + $(anchor).width() / 2;
+            var cYAnchor = $(anchor).offset().top + $(anchor).height() / 2;
+            var cXFlyout = $(flyout).offset().left + $(flyout).width() / 2;
+            var cYFlyout = $(flyout).offset().top + $(flyout).height() / 2;
+            var xDiff = cXAnchor - cXFlyout;
+            var yDiff = cYFlyout - cYAnchor;
+            if (Math.abs(xDiff) >= Math.abs(yDiff)) {
+                return xDiff >= 0 ? "left" : "right";
+            }
+            else {
+                return yDiff >= 0 ? "bottom" : "top";
+            }
+        };
+        return CalloutHandler;
+    }(FlyoutHandler));
+    exports.CalloutHandler = CalloutHandler;
+    var DismissalResult = (function () {
+        function DismissalResult() {
+        }
+        DismissalResult.none = WinJS.UI.ContentDialog.DismissalResult.none;
+        DismissalResult.primary = WinJS.UI.ContentDialog.DismissalResult.primary;
+        DismissalResult.secondary = WinJS.UI.ContentDialog.DismissalResult.secondary;
+        return DismissalResult;
+    }());
+    exports.DismissalResult = DismissalResult;
+    var DialogHandler = (function () {
+        function DialogHandler() {
+            var _this = this;
+            this._template = "<div id=\"adf-dialog\"><div class = \"adf-dialogContent\"></div>";
+            this._currentRequest = null;
+            this._onHide = function (eventInfo) {
+                if (typeof eventInfo.detail.result === "undefined") {
+                    eventInfo.detail.result = DismissalResult.none;
+                }
+                if (_this._currentRequest.dismissalHandler) {
+                    _this._currentRequest.dismissalHandler(eventInfo.detail.result);
+                }
+                if (_this._currentRequest.uniqueKey) {
+                    delete _this._set[_this._currentRequest.uniqueKey];
+                }
+                _this._currentRequest = null;
+                if (_this._requests.length === 0) {
+                    return;
+                }
+                var request = _this._requests.shift();
+                _this._executeRequest(request);
+            };
+            this._requests = [];
+            this._set = {};
+            this._dialog = null;
+        }
+        DialogHandler.prototype.okayCancelRequest = function (title, question, onSuccess, onFailure) {
+            var request = {
+                title: title,
+                innerHTML: question,
+                primaryCommandText: ClientResources.ok,
+                secondaryCommandText: ClientResources.Cancel,
+                dismissalHandler: function (result) {
+                    if (result === DismissalResult.primary) {
+                        onSuccess();
+                    }
+                    else if (onFailure) {
+                        onFailure();
+                    }
+                }
+            };
+            this.addRequest(request);
+        };
+        DialogHandler.prototype.okayRequest = function (title, information, callback) {
+            var request = {
+                title: title,
+                innerHTML: information,
+                primaryCommandText: ClientResources.ok,
+                dismissalHandler: function (result) {
+                    if (callback) {
+                        callback();
+                    }
+                }
+            };
+            this.addRequest(request);
+        };
+        DialogHandler.prototype.addRequest = function (request, rejectIfInQueue) {
+            if (!this._dialog) {
+                this._dialogHost = $(this._template).appendTo("body")[0];
+                this._dialogContent = this._dialogHost.querySelector(dialogContentSelector);
+                this._dialog = new WinJS.UI.ContentDialog(this._dialogHost);
+                this._dialog.addEventListener("afterhide", this._onHide);
+            }
+            if (rejectIfInQueue) {
+                if (!request.uniqueKey) {
+                    request.uniqueKey = Util.hashCode(request.innerHTML);
+                }
+                if (this._set[request.uniqueKey]) {
+                    return this._dialog;
+                }
+                this._set[request.uniqueKey] = 1;
+            }
+            if (!this._currentRequest && this._requests.length === 0) {
+                this._executeRequest(request);
+            }
+            else {
+                this._requests.push(request);
+            }
+            return this._dialog;
+        };
+        DialogHandler.prototype.dispose = function () {
+        };
+        DialogHandler.prototype._executeRequest = function (request) {
+            this._currentRequest = request;
+            if (!request.primaryCommandText) {
+                request.primaryCommandText = ClientResources.defaultDialogPrimaryCommandText;
+            }
+            this._dialog.primaryCommandText = request.primaryCommandText;
+            this._dialog.secondaryCommandText = request.secondaryCommandText;
+            this._dialog.title = request.title;
+            this._dialogContent.innerHTML = request.innerHTML;
+            this._currentRequest = request;
+            this._dialog.show();
+        };
+        return DialogHandler;
+    }());
+    exports.DialogHandler = DialogHandler;
+});
+//# sourceMappingURL=WinJSHandlers.js.mapÈSŸß,      [÷ˇ[÷?ßÁ\[ÿÂX   è    :https://datafactory-endpoint.azureedge.net/node_modules/@ms-atlas-module/datastudio-datafactory/scripts/Handlers/WinJSHandlers.js?v=1.0.4164.1 necko:classified 1 strongly-framed 1 security-info FnhllAKWRHGAlo+ESXykKAAAAAAAAAAAwAAAAAAAAEaphjojH6pBabDSgSnsfLHeAAQAAgAAAAAAAAAAAAAAAAAAAAAB4vFIJp5wRkeyPxAQ9RJGKPqbqVvKO0mKuIl8ec8o/uhmCjImkVxP+7sgiYWmMt8FvcOXmlQiTNWFiWlrbpbqgwAAAAAAAAOwMIIDrDCCApSgAwIBAgIERTJgTjANBgkqhkiG9w0BAQsFADCBijEUMBIGA1UEBhMLUG9ydFN3aWdnZXIxFDASBgNVBAgTC1BvcnRTd2lnZ2VyMRQwEgYDVQQHEwtQb3J0U3dpZ2dlcjEUMBIGA1UEChMLUG9ydFN3aWdnZXIxFzAVBgNVBAsTDlBvcnRTd2lnZ2VyIENBMRcwFQYDVQQDEw5Qb3J0U3dpZ2dlciBDQTAeFw0xNDEwMjgxMzEyMTBaFw0zODEwMjgxMzEyMTBaMHIxFDASBgNVBAYTC1BvcnRTd2lnZ2VyMRQwEgYDVQQKEwtQb3J0U3dpZ2dlcjEXMBUGA1UECxMOUG9ydFN3aWdnZXIgQ0ExKzApBgNVBAMTImRhdGFmYWN0b3J5LWVuZHBvaW50LmF6dXJlZWRnZS5uZXQwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCKn7emKINsnWqPZ+C/VsqbQf/l4NsmIh34bXBR0xdNg9bfb+xcoghRlmbPjhZ/A26A2gJ6Rrg2d0GGMLpbqA8nTlRRGXEAD39321zk4ye09ElXClvqguGqdqOJpPQ05DPFD6wSOq+KVAEblE5bi+LMqBLipDERzgUe7xzeqVVk0i0ldh9yQOIk3YuzcBR9igSEuw5qladmMYvXKHYM9YZz0R7axMc8xAtadK7C9KfFPfEI5LS2nhmy4vBrTgFyYhfkEvKfmIj6HTX0ISFCAC2llcBLpEDcuiW76tAHp1pXDeWtSeaV36AeOctdleVgrbmsGs3fu6ppuRcWjEZUbjE3AgMBAAGjMTAvMC0GA1UdEQQmMCSCImRhdGFmYWN0b3J5LWVuZHBvaW50LmF6dXJlZWRnZS5uZXQwDQYJKoZIhvcNAQELBQADggEBAD5nTga0zudMitI/u0TfDiXUvU9MHWtnM1QsCR52LG8/P3zHlMPdW01WDRZUWTzCGka9MJHNjppqHPNsxY69i49nAksLYLzG7nK57bfwfvJQH/v27QUFGFMmKZNtpz+523V8pi+RJR9/DcmY0SQslyt1+Cj1SViKKOJYr8DiCwrYSUxWRp0XCM6ACnyoVhILHxIff7DQUE7Qq8eLX2UMcsrHHrlmbWpSCkEMtikIahIK4D2jjHj/CFWVzmKApRGZHRCenGUCvwPc6+mdefq6dna4yuo/9sC8unizedWeSL+sIj+Qxy7egEU4w3ZyvM8xUIozSNHY/VVwXW5ypPYqSlDALwEDAAAAAAEBAAAAAA== request-method GET request-Accept-Encoding gzip, deflate, br response-head HTTP/1.1 200 OK
+Content-Type: application/javascript
+Last-Modified: Sat, 06 Oct 2018 23:13:01 GMT
+Accept-Ranges: bytes
+Etag: "ecdcfc20ca5dd41:0"
+Server: Microsoft-IIS/8.5
+X-Frame-Options: AllowAll
+X-XSS-Protection: 1; mode=block
+X-Content-Type-Options: nosniff
+Strict-Transport-Security: max-age=15724800; includeSubDomains
+Access-Control-Allow-Origin: *
+Vary: Accept-Encoding
+Content-Length: 10743
+Date: Sun, 28 Oct 2018 18:50:43 GMT
+ original-response-headers Content-Type: application/javascript
+Last-Modified: Sat, 06 Oct 2018 23:13:01 GMT
+Accept-Ranges: bytes
+Etag: "ecdcfc20ca5dd41:0"
+Server: Microsoft-IIS/8.5
+X-Frame-Options: AllowAll
+X-XSS-Protection: 1; mode=block
+X-Content-Type-Options: nosniff
+Strict-Transport-Security: max-age=15724800; includeSubDomains
+Access-Control-Allow-Origin: *
+Vary: Accept-Encoding
+Content-Length: 10743
+Date: Sun, 28 Oct 2018 18:50:43 GMT
+Connection: close
+ uncompressed-len 0 net-response-time-onstart 4358 net-response-time-onstop 4361   )˜

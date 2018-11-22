@@ -1,0 +1,208 @@
+define(["require", "exports", "../Common/Constants", "./Constants", "../Contracts/ViewModels"], function (require, exports, Constants, SharedConstants, ViewModels_1) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    var Utilities = /** @class */ (function () {
+        function Utilities() {
+        }
+        Utilities.getDefaultStorageOption = function (subscriptionType, defaultFlight) {
+            return Utilities._getCollectionDefaults(subscriptionType, defaultFlight).storage;
+        };
+        Utilities.getDefaultRUs = function (subscriptionType, defaultFlight, storageOption) {
+            if (subscriptionType === void 0) { subscriptionType = SharedConstants.CollectionCreation.DefaultSubscriptionType; }
+            if (defaultFlight === void 0) { defaultFlight = SharedConstants.CollectionCreation.DefaultAddCollectionDefaultFlight; }
+            var collectionDefaults = Utilities._getCollectionDefaults(subscriptionType, defaultFlight);
+            if (storageOption === Constants.BackendDefaults.singlePartitionStorageInGb) {
+                return collectionDefaults.throughput.fixed;
+            }
+            return collectionDefaults.throughput.unlimited;
+        };
+        Utilities.getMaxRUForStorageOption = function (subscriptionType, defaultFlight, storageOption) {
+            if (subscriptionType === void 0) { subscriptionType = SharedConstants.CollectionCreation.DefaultSubscriptionType; }
+            if (defaultFlight === void 0) { defaultFlight = SharedConstants.CollectionCreation.DefaultAddCollectionDefaultFlight; }
+            if (storageOption === Constants.BackendDefaults.singlePartitionStorageInGb) {
+                return Constants.BackendDefaults.singlePartitionMaxThroughput;
+            }
+            return Constants.BackendDefaults.multiplePartitionMaxThroughputElastic;
+        };
+        Utilities.getMinRUForStorageOption = function (subscriptionType, defaultFlight, storageOption) {
+            if (subscriptionType === void 0) { subscriptionType = SharedConstants.CollectionCreation.DefaultSubscriptionType; }
+            if (defaultFlight === void 0) { defaultFlight = SharedConstants.CollectionCreation.DefaultAddCollectionDefaultFlight; }
+            if (storageOption === Constants.BackendDefaults.singlePartitionStorageInGb) {
+                return Constants.BackendDefaults.singlePartitionMinThroughput;
+            }
+            var collectionDefaults = Utilities._getCollectionDefaults(subscriptionType, defaultFlight);
+            return collectionDefaults.throughput.unlimitedmin;
+        };
+        Utilities._getCollectionDefaults = function (subscriptionType, defaultFlight) {
+            if (subscriptionType === void 0) { subscriptionType = SharedConstants.CollectionCreation.DefaultSubscriptionType; }
+            if (defaultFlight === void 0) { defaultFlight = SharedConstants.CollectionCreation.DefaultAddCollectionDefaultFlight; }
+            return Utilities._defaultsMap[defaultFlight][ViewModels_1.SubscriptionType[subscriptionType]];
+        };
+        Utilities._defaultsMap = {
+            "0": {
+                "Benefits": {
+                    storage: Constants.BackendDefaults.singlePartitionStorageInGb,
+                    throughput: {
+                        fixed: SharedConstants.CollectionCreation.DefaultStandardRUs,
+                        unlimited: SharedConstants.CollectionCreation.DefaultPartitionedCollectionRUs,
+                        unlimitedmax: Constants.BackendDefaults.multiplePartitionMaxThroughput,
+                        unlimitedmin: Constants.BackendDefaults.multiplePartitionMinThroughputElastic
+                    }
+                },
+                "Free": {
+                    storage: Constants.BackendDefaults.singlePartitionStorageInGb,
+                    throughput: {
+                        fixed: SharedConstants.CollectionCreation.DefaultStandardRUs,
+                        unlimited: SharedConstants.CollectionCreation.DefaultPartitionedCollectionRUs,
+                        unlimitedmax: Constants.BackendDefaults.multiplePartitionMaxThroughput,
+                        unlimitedmin: Constants.BackendDefaults.multiplePartitionMinThroughputElastic
+                    }
+                },
+                "EA": {
+                    storage: Constants.BackendDefaults.multiPartitionStorageInGb,
+                    throughput: {
+                        fixed: SharedConstants.CollectionCreation.DefaultCollectionRUs5000,
+                        unlimited: SharedConstants.CollectionCreation.DefaultCollectionRUs25000,
+                        unlimitedmax: Constants.BackendDefaults.multiplePartitionMaxThroughputElastic,
+                        unlimitedmin: Constants.BackendDefaults.multiplePartitionMinThroughputElastic
+                    }
+                },
+                "Internal": {
+                    storage: Constants.BackendDefaults.multiPartitionStorageInGb,
+                    throughput: {
+                        fixed: SharedConstants.CollectionCreation.DefaultStandardRUs,
+                        unlimited: SharedConstants.CollectionCreation.DefaultPartitionedCollectionRUs,
+                        unlimitedmax: Constants.BackendDefaults.multiplePartitionMaxThroughput,
+                        unlimitedmin: Constants.BackendDefaults.multiplePartitionMinThroughputElastic
+                    }
+                },
+                "PAYG": {
+                    storage: Constants.BackendDefaults.multiPartitionStorageInGb,
+                    throughput: {
+                        fixed: SharedConstants.CollectionCreation.DefaultCollectionRUs5000,
+                        unlimited: SharedConstants.CollectionCreation.DefaultPartitionedCollectionRUs,
+                        unlimitedmax: Constants.BackendDefaults.multiplePartitionMaxThroughputElastic,
+                        unlimitedmin: Constants.BackendDefaults.multiplePartitionMinThroughputElastic
+                    }
+                }
+            },
+            "1": {
+                "Benefits": {
+                    storage: Constants.BackendDefaults.singlePartitionStorageInGb,
+                    throughput: {
+                        fixed: SharedConstants.CollectionCreation.DefaultStandardRUs,
+                        unlimited: SharedConstants.CollectionCreation.DefaultCollectionRUs2500,
+                        unlimitedmax: Constants.BackendDefaults.multiplePartitionMaxThroughput,
+                        unlimitedmin: Constants.BackendDefaults.multiplePartitionMinThroughputElastic
+                    }
+                },
+                "Free": {
+                    storage: Constants.BackendDefaults.singlePartitionStorageInGb,
+                    throughput: {
+                        fixed: SharedConstants.CollectionCreation.DefaultStandardRUs,
+                        unlimited: SharedConstants.CollectionCreation.DefaultCollectionRUs2500,
+                        unlimitedmax: Constants.BackendDefaults.multiplePartitionMaxThroughput,
+                        unlimitedmin: Constants.BackendDefaults.multiplePartitionMinThroughputElastic
+                    }
+                },
+                "EA": {
+                    storage: Constants.BackendDefaults.multiPartitionStorageInGb,
+                    throughput: {
+                        fixed: SharedConstants.CollectionCreation.DefaultCollectionRUs5000,
+                        unlimited: SharedConstants.CollectionCreation.DefaultCollectionRUs25000,
+                        unlimitedmax: Constants.BackendDefaults.multiplePartitionMaxThroughputElastic,
+                        unlimitedmin: Constants.BackendDefaults.multiplePartitionMinThroughputElastic
+                    }
+                },
+                "Internal": {
+                    storage: Constants.BackendDefaults.multiPartitionStorageInGb,
+                    throughput: {
+                        fixed: SharedConstants.CollectionCreation.DefaultCollectionRUs2000,
+                        unlimited: SharedConstants.CollectionCreation.DefaultPartitionedCollectionRUs,
+                        unlimitedmax: Constants.BackendDefaults.multiplePartitionMaxThroughput,
+                        unlimitedmin: Constants.BackendDefaults.multiplePartitionMinThroughputElastic
+                    }
+                },
+                "PAYG": {
+                    storage: Constants.BackendDefaults.multiPartitionStorageInGb,
+                    throughput: {
+                        fixed: SharedConstants.CollectionCreation.DefaultCollectionRUs5000,
+                        unlimited: SharedConstants.CollectionCreation.DefaultCollectionRUs15000,
+                        unlimitedmax: Constants.BackendDefaults.multiplePartitionMaxThroughputElastic,
+                        unlimitedmin: Constants.BackendDefaults.multiplePartitionMinThroughputElastic
+                    }
+                }
+            },
+            "2": {
+                "Benefits": {
+                    storage: Constants.BackendDefaults.singlePartitionStorageInGb,
+                    throughput: {
+                        fixed: SharedConstants.CollectionCreation.DefaultStandardRUs,
+                        unlimited: SharedConstants.CollectionCreation.DefaultCollectionRUs2500,
+                        unlimitedmax: Constants.BackendDefaults.multiplePartitionMaxThroughput,
+                        unlimitedmin: Constants.BackendDefaults.multiplePartitionMinThroughputElastic
+                    }
+                },
+                "Free": {
+                    storage: Constants.BackendDefaults.singlePartitionStorageInGb,
+                    throughput: {
+                        fixed: SharedConstants.CollectionCreation.DefaultStandardRUs,
+                        unlimited: SharedConstants.CollectionCreation.DefaultCollectionRUs2500,
+                        unlimitedmax: Constants.BackendDefaults.multiplePartitionMaxThroughput,
+                        unlimitedmin: Constants.BackendDefaults.multiplePartitionMinThroughputElastic
+                    }
+                },
+                "EA": {
+                    storage: Constants.BackendDefaults.multiPartitionStorageInGb,
+                    throughput: {
+                        fixed: SharedConstants.CollectionCreation.DefaultCollectionRUs5000,
+                        unlimited: SharedConstants.CollectionCreation.DefaultCollectionRUs25000,
+                        unlimitedmax: Constants.BackendDefaults.multiplePartitionMaxThroughputElastic,
+                        unlimitedmin: Constants.BackendDefaults.multiplePartitionMinThroughputElastic
+                    }
+                },
+                "Internal": {
+                    storage: Constants.BackendDefaults.multiPartitionStorageInGb,
+                    throughput: {
+                        fixed: SharedConstants.CollectionCreation.DefaultCollectionRUs5000,
+                        unlimited: SharedConstants.CollectionCreation.DefaultPartitionedCollectionRUs,
+                        unlimitedmax: Constants.BackendDefaults.multiplePartitionMaxThroughput,
+                        unlimitedmin: Constants.BackendDefaults.multiplePartitionMinThroughputElastic
+                    }
+                },
+                "PAYG": {
+                    storage: Constants.BackendDefaults.multiPartitionStorageInGb,
+                    throughput: {
+                        fixed: SharedConstants.CollectionCreation.DefaultCollectionRUs5000,
+                        unlimited: SharedConstants.CollectionCreation.DefaultCollectionRUs20000,
+                        unlimitedmax: Constants.BackendDefaults.multiplePartitionMaxThroughputElastic,
+                        unlimitedmin: Constants.BackendDefaults.multiplePartitionMinThroughputElastic
+                    }
+                }
+            }
+        };
+        return Utilities;
+    }());
+    exports.Utilities = Utilities;
+});
+£´po?      [Õ¾Ð[Õ¾â?§¶¶[×kF   F    :https://cosmos.azure.com/built/Shared/AddCollectionUtility.js?v=1.0.1 necko:classified 1 strongly-framed 1 security-info FnhllAKWRHGAlo+ESXykKAAAAAAAAAAAwAAAAAAAAEaphjojH6pBabDSgSnsfLHeAAQAAgAAAAAAAAAAAAAAAAAAAAAB4vFIJp5wRkeyPxAQ9RJGKPqbqVvKO0mKuIl8ec8o/uhmCjImkVxP+7sgiYWmMt8FvcOXmlQiTNWFiWlrbpbqgwAAAAAAAAOMMIIDiDCCAnCgAwIBAgIERTJgUjANBgkqhkiG9w0BAQsFADCBijEUMBIGA1UEBhMLUG9ydFN3aWdnZXIxFDASBgNVBAgTC1BvcnRTd2lnZ2VyMRQwEgYDVQQHEwtQb3J0U3dpZ2dlcjEUMBIGA1UEChMLUG9ydFN3aWdnZXIxFzAVBgNVBAsTDlBvcnRTd2lnZ2VyIENBMRcwFQYDVQQDEw5Qb3J0U3dpZ2dlciBDQTAeFw0xNDEwMjgxMzEyMTBaFw0zODEwMjgxMzEyMTBaMGAxFDASBgNVBAYTC1BvcnRTd2lnZ2VyMRQwEgYDVQQKEwtQb3J0U3dpZ2dlcjEXMBUGA1UECxMOUG9ydFN3aWdnZXIgQ0ExGTAXBgNVBAMTEGNvc21vcy5henVyZS5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCKn7emKINsnWqPZ+C/VsqbQf/l4NsmIh34bXBR0xdNg9bfb+xcoghRlmbPjhZ/A26A2gJ6Rrg2d0GGMLpbqA8nTlRRGXEAD39321zk4ye09ElXClvqguGqdqOJpPQ05DPFD6wSOq+KVAEblE5bi+LMqBLipDERzgUe7xzeqVVk0i0ldh9yQOIk3YuzcBR9igSEuw5qladmMYvXKHYM9YZz0R7axMc8xAtadK7C9KfFPfEI5LS2nhmy4vBrTgFyYhfkEvKfmIj6HTX0ISFCAC2llcBLpEDcuiW76tAHp1pXDeWtSeaV36AeOctdleVgrbmsGs3fu6ppuRcWjEZUbjE3AgMBAAGjHzAdMBsGA1UdEQQUMBKCEGNvc21vcy5henVyZS5jb20wDQYJKoZIhvcNAQELBQADggEBABYikT6Y5YgJJ4IVJldlFDF5MKxp26YegXhvT8EmAbgr0yQBIlY2DtKEiHf7Q8wRoJ9y5Ajst1D7HmRba+XLjS6s3IHJ7gtuvc3fZj9MPKpbqSKRfHDB8bDOVIzmjBseg2BqckHTkcYak3b/pTWCTqKHM3LxKsDwN8F3HNQ2pY4d5ma2kR1EtWdTpRiIbir3QxJDcWVp8CgHONZcoMn33NNwnWWjAQMX6d8e1CPuBZi0t+myaYduCqPgKKox9qMXSubF6uifQkAJ5RdLZrZ2pghENA/4r1oz51wqEmpjPsStSUxRPwJ6wJrB4gwGtX7++ZHLjAaNrTSUCGwIOlAT4LnALwEDAAAAAAEBAAAAAA== request-method GET request-Accept-Encoding gzip, deflate, br response-head HTTP/1.1 200 OK
+Content-Length: 11890
+Content-Type: application/x-javascript
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:39:30 GMT
+ original-response-headers Content-Length: 11890
+Content-Type: application/x-javascript
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:39:30 GMT
+Connection: close
+ uncompressed-len 0 net-response-time-onstart 17964 net-response-time-onstop 17965   .r

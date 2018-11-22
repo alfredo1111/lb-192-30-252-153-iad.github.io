@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<application-state>
+  <context id="">
+    <application id="firefox-esr.desktop" open-window-count="1" score="2302.84765625" last-seen="1542910543"/>
+    <application id="org.gnome.Nautilus.desktop" open-window-count="0" score="1726.25" last-seen="1542365656"/>
+    <application id="org.gnome.Terminal.desktop" open-window-count="2" score="14453.8203125" last-seen="1542910541"/>
+    <application id="org.gnome.Calculator.desktop" open-window-count="0" score="0.25" last-seen="1542709281"/>
+    <application id="gnome-control-center.desktop" open-window-count="0" score="30" last-seen="1542896141"/>
+  </context>
+</application-state>

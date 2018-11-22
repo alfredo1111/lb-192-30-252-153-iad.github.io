@@ -1,0 +1,434 @@
+var __extends = (this && this.__extends) || (function () {
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    }
+    return function (d, b) {
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
+define(["require", "exports", "knockout", "../../Common/Constants", "../../Contracts/ViewModels", "../../Shared/Telemetry/TelemetryConstants", "../../Common/ErrorParserUtility", "./TabsBase", "../Menus/CommandBar/CommandBarOptions", "../../Common/HashMap", "../../Common/HeadersUtility", "../../Common/Logger", "../../PlatformType", "../../Common/Splitter", "../../Shared/Telemetry/TelemetryProcessor", "../../Common/ThemeUtility"], function (require, exports, ko, Constants, ViewModels, TelemetryConstants_1, ErrorParserUtility, TabsBase, CommandBarOptions_1, HashMap_1, HeadersUtility, Logger_1, PlatformType_1, Splitter_1, TelemetryProcessor_1, ThemeUtility_1) {
+    "use strict";
+    var ToggleState;
+    (function (ToggleState) {
+        ToggleState[ToggleState["Result"] = 0] = "Result";
+        ToggleState[ToggleState["QueryMetrics"] = 1] = "QueryMetrics";
+    })(ToggleState || (ToggleState = {}));
+    ;
+    var QueryTab = /** @class */ (function (_super) {
+        __extends(QueryTab, _super);
+        function QueryTab(options) {
+            var _this = _super.call(this, options) || this;
+            _this.commandBarOptions = {};
+            _this.onExecuteQueryClick = function () {
+                var sqlStatement = _this.selectedContent() || _this.sqlQueryEditorContent();
+                _this.sqlStatementToExecute(sqlStatement);
+                _this.allResultsMetadata([]);
+                _this.queryResults("");
+                _this._iterator = null;
+                return _this._executeQueryDocumentsPage(0);
+            };
+            _this.onErrorDetailsClick = function (src, event) {
+                _this.collection && _this.collection.container.expandConsole();
+                return false;
+            };
+            _this.onErrorDetailsKeyPress = function (src, event) {
+                if (event.keyCode === Constants.KeyCodes.Space || event.keyCode === Constants.KeyCodes.Enter) {
+                    _this.onErrorDetailsClick(src, null);
+                    return false;
+                }
+                return true;
+            };
+            _this.onToggleKeyDown = function (source, event) {
+                if (event.keyCode === Constants.KeyCodes.LeftArrow) {
+                    _this.toggleResult();
+                    event.stopPropagation();
+                    return false;
+                }
+                else if (event.keyCode === Constants.KeyCodes.RightArrow) {
+                    _this.toggleMetrics();
+                    event.stopPropagation();
+                    return false;
+                }
+                return true;
+            };
+            _this.onDownloadQueryMetricsCsvClick = function (source, event) {
+                _this._downloadQueryMetricsCsvData();
+                return false;
+            };
+            _this.onDownloadQueryMetricsCsvKeyPress = function (source, event) {
+                if (event.keyCode === Constants.KeyCodes.Space || Constants.KeyCodes.Enter) {
+                    _this._downloadQueryMetricsCsvData();
+                    return false;
+                }
+                return true;
+            };
+            if (_this.isRunningOnDaytona) {
+                _this.daytonaContext && _this.daytonaContext.hostProxy.onThemeChange(function (newTheme) {
+                    var newTheme = ThemeUtility_1.default.getMonacoTheme(newTheme);
+                    if (newTheme !== _this._theme) {
+                        _this._theme = newTheme;
+                        monaco.editor.setTheme(newTheme);
+                    }
+                });
+                window.host = _this.daytonaContext && _this.daytonaContext.hostProxy;
+            }
+            _this.queryEditorId = "queryeditor" + _this.tabId;
+            _this.showingDocumentsDisplayText = ko.observable();
+            _this.requestChargeDisplayText = ko.observable();
+            _this.sqlQueryEditorContent = ko.observable(options.queryText || "SELECT * FROM c");
+            _this._executeQueryButtonTitle = ko.observable("Execute Query");
+            _this.selectedContent = ko.observable();
+            _this.selectedContent.subscribe(function (selectedContent) {
+                if (!selectedContent.trim()) {
+                    _this._executeQueryButtonTitle("Execute Query");
+                }
+                else {
+                    _this._executeQueryButtonTitle("Execute Selection");
+                }
+                if (_this.commandBarOptions) {
+                    _this.commandBarOptions.options()[0].commandButtonLabel(_this._executeQueryButtonTitle());
+                }
+            });
+            _this.sqlStatementToExecute = ko.observable("");
+            _this.queryResults = ko.observable("");
+            _this.statusMessge = ko.observable();
+            _this.statusIcon = ko.observable();
+            _this.allResultsMetadata = ko.observableArray([]);
+            _this.errors = ko.observableArray([]);
+            _this._partitionKey = options.partitionKey;
+            _this._selfLink = options.selfLink;
+            _this.splitterId = _this.tabId + "_splitter";
+            _this.isPreferredApiMongoDB = false;
+            _this.aggregatedQueryMetrics = ko.observable();
+            _this._resetAggregateQueryMetrics();
+            _this.queryMetrics = ko.observable(new HashMap_1.HashMap());
+            _this.queryMetrics.subscribe(function (metrics) { return _this.aggregatedQueryMetrics(_this._aggregateQueryMetrics(metrics)); });
+            _this.isQueryMetricsEnabled = ko.computed(function () {
+                var container = _this.collection && _this.collection.container;
+                var isSqlApi = container && container.isPreferredApiDocumentDB();
+                var isQueryMetricsEnabled = container && (container.isFeatureEnabled(Constants.Features.queryMetrics) || container.getPlatformType() === PlatformType_1.PlatformType.Hosted);
+                return (isSqlApi && isQueryMetricsEnabled) || false;
+            });
+            _this.activityId = ko.observable();
+            _this.toggleState = ko.observable(ToggleState.Result);
+            _this.monacoSettings = new ViewModels.MonacoEditorSettings('sql', false);
+            _this.executeQueryButton = {
+                enabled: ko.computed(function () {
+                    return !!_this.sqlQueryEditorContent() && _this.sqlQueryEditorContent().length > 0;
+                }),
+                visible: ko.computed(function () {
+                    return true;
+                })
+            };
+            _super.prototype.onTemplateReady.call(_this, function (isTemplateReady) {
+                if (isTemplateReady) {
+                    var splitterBounds = { min: (Constants.Queries.QueryEditorMinHeightRatio * window.innerHeight), max: $("#" + _this.tabId).height() - (Constants.Queries.QueryEditorMaxHeightRatio * window.innerHeight) };
+                    _this.splitter = new Splitter_1.Splitter({
+                        splitterId: _this.splitterId,
+                        leftId: _this.queryEditorId,
+                        bounds: splitterBounds,
+                        direction: Splitter_1.SplitterDirection.Horizontal
+                    });
+                }
+            });
+            _this.fetchNextPageButton = {
+                enabled: ko.computed(function () {
+                    var allResultsMetadata = _this.allResultsMetadata() || [];
+                    var numberOfResultsMetadata = allResultsMetadata.length;
+                    if (numberOfResultsMetadata === 0) {
+                        return false;
+                    }
+                    if (allResultsMetadata[numberOfResultsMetadata - 1].hasMoreResults) {
+                        return true;
+                    }
+                    return false;
+                }),
+                visible: ko.computed(function () {
+                    return true;
+                })
+            };
+            _this._buildCommandBarOptions();
+            return _this;
+        }
+        QueryTab.prototype.onTabClick = function () {
+            var _this = this;
+            return _super.prototype.onTabClick.call(this).then(function () {
+                _this.collection && _this.collection.selectedSubnodeKind(ViewModels.CollectionTabKind.Query);
+            });
+        };
+        QueryTab.prototype.onFetchNextPageClick = function () {
+            var allResultsMetadata = this.allResultsMetadata && this.allResultsMetadata() || [];
+            var metadata = allResultsMetadata[allResultsMetadata.length - 1];
+            var firstResultIndex = metadata && Number(metadata.firstItemIndex) || 1;
+            var itemCount = metadata && Number(metadata.itemCount) || 0;
+            return this._executeQueryDocumentsPage(firstResultIndex + itemCount - 1);
+        };
+        QueryTab.prototype.toggleResult = function () {
+            this.toggleState(ToggleState.Result);
+            this.queryResults.valueHasMutated(); // needed to refresh the json-editor component
+        };
+        QueryTab.prototype.toggleMetrics = function () {
+            this.toggleState(ToggleState.QueryMetrics);
+        };
+        QueryTab.prototype.isResultToggled = function () {
+            return this.toggleState() === ToggleState.Result;
+        };
+        QueryTab.prototype.isMetricsToggled = function () {
+            return this.toggleState() === ToggleState.QueryMetrics;
+        };
+        QueryTab.prototype._executeQueryDocumentsPage = function (firstItemIndex) {
+            var _this = this;
+            this.errors([]);
+            if (this._iterator == null) {
+                var queryIteratorPromise = this._initIterator();
+                return queryIteratorPromise.finally(function () { return _this._queryDocumentsPage(firstItemIndex); });
+            }
+            return this._queryDocumentsPage(firstItemIndex);
+        };
+        // TODO: Position and enable spinner when request is in progress
+        QueryTab.prototype._queryDocumentsPage = function (firstItemIndex) {
+            var _this = this;
+            this.isExecutionError(false);
+            this._resetAggregateQueryMetrics();
+            var startKey = TelemetryProcessor_1.default.traceStart(TelemetryConstants_1.Action.ExecuteQuery, {
+                databaseAccountName: this.collection && this.collection.container.databaseAccount().name,
+                defaultExperience: this.collection && this.collection.container.defaultExperience(),
+                dataExplorerArea: Constants.Areas.Tab,
+                tabTitle: this.tabTitle()
+            }, this.isRunningOnDaytona);
+            var options = {};
+            options.enableCrossPartitionQuery = HeadersUtility.shouldEnableCrossPartitionKeyForResourceWithPartitionKey(this._partitionKey);
+            this.isExecuting(true);
+            return this.documentClientUtility.queryDocumentsPage({ self: this._selfLink, rid: this.collection && this.collection.rid, resourceName: this.collection && this.collection.id() }, this.sqlStatementToExecute(), this._iterator, firstItemIndex, options).then(function (queryResults) {
+                var allResultsMetadata = _this.allResultsMetadata && _this.allResultsMetadata() || [];
+                var metadata = allResultsMetadata[allResultsMetadata.length - 1];
+                var resultsMetadata = {
+                    hasMoreResults: queryResults.hasMoreResults,
+                    itemCount: queryResults.itemCount,
+                    firstItemIndex: queryResults.firstItemIndex,
+                    lastItemIndex: queryResults.lastItemIndex
+                };
+                _this.allResultsMetadata.push(resultsMetadata);
+                _this.activityId(queryResults.activityId);
+                _this._updateQueryMetricsMap(queryResults.headers[Constants.HttpHeaders.queryMetrics]);
+                if (queryResults.itemCount == 0 && metadata != null && metadata.itemCount >= 0) {
+                    // we let users query for the next page because the SDK sometimes specifies there are more elements
+                    // even though there aren't any so we should not update the prior query results.
+                    return;
+                }
+                var documents = queryResults.documents;
+                var results = _this.renderObjectForEditor(documents, null, 4);
+                var resultsDisplay = (queryResults.itemCount > 0) ? queryResults.firstItemIndex + " - " + queryResults.lastItemIndex : "0 - 0";
+                _this.showingDocumentsDisplayText(resultsDisplay);
+                _this.requestChargeDisplayText(queryResults.requestCharge + " RUs");
+                if (!_this.queryResults() && !results) {
+                    var appInsights = window.appInsights;
+                    var errorMessage = JSON.stringify({
+                        error: "Returned no results after query execution",
+                        accountName: _this.collection && _this.collection.container.databaseAccount(),
+                        databaseName: _this.collection && _this.collection.database.id(),
+                        collectionName: _this.collection && _this.collection.id(),
+                        sqlQuery: _this.sqlStatementToExecute(),
+                        hasMoreResults: resultsMetadata.hasMoreResults,
+                        itemCount: resultsMetadata.itemCount,
+                        responseHeaders: queryResults && queryResults.headers
+                    });
+                    Logger_1.Logger.logError(errorMessage, "QueryTab");
+                    appInsights && appInsights.trackTrace(errorMessage);
+                }
+                _this.queryResults(results);
+                TelemetryProcessor_1.default.traceSuccess(TelemetryConstants_1.Action.ExecuteQuery, {
+                    databaseAccountName: _this.collection && _this.collection.container.databaseAccount().name,
+                    defaultExperience: _this.collection && _this.collection.container.defaultExperience(),
+                    dataExplorerArea: Constants.Areas.Tab,
+                    tabTitle: _this.tabTitle()
+                }, startKey, _this.isRunningOnDaytona);
+            }, function (reason) {
+                _this.isExecutionError(true);
+                var parsedErrors = ErrorParserUtility.parse(reason);
+                var errors = parsedErrors.map(function (error) {
+                    return {
+                        message: error.message,
+                        start: (error.location) ? error.location.start : undefined,
+                        end: (error.location) ? error.location.end : undefined,
+                        code: error.code,
+                        severity: error.severity
+                    };
+                });
+                _this.errors(errors);
+                TelemetryProcessor_1.default.traceFailure(TelemetryConstants_1.Action.ExecuteQuery, {
+                    databaseAccountName: _this.collection && _this.collection.container.databaseAccount().name,
+                    defaultExperience: _this.collection && _this.collection.container.defaultExperience(),
+                    dataExplorerArea: Constants.Areas.Tab,
+                    tabTitle: _this.tabTitle()
+                }, startKey, _this.isRunningOnDaytona);
+            }).finally(function () { return _this.isExecuting(false); });
+        };
+        QueryTab.prototype._updateQueryMetricsMap = function (metricsMap) {
+            var _this = this;
+            if (!metricsMap) {
+                return;
+            }
+            Object.keys(metricsMap).forEach(function (key) {
+                _this.queryMetrics().set(key, metricsMap[key]);
+            });
+            this.queryMetrics.valueHasMutated();
+        };
+        QueryTab.prototype._aggregateQueryMetrics = function (metricsMap) {
+            var _this = this;
+            if (!metricsMap) {
+                return null;
+            }
+            var aggregatedMetrics = this.aggregatedQueryMetrics();
+            metricsMap.forEach(function (partitionKeyRangeId, queryMetrics) {
+                aggregatedMetrics._documentLoadTime = queryMetrics._documentLoadTime && (_this._normalize(queryMetrics._documentLoadTime.totalMilliseconds()) + _this._normalize(aggregatedMetrics._documentLoadTime));
+                aggregatedMetrics._documentWriteTime = queryMetrics._documentWriteTime && (_this._normalize(queryMetrics._documentWriteTime.totalMilliseconds()) + _this._normalize(aggregatedMetrics._documentWriteTime));
+                aggregatedMetrics._indexHitDocumentCount = queryMetrics._indexHitDocumentCount && (_this._normalize(queryMetrics._indexHitDocumentCount) + _this._normalize(aggregatedMetrics._indexHitDocumentCount));
+                aggregatedMetrics._outputDocumentCount = queryMetrics._outputDocumentCount && (_this._normalize(queryMetrics._outputDocumentCount) + _this._normalize(aggregatedMetrics._outputDocumentCount));
+                aggregatedMetrics._outputDocumentSize = queryMetrics._outputDocumentSize && (_this._normalize(queryMetrics._outputDocumentSize) + _this._normalize(aggregatedMetrics._outputDocumentSize));
+                aggregatedMetrics._indexLookupTime = queryMetrics._indexLookupTime && (_this._normalize(queryMetrics._indexLookupTime.totalMilliseconds()) + _this._normalize(aggregatedMetrics._indexLookupTime));
+                aggregatedMetrics._retrievedDocumentCount = queryMetrics._retrievedDocumentCount && (_this._normalize(queryMetrics._retrievedDocumentCount) + _this._normalize(aggregatedMetrics._retrievedDocumentCount));
+                aggregatedMetrics._retrievedDocumentSize = queryMetrics._retrievedDocumentSize && (_this._normalize(queryMetrics._retrievedDocumentSize) + _this._normalize(aggregatedMetrics._retrievedDocumentSize));
+                aggregatedMetrics._vmExecutionTime = queryMetrics._vmExecutionTime && (_this._normalize(queryMetrics._vmExecutionTime.totalMilliseconds()) + _this._normalize(aggregatedMetrics._vmExecutionTime));
+                aggregatedMetrics._totalQueryExecutionTime = queryMetrics._totalQueryExecutionTime && (_this._normalize(queryMetrics._totalQueryExecutionTime.totalMilliseconds()) + _this._normalize(aggregatedMetrics._totalQueryExecutionTime));
+                aggregatedMetrics._runtimeExecutionTimes._queryEngineExecutionTime = aggregatedMetrics._runtimeExecutionTimes && (_this._normalize(queryMetrics._runtimeExecutionTimes._queryEngineExecutionTime.totalMilliseconds()) + _this._normalize(aggregatedMetrics._runtimeExecutionTimes._queryEngineExecutionTime));
+                aggregatedMetrics._runtimeExecutionTimes._systemFunctionExecutionTime = aggregatedMetrics._runtimeExecutionTimes && (_this._normalize(queryMetrics._runtimeExecutionTimes._systemFunctionExecutionTime.totalMilliseconds()) + _this._normalize(aggregatedMetrics._runtimeExecutionTimes._systemFunctionExecutionTime));
+                aggregatedMetrics._runtimeExecutionTimes._userDefinedFunctionExecutionTime = aggregatedMetrics._runtimeExecutionTimes && (_this._normalize(queryMetrics._runtimeExecutionTimes._userDefinedFunctionExecutionTime.totalMilliseconds()) + _this._normalize(aggregatedMetrics._runtimeExecutionTimes._userDefinedFunctionExecutionTime));
+            });
+            return aggregatedMetrics;
+        };
+        QueryTab.prototype._downloadQueryMetricsCsvData = function () {
+            var csvData = this._generateQueryMetricsCsvData();
+            if (!csvData) {
+                return;
+            }
+            if (navigator.msSaveBlob) { // for IE and Edge
+                navigator.msSaveBlob(new Blob([csvData], { type: 'data:text/csv;charset=utf-8' }), 'PerPartitionQueryMetrics.csv');
+            }
+            else {
+                var hiddenDownloadLink = document.createElement('a');
+                hiddenDownloadLink.href = 'data:text/csv;charset=utf-8,' + encodeURI(csvData);
+                hiddenDownloadLink.target = '_self';
+                hiddenDownloadLink.download = 'QueryMetricsPerPartition.csv';
+                hiddenDownloadLink.click();
+            }
+        };
+        QueryTab.prototype._initIterator = function () {
+            var _this = this;
+            var options = {};
+            options.enableCrossPartitionQuery = HeadersUtility.shouldEnableCrossPartitionKeyForResourceWithPartitionKey(this._partitionKey);
+            return this.documentClientUtility.queryDocuments({ self: this._selfLink, rid: this.collection && this.collection.rid, resourceName: this.collection && this.collection.id() }, this.sqlStatementToExecute(), options)
+                .then(function (iterator) { return _this._iterator = iterator; });
+        };
+        QueryTab.prototype._normalize = function (value) {
+            if (!value) {
+                return 0;
+            }
+            return value;
+        };
+        QueryTab.prototype._resetAggregateQueryMetrics = function () {
+            this.aggregatedQueryMetrics({
+                _clientSideMetrics: {},
+                _documentLoadTime: undefined,
+                _documentWriteTime: undefined,
+                _indexHitDocumentCount: undefined,
+                _outputDocumentCount: undefined,
+                _outputDocumentSize: undefined,
+                _indexLookupTime: undefined,
+                _retrievedDocumentCount: undefined,
+                _retrievedDocumentSize: undefined,
+                _vmExecutionTime: undefined,
+                _queryPreparationTimes: undefined,
+                _runtimeExecutionTimes: {
+                    _queryEngineExecutionTime: undefined,
+                    _systemFunctionExecutionTime: undefined,
+                    _userDefinedFunctionExecutionTime: undefined
+                },
+                _totalQueryExecutionTime: undefined
+            });
+        };
+        QueryTab.prototype._generateQueryMetricsCsvData = function () {
+            if (!this.queryMetrics()) {
+                return null;
+            }
+            var queryMetrics = this.queryMetrics();
+            var csvData = "";
+            var columnHeaders = [
+                "Partition key range id",
+                "Retrieved document count",
+                "Retrieved document size (in bytes)",
+                "Output document count",
+                "Output document size (in bytes)",
+                "Index hit document count",
+                "Index lookup time (ms)",
+                "Document load time (ms)",
+                "Query engine execution time (ms)",
+                "System function execution time (ms)",
+                "User defined function execution time (ms)",
+                "Document write time (ms)"
+            ].join(",") + "\n";
+            csvData = csvData + columnHeaders;
+            queryMetrics.forEach(function (partitionKeyRangeId, queryMetric) {
+                var partitionKeyRangeData = [
+                    partitionKeyRangeId,
+                    queryMetric._retrievedDocumentCount,
+                    queryMetric._retrievedDocumentSize,
+                    queryMetric._outputDocumentCount,
+                    queryMetric._outputDocumentSize,
+                    queryMetric._indexHitDocumentCount,
+                    queryMetric._indexLookupTime && queryMetric._indexLookupTime.totalMilliseconds(),
+                    queryMetric._documentLoadTime && queryMetric._documentLoadTime.totalMilliseconds(),
+                    queryMetric._runtimeExecutionTimes && queryMetric._runtimeExecutionTimes._queryEngineExecutionTime && queryMetric._runtimeExecutionTimes._queryEngineExecutionTime.totalMilliseconds(),
+                    queryMetric._runtimeExecutionTimes && queryMetric._runtimeExecutionTimes._systemFunctionExecutionTime && queryMetric._runtimeExecutionTimes._systemFunctionExecutionTime.totalMilliseconds(),
+                    queryMetric._runtimeExecutionTimes && queryMetric._runtimeExecutionTimes._userDefinedFunctionExecutionTime && queryMetric._runtimeExecutionTimes._userDefinedFunctionExecutionTime.totalMilliseconds(),
+                    queryMetric._documentWriteTime && queryMetric._documentWriteTime.totalMilliseconds()
+                ].join(",") + "\n";
+                csvData = csvData + partitionKeyRangeData;
+            });
+            return csvData;
+        };
+        QueryTab.prototype._buildCommandBarOptions = function () {
+            var _this = this;
+            var executeQueryButton = {
+                iconSrc: 'images/ExecuteQuery.svg',
+                onCommandClick: this.onExecuteQueryClick,
+                commandButtonLabel: this._executeQueryButtonTitle,
+                hasPopup: false,
+                visible: ko.computed(function () { return _this.executeQueryButton.visible(); }),
+                disabled: ko.computed(function () { return !_this.executeQueryButton.enabled(); }),
+                tabIndex: ko.computed(function () { return _this.executeQueryButton.enabled() ? 0 : -1; })
+            };
+            this.commandBarOptions = new CommandBarOptions_1.CommandBarOptions([
+                executeQueryButton
+            ]);
+        };
+        return QueryTab;
+    }(TabsBase));
+    return QueryTab;
+});
+KZ5x      [Õ¾á[Õ¾ô?§¶Á[×kX   A    :https://cosmos.azure.com/built/Explorer/Tabs/QueryTab.js?v=1.0.1 necko:classified 1 strongly-framed 1 security-info FnhllAKWRHGAlo+ESXykKAAAAAAAAAAAwAAAAAAAAEaphjojH6pBabDSgSnsfLHeAAQAAgAAAAAAAAAAAAAAAAAAAAAB4vFIJp5wRkeyPxAQ9RJGKPqbqVvKO0mKuIl8ec8o/uhmCjImkVxP+7sgiYWmMt8FvcOXmlQiTNWFiWlrbpbqgwAAAAAAAAOMMIIDiDCCAnCgAwIBAgIERTJgUjANBgkqhkiG9w0BAQsFADCBijEUMBIGA1UEBhMLUG9ydFN3aWdnZXIxFDASBgNVBAgTC1BvcnRTd2lnZ2VyMRQwEgYDVQQHEwtQb3J0U3dpZ2dlcjEUMBIGA1UEChMLUG9ydFN3aWdnZXIxFzAVBgNVBAsTDlBvcnRTd2lnZ2VyIENBMRcwFQYDVQQDEw5Qb3J0U3dpZ2dlciBDQTAeFw0xNDEwMjgxMzEyMTBaFw0zODEwMjgxMzEyMTBaMGAxFDASBgNVBAYTC1BvcnRTd2lnZ2VyMRQwEgYDVQQKEwtQb3J0U3dpZ2dlcjEXMBUGA1UECxMOUG9ydFN3aWdnZXIgQ0ExGTAXBgNVBAMTEGNvc21vcy5henVyZS5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCKn7emKINsnWqPZ+C/VsqbQf/l4NsmIh34bXBR0xdNg9bfb+xcoghRlmbPjhZ/A26A2gJ6Rrg2d0GGMLpbqA8nTlRRGXEAD39321zk4ye09ElXClvqguGqdqOJpPQ05DPFD6wSOq+KVAEblE5bi+LMqBLipDERzgUe7xzeqVVk0i0ldh9yQOIk3YuzcBR9igSEuw5qladmMYvXKHYM9YZz0R7axMc8xAtadK7C9KfFPfEI5LS2nhmy4vBrTgFyYhfkEvKfmIj6HTX0ISFCAC2llcBLpEDcuiW76tAHp1pXDeWtSeaV36AeOctdleVgrbmsGs3fu6ppuRcWjEZUbjE3AgMBAAGjHzAdMBsGA1UdEQQUMBKCEGNvc21vcy5henVyZS5jb20wDQYJKoZIhvcNAQELBQADggEBABYikT6Y5YgJJ4IVJldlFDF5MKxp26YegXhvT8EmAbgr0yQBIlY2DtKEiHf7Q8wRoJ9y5Ajst1D7HmRba+XLjS6s3IHJ7gtuvc3fZj9MPKpbqSKRfHDB8bDOVIzmjBseg2BqckHTkcYak3b/pTWCTqKHM3LxKsDwN8F3HNQ2pY4d5ma2kR1EtWdTpRiIbir3QxJDcWVp8CgHONZcoMn33NNwnWWjAQMX6d8e1CPuBZi0t+myaYduCqPgKKox9qMXSubF6uifQkAJ5RdLZrZ2pghENA/4r1oz51wqEmpjPsStSUxRPwJ6wJrB4gwGtX7++ZHLjAaNrTSUCGwIOlAT4LnALwEDAAAAAAEBAAAAAA== request-method GET request-Accept-Encoding gzip, deflate, br response-head HTTP/1.1 200 OK
+Content-Length: 25589
+Content-Type: application/x-javascript
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:39:48 GMT
+ original-response-headers Content-Length: 25589
+Content-Type: application/x-javascript
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:39:48 GMT
+Connection: close
+ uncompressed-len 0 net-response-time-onstart 19594 net-response-time-onstop 19594   cõ

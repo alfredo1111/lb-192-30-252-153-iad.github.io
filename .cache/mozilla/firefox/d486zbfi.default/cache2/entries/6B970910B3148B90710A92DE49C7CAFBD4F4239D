@@ -1,0 +1,243 @@
+define(["require", "exports", "./FormFields", "../scripts/Framework/Util/Log", "../scripts/Framework/Shared/DataConstants", "css!./CSS/ParameterGroups.css", "text!./Templates/ParameterGroupsTemplate.html"], function (require, exports, FormFields_1, Log_1, DataConstants_1) {
+    "use strict";
+    var logger = Log_1.getLogger({
+        loggerName: "ParameterGroupsBinding"
+    });
+    var ParameterGroupsBinding = (function () {
+        function ParameterGroupsBinding() {
+        }
+        ParameterGroupsBinding.prototype.init = function (element, valueAccessor, allBindingsAccessor, viewModel, bindingContext) {
+            var parameterViewModel = new ParameterGroupsViewModel(valueAccessor().paramGroups, valueAccessor().isSingleGroup, valueAccessor().groupsTooltip, valueAccessor().readOnly);
+            element.innerHTML = ParameterGroupsBinding.template;
+            ko.applyBindingsToDescendants(parameterViewModel, element);
+            return { controlsDescendantBindings: true };
+        };
+        ParameterGroupsBinding.className = "parameterGroups";
+        ParameterGroupsBinding.template = require("text!./Templates/ParameterGroupsTemplate.html");
+        return ParameterGroupsBinding;
+    }());
+    exports.ParameterGroupsBinding = ParameterGroupsBinding;
+    var ParameterGroupsViewModel = (function () {
+        function ParameterGroupsViewModel(paramGroups, isSingleGroup, groupsTooltip, readOnly) {
+            var _this = this;
+            if (isSingleGroup === void 0) { isSingleGroup = true; }
+            if (groupsTooltip === void 0) { groupsTooltip = ""; }
+            if (readOnly === void 0) { readOnly = false; }
+            this.paramNameHeading = ClientResources.paramNameHeading;
+            this.paramValueHeading = ClientResources.paramValueHeading;
+            this.groups = ko.observableArray();
+            this.readOnly = ko.observable();
+            this.customClass = "smallWidthField";
+            this.isSingleGroup = ko.observable(true);
+            this.groupsTooltip = "";
+            this.deleteClicked = function (selectedParam) {
+                ko.utils.arrayFirst(_this.originalGroups(), function (group) { return group.title === selectedParam.groupTitle; })
+                    .params.remove(function (param) { return param.key === selectedParam.key; });
+            };
+            this.addClicked = function () {
+                _this.newParamProperties.name.validationEnabled(true);
+                _this.isAddClicked(true);
+                var passedParam = {
+                    key: ko.observable(_this.newParamProperties.name.value()),
+                    value: ko.observable(_this.newParamProperties.value.value())
+                };
+                if (passedParam.key() === "") {
+                    return;
+                }
+                if (_this.isSingleGroup()) {
+                    if (!_this.isKeyAlreadyAdded(_this.originalGroups()[0].params, passedParam.key)) {
+                        _this.addPairAndResetFields(_this.originalGroups()[0].params, passedParam);
+                    }
+                }
+                else {
+                    var selectedGroup = ko.utils.arrayFirst(_this.originalGroups(), function (group) { return group.title === _this.displayinGroups.value(); });
+                    if (!_this.isKeyAlreadyAdded(selectedGroup.params, passedParam.key)) {
+                        _this.addPairAndResetFields(selectedGroup.params, passedParam);
+                    }
+                }
+                if (!_this.isSingleGroup()) {
+                    _this.displayinGroups.value.subscribe(function (value) {
+                        _this.isKeyUnique(true);
+                    });
+                }
+                _this.newParamProperties.name.value.subscribe(function (value) {
+                    _this.isKeyUnique(true);
+                });
+            };
+            this.readOnly(readOnly);
+            this.originalGroups = paramGroups;
+            this.isSingleGroup(isSingleGroup);
+            this.groupsTooltip = groupsTooltip;
+            paramGroups.subscribe(this.initializeNewGroups, this);
+            this.initializeNewGroups(paramGroups());
+            this.newParamProperties = {
+                name: new FormFields_1.ValidatedBoxViewModel({
+                    label: this.paramNameHeading,
+                    defaultValue: "",
+                    validations: [function (name) { return _this.keyValidation(name); }]
+                }),
+                value: new FormFields_1.ValidatedBoxViewModel({
+                    label: this.paramValueHeading,
+                    defaultValue: ""
+                })
+            };
+            this.isKeyUnique = ko.observable(true);
+            this.isAddClicked = ko.observable(false);
+            var existingGroups = ko.observableArray([]);
+            this.groups().forEach(function (gr) {
+                existingGroups.push({ value: gr.title, displayText: gr.title });
+            });
+            this.displayinGroups = new FormFields_1.ValidatedSelectBoxViewModel(existingGroups, { label: "Groups", infoBalloon: this.groupsTooltip });
+        }
+        ParameterGroupsViewModel.prototype.isKeyAlreadyAdded = function (group, key) {
+            var keyValue = key();
+            var groupCopy = group();
+            for (var i = 0; i < groupCopy.length; i++) {
+                if (groupCopy[i].key() === keyValue) {
+                    this.isKeyUnique(false);
+                    return true;
+                }
+            }
+            return false;
+        };
+        ParameterGroupsViewModel.prototype.addPairAndResetFields = function (group, newParam) {
+            group.push(newParam);
+            this.isAddClicked(false);
+            this.newParamProperties.name.value("");
+            this.newParamProperties.value.value("");
+        };
+        ParameterGroupsViewModel.prototype.initializeNewGroups = function (updatedList) {
+            var _this = this;
+            updatedList.forEach(function (group) {
+                if (!_this.groups().some(function (groupWithForm) {
+                    return groupWithForm.title === group.title;
+                })) {
+                    _this.addGroup(group);
+                }
+            });
+        };
+        ParameterGroupsViewModel.prototype.addGroup = function (group) {
+            var _this = this;
+            var validatedParams = ko.observableArray();
+            group.params().forEach(function (param) {
+                _this.addParam(param, validatedParams, group.title);
+            });
+            this.groups.push({ title: group.title, params: validatedParams });
+            group.params.subscribe(function (arrayUpdates) {
+                var existingGroup;
+                _this.groups().forEach(function (groupWithForm) {
+                    if (group.title === groupWithForm.title) {
+                        existingGroup = groupWithForm;
+                        return;
+                    }
+                });
+                if (existingGroup) {
+                    arrayUpdates.forEach(function (arrayChange) {
+                        if (arrayChange.moved || arrayChange.moved === 0) {
+                            logger.logError("Group parameters should not be moved");
+                        }
+                        else if (arrayChange.status === DataConstants_1.ObsArrayChangeStatus.added) {
+                            _this.addParam(arrayChange.value, existingGroup.params, existingGroup.title);
+                        }
+                        else if (arrayChange.status === DataConstants_1.ObsArrayChangeStatus.deleted) {
+                            existingGroup.params().forEach(function (validatedParam) {
+                                if (validatedParam.key === arrayChange.value.key) {
+                                    existingGroup.params.remove(validatedParam);
+                                    return;
+                                }
+                            });
+                        }
+                        else {
+                            logger.logError("Unrecognized ko arrayChange status: " + arrayChange.status);
+                        }
+                    });
+                }
+                else {
+                    logger.logError("Group with title " + group.title + " was expected in paramter binding groups but was not found.");
+                }
+            }, null, "arrayChange");
+        };
+        ParameterGroupsViewModel.prototype.addParam = function (param, destination, groupTitle) {
+            var newParam = {
+                key: param.key,
+                value: param.value,
+                keyForm: new FormFields_1.ValidatedBoxViewModel({
+                    label: "",
+                    defaultValue: param.key()
+                }),
+                valueForm: new FormFields_1.ValidatedBoxViewModel({
+                    label: "",
+                    defaultValue: param.value()
+                }),
+                groupTitle: groupTitle
+            };
+            newParam.keyForm.value.subscribe(param.key);
+            newParam.valueForm.value.subscribe(param.value);
+            destination.push(newParam);
+        };
+        ParameterGroupsViewModel.prototype.keyValidation = function (name) {
+            if (name) {
+                if (this.isKeyUnique()) {
+                    return Q({
+                        valid: true,
+                        message: ""
+                    });
+                }
+                else {
+                    return Q({
+                        valid: false,
+                        message: ClientResources.ValidationNameAlreadyTaken
+                    });
+                }
+            }
+            else if (this.isAddClicked()) {
+                return Q({
+                    valid: false,
+                    message: ClientResources.ValidationFieldIsRequired
+                });
+            }
+            else {
+                return Q({
+                    valid: true,
+                    message: ""
+                });
+            }
+        };
+        return ParameterGroupsViewModel;
+    }());
+});
+//# sourceMappingURL=ParameterGroupsBinding.js.mapˆÌÝ¯      [Öû[Öþ?§çX[ØåS   ”    :https://datafactory-endpoint.azureedge.net/node_modules/@ms-atlas-module/datastudio-datafactory/bootstrapper/ParameterGroupsBinding.js?v=1.0.4164.1 necko:classified 1 strongly-framed 1 security-info FnhllAKWRHGAlo+ESXykKAAAAAAAAAAAwAAAAAAAAEaphjojH6pBabDSgSnsfLHeAAQAAgAAAAAAAAAAAAAAAAAAAAAB4vFIJp5wRkeyPxAQ9RJGKPqbqVvKO0mKuIl8ec8o/uhmCjImkVxP+7sgiYWmMt8FvcOXmlQiTNWFiWlrbpbqgwAAAAAAAAOwMIIDrDCCApSgAwIBAgIERTJgTjANBgkqhkiG9w0BAQsFADCBijEUMBIGA1UEBhMLUG9ydFN3aWdnZXIxFDASBgNVBAgTC1BvcnRTd2lnZ2VyMRQwEgYDVQQHEwtQb3J0U3dpZ2dlcjEUMBIGA1UEChMLUG9ydFN3aWdnZXIxFzAVBgNVBAsTDlBvcnRTd2lnZ2VyIENBMRcwFQYDVQQDEw5Qb3J0U3dpZ2dlciBDQTAeFw0xNDEwMjgxMzEyMTBaFw0zODEwMjgxMzEyMTBaMHIxFDASBgNVBAYTC1BvcnRTd2lnZ2VyMRQwEgYDVQQKEwtQb3J0U3dpZ2dlcjEXMBUGA1UECxMOUG9ydFN3aWdnZXIgQ0ExKzApBgNVBAMTImRhdGFmYWN0b3J5LWVuZHBvaW50LmF6dXJlZWRnZS5uZXQwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCKn7emKINsnWqPZ+C/VsqbQf/l4NsmIh34bXBR0xdNg9bfb+xcoghRlmbPjhZ/A26A2gJ6Rrg2d0GGMLpbqA8nTlRRGXEAD39321zk4ye09ElXClvqguGqdqOJpPQ05DPFD6wSOq+KVAEblE5bi+LMqBLipDERzgUe7xzeqVVk0i0ldh9yQOIk3YuzcBR9igSEuw5qladmMYvXKHYM9YZz0R7axMc8xAtadK7C9KfFPfEI5LS2nhmy4vBrTgFyYhfkEvKfmIj6HTX0ISFCAC2llcBLpEDcuiW76tAHp1pXDeWtSeaV36AeOctdleVgrbmsGs3fu6ppuRcWjEZUbjE3AgMBAAGjMTAvMC0GA1UdEQQmMCSCImRhdGFmYWN0b3J5LWVuZHBvaW50LmF6dXJlZWRnZS5uZXQwDQYJKoZIhvcNAQELBQADggEBAD5nTga0zudMitI/u0TfDiXUvU9MHWtnM1QsCR52LG8/P3zHlMPdW01WDRZUWTzCGka9MJHNjppqHPNsxY69i49nAksLYLzG7nK57bfwfvJQH/v27QUFGFMmKZNtpz+523V8pi+RJR9/DcmY0SQslyt1+Cj1SViKKOJYr8DiCwrYSUxWRp0XCM6ACnyoVhILHxIff7DQUE7Qq8eLX2UMcsrHHrlmbWpSCkEMtikIahIK4D2jjHj/CFWVzmKApRGZHRCenGUCvwPc6+mdefq6dna4yuo/9sC8unizedWeSL+sIj+Qxy7egEU4w3ZyvM8xUIozSNHY/VVwXW5ypPYqSlDALwEDAAAAAAEBAAAAAA== request-method GET request-Accept-Encoding gzip, deflate, br response-head HTTP/1.1 200 OK
+Content-Type: application/javascript
+Last-Modified: Sat, 06 Oct 2018 23:13:01 GMT
+Accept-Ranges: bytes
+Etag: "f853d420ca5dd41:0"
+Server: Microsoft-IIS/8.5
+X-Frame-Options: AllowAll
+X-XSS-Protection: 1; mode=block
+X-Content-Type-Options: nosniff
+Strict-Transport-Security: max-age=15724800; includeSubDomains
+Access-Control-Allow-Origin: *
+Vary: Accept-Encoding
+Content-Length: 10345
+X-Serial: 10076
+X-Check-Cacheable: YES
+X-Akamai-Pragma-Client-IP: 10.22.10.238, 198.102.219.141
+Date: Sun, 28 Oct 2018 18:50:37 GMT
+ original-response-headers Content-Type: application/javascript
+Last-Modified: Sat, 06 Oct 2018 23:13:01 GMT
+Accept-Ranges: bytes
+Etag: "f853d420ca5dd41:0"
+Server: Microsoft-IIS/8.5
+X-Frame-Options: AllowAll
+X-XSS-Protection: 1; mode=block
+X-Content-Type-Options: nosniff
+Strict-Transport-Security: max-age=15724800; includeSubDomains
+Access-Control-Allow-Origin: *
+Vary: Accept-Encoding
+Content-Length: 10345
+X-Serial: 10076
+X-Check-Cacheable: YES
+X-Akamai-Pragma-Client-IP: 10.22.10.238, 198.102.219.141
+Date: Sun, 28 Oct 2018 18:50:37 GMT
+Connection: close
+ uncompressed-len 0 net-response-time-onstart 3258 net-response-time-onstop 3258   (i

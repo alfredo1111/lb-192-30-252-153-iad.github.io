@@ -1,0 +1,428 @@
+define(["require", "exports", "Viva.Controls/Controls/Visualization/Graph/GraphWidget", "Viva.Controls/Util/Util", "Viva.Controls/Util/Resize", "Viva.Controls/Controls/Visualization/Graph/SvgUtils", "./FilterFlyoutKnockoutBinding", "./StatusCalendarFlyoutKnockoutBinding", "./StatusCalendarKnockoutBinding", "./WizardBinding", "./CopyBinding", "./WinJSButtonKnockoutBinding", "./LoadingBinding", "./TelemetryKnockoutBinding", "../scripts/Framework/Util/Log", "./JQueryUIBindings", "./BreadcrumbsKnockoutBinding", "./CalloutBinding", "./PivotKnockoutBinding", "./WinJSKnockoutBindings", "./CollapsibleKnockoutBinding", "./ParameterGroupsBinding", "./MonacoEditorKnockoutBinding", "./InlineBlockBinding", "../_generated/Framework"], function (require, exports, VivaGraphWidget, VivaUtil, VivaResize, VivaGraphSvgUtils, FilterFlyoutKnockoutBinding, StatusCalendarFlyoutKnockoutBinding, StatusCalendarKnockoutBinding, Wizard, CopyBinding, WinJSButtonKnockoutBinding, LoadingBinding, TelemetryKnockoutBinding, Log, JQueryUIBindings, BreadcrumbsBinding, CalloutBinding, PivotKnockoutBinding_1, WinJSKnockoutBindings, CollapsibleBindings, ParameterGroupsBinding_1, MonacoEditorKnockoutBinding, InlineBlockBinding_1, Framework) {
+    "use strict";
+    var logger = Log.getLogger({
+        loggerName: "KnockoutBindings"
+    });
+    var ViewModelBindingHandler = (function () {
+        function ViewModelBindingHandler() {
+        }
+        ViewModelBindingHandler.prototype.init = function (element, valueAccessor, allBindingsAccessor, viewModel, bindingContext) {
+            var options = ko.unwrap(valueAccessor());
+            element.innerHTML = options.template;
+            ko.applyBindingsToDescendants(options.viewModel, element);
+            return { controlsDescendantBindings: true };
+        };
+        return ViewModelBindingHandler;
+    }());
+    var LoadingBindingHandler = (function () {
+        function LoadingBindingHandler() {
+        }
+        LoadingBindingHandler.prototype.init = function (element, valueAccessor, allBindingsAccessor, viewModel, bindingContext) {
+            element.setAttribute("class", "adf-largeSpinner");
+            $(element).html(Framework.Svg.progressRing);
+            return { controlsDescendantBindings: false };
+        };
+        return LoadingBindingHandler;
+    }());
+    ;
+    ;
+    var WinJSListBindingHandler = (function () {
+        function WinJSListBindingHandler() {
+        }
+        WinJSListBindingHandler.prototype.init = function (element, valueAccessor, allBindingsAccessor, viewModel, bindingContext) {
+            var value = valueAccessor();
+            var data = value.data;
+            var dataList = new WinJS.Binding.List(ko.unwrap(data));
+            viewModel.winJSList = dataList;
+            var jQueryElement = $(element);
+            var dataSubscription = data.subscribe(function () {
+                var newVals = data();
+                for (var i = 0; i < newVals.length; i++) {
+                    if (dataList.getAt(i) !== newVals[i]) {
+                        dataList.setAt(i, newVals[i]);
+                    }
+                }
+                dataList.splice(newVals.length, dataList.length - newVals.length);
+            });
+            if (value.footerSelector) {
+                var parents = jQueryElement.parents(), footerElement = null;
+                var parentsLength = parents.length;
+                for (var i = 0; i < parentsLength; i++) {
+                    footerElement = parents[i].querySelector(value.footerSelector);
+                    if (footerElement) {
+                        break;
+                    }
+                }
+                value.options.footer = footerElement;
+            }
+            if (value.customClasses) {
+                ko.applyBindingsToNode(element, {
+                    css: value.customClasses
+                });
+            }
+            var listView = new WinJS.UI.ListView(element, value.options);
+            jQueryElement.addClass("win-selectionstylefilled");
+            viewModel.winJSListView = listView;
+            listView.itemDataSource = dataList.dataSource;
+            listView.itemTemplate = function (itemPromise, recycled) {
+                return itemPromise.then(function (item) {
+                    var template = $.parseHTML(value.template)[0];
+                    ko.applyBindings({ data: item.data, onDoubleClick: value.onDoubleClick || $.noop }, template);
+                    WinJS.Utilities.markDisposable(template, function () {
+                        ko.cleanNode(template);
+                    });
+                    return template;
+                });
+            };
+            var resizeTracker = null;
+            if (value.resizeTrackingParentSelector) {
+                var parents = jQueryElement.parents(value.resizeTrackingParentSelector);
+                if (parents.length > 0) {
+                    resizeTracker = VivaResize.track($(parents[0]), function () {
+                        listView.recalculateItemPosition();
+                    });
+                }
+            }
+            if (value.onLoad) {
+                value.onLoad();
+            }
+            ko.utils.domNodeDisposal.addDisposeCallback(element, function () {
+                listView.dispose();
+                dataSubscription.dispose();
+                if (resizeTracker) {
+                    resizeTracker.dispose();
+                }
+            });
+            return { controlsDescendantBindings: true };
+        };
+        return WinJSListBindingHandler;
+    }());
+    var WinJSToolbarBindingHandler = (function () {
+        function WinJSToolbarBindingHandler() {
+        }
+        WinJSToolbarBindingHandler.prototype.init = function (element, valueAccessor, allBindingsAccessor, viewModel, bindingContext) {
+            var toolbarViewModel = valueAccessor().toolbar ? valueAccessor().toolbar : viewModel;
+            var toolbarWinControl = new WinJS.UI.ToolBar(element, valueAccessor().options);
+            toolbarWinControl.data = toolbarViewModel._dataArray;
+            ko.utils.domNodeDisposal.addDisposeCallback(element, function () {
+                toolbarWinControl.dispose();
+            });
+            return { controlsDescendantBindings: true };
+        };
+        return WinJSToolbarBindingHandler;
+    }());
+    var GraphNodeContentBindingHandler = (function () {
+        function GraphNodeContentBindingHandler() {
+        }
+        GraphNodeContentBindingHandler.getGraphNodeContext = function (bindingContext) {
+            var i, graphNodeViewModel = null;
+            for (i = 0; i < bindingContext.$parents.length; i++) {
+                if (bindingContext.$parents[i] instanceof VivaGraphWidget.GraphNodeViewModel) {
+                    graphNodeViewModel = bindingContext.$parents[i];
+                    break;
+                }
+            }
+            if (!graphNodeViewModel) {
+                logger.logError("The pcGraphNodeContent binding can only be used in the extension template of a graph node view model.");
+            }
+            return graphNodeViewModel;
+        };
+        GraphNodeContentBindingHandler.prototype.init = function (element, valueAccessor, allBindingsAccessor, viewModel, bindingContext) {
+            var graphNodeViewModel = GraphNodeContentBindingHandler.getGraphNodeContext(bindingContext), classList = VivaUtil.getClassList(element), styleSkin = ko.utils.unwrapObservable(graphNodeViewModel.styleSkin), styleSkinDefinition = VivaGraphSvgUtils.GraphSkinsCollection[styleSkin];
+            classList.add("azc-graph-node-content");
+            classList.add(styleSkinDefinition.skinMonikerClass);
+            styleSkinDefinition.nodeColorClasses.atRest.forEach(function (className) {
+                classList.add(className);
+            });
+            VivaUtil.setClassList(element, classList);
+        };
+        GraphNodeContentBindingHandler.prototype.update = function (element, valueAccessor, allBindingsAccessor, viewModel, bindingContext) {
+            var graphNodeViewModel = GraphNodeContentBindingHandler.getGraphNodeContext(bindingContext), classList = VivaUtil.getClassList(element), stateResolutionStrategy = VivaGraphSvgUtils.StateCompatibilityStrategyDefinitions["combineHoveredAndSelected"], styleSkinToUse = ko.utils.unwrapObservable(graphNodeViewModel.styleSkin), styleSkinDefinitionToUse = VivaGraphSvgUtils.GraphSkinsCollection[styleSkinToUse], selected = ko.utils.unwrapObservable(graphNodeViewModel.graphNode.selected), hovered = ko.utils.unwrapObservable(graphNodeViewModel.hovered), dragSource = ko.utils.unwrapObservable(graphNodeViewModel.newEdgeDraftSource), dragTarget = ko.utils.unwrapObservable(graphNodeViewModel.newEdgeDraftTarget), atRest = !hovered && !selected && !dragSource && !dragTarget, stateNameToValueMap = {
+                "atRest": atRest,
+                "hovered": hovered,
+                "selected": selected,
+                "dragSource": dragSource,
+                "dragTarget": dragTarget
+            }, addClassesIf = function (classesToAdd, condition) {
+                if (condition === void 0) { condition = true; }
+                if (condition) {
+                    classesToAdd.forEach(function (className) {
+                        classList.add(className);
+                    });
+                }
+                return condition;
+            }, removeClassesIf = function (classesToRemove, condition) {
+                if (condition === void 0) { condition = true; }
+                if (condition) {
+                    classesToRemove.forEach(function (className) {
+                        classList.remove(className);
+                    });
+                }
+            }, addRequiredClassesInOrder = function (statesResolutionOrder) {
+                if (addClassesIf(styleSkinDefinitionToUse.nodeColorClasses[statesResolutionOrder.state], stateNameToValueMap[statesResolutionOrder.state])) {
+                    if (statesResolutionOrder.compatible) {
+                        statesResolutionOrder.compatible.forEach(function (stateName) {
+                            addClassesIf(styleSkinDefinitionToUse.nodeColorClasses[stateName], stateNameToValueMap[stateName]);
+                        });
+                    }
+                }
+                else if (statesResolutionOrder.disjunctive) {
+                    addRequiredClassesInOrder(statesResolutionOrder.disjunctive);
+                }
+            };
+            classList.add(styleSkinDefinitionToUse.skinMonikerClass);
+            removeClassesIf(styleSkinDefinitionToUse.nodeColorClasses.atRest, !atRest);
+            removeClassesIf(styleSkinDefinitionToUse.nodeColorClasses.selected, !selected);
+            removeClassesIf(styleSkinDefinitionToUse.nodeColorClasses.hovered, !hovered);
+            removeClassesIf(styleSkinDefinitionToUse.nodeColorClasses.dragSource, !dragSource);
+            removeClassesIf(styleSkinDefinitionToUse.nodeColorClasses.dragTarget, !dragTarget);
+            addRequiredClassesInOrder(stateResolutionStrategy);
+            VivaUtil.setClassList(element, classList);
+        };
+        return GraphNodeContentBindingHandler;
+    }());
+    var ImageBindingHandler = (function () {
+        function ImageBindingHandler() {
+        }
+        ImageBindingHandler.prototype.init = function () {
+            return { controlsDescendantBindings: true };
+        };
+        ImageBindingHandler.prototype.update = function (element, valueAccessor) {
+            var $element = $(element), bindingValue = ko.utils.unwrapObservable(valueAccessor()), html = "";
+            if (!bindingValue) {
+                $element.html(html);
+                return;
+            }
+            var imageData = bindingValue;
+            var options = imageData && imageData.options;
+            var title = options && options.title;
+            var isLogo = options && options.isLogo;
+            var ariaLabelledBy = "aria-labelledBy";
+            var ariaLabelledById = "titleID";
+            var data = bindingValue.data;
+            if (!isLogo) {
+                data = data.replace(/fill=\"[^\"]*\"|fill=\'[^\']*\'/ig, "");
+            }
+            if (!title) {
+                data = data.replace("<title></title>", "");
+                if (data.indexOf("<title>") > 0) {
+                    data = data.replace("<title>", "<title id=\"{0}\">".format(ariaLabelledById));
+                    data = data.replace("<svg ", "<svg {0}=\"{1}\" ".format(ariaLabelledBy, ariaLabelledById));
+                }
+            }
+            $element.html(data);
+            $element.children("svg").attr("focusable", 0);
+        };
+        return ImageBindingHandler;
+    }());
+    var TitleTextBindingHandler = (function () {
+        function TitleTextBindingHandler() {
+            var _this = this;
+            this.init = function (element, valueAccessor, allBindingsAccessor, viewModel, bindingContext) {
+                return { controlsDescendantBindings: true };
+            };
+            this.update = function (element, valueAccessor) {
+                var value = ko.unwrap(valueAccessor());
+                var text, alt = "";
+                if (value instanceof Object) {
+                    text = value.text;
+                    if (value.alt) {
+                        alt = value.alt;
+                    }
+                    else {
+                        alt = text;
+                    }
+                }
+                else {
+                    text = value;
+                    alt = text;
+                }
+                element["data-alt"] = alt;
+                element["data-title"] = alt;
+                element["data-text"] = text;
+                _this.updateTitle(element);
+                ko.utils.setTextContent(element, element["data-text"]);
+            };
+        }
+        TitleTextBindingHandler.prototype.fixResize = function (element) {
+            if (element.offsetHeight < element.scrollHeight ||
+                element.offsetWidth < element.scrollWidth) {
+                element["data-title"] = element["data-text"] + ", " + element["data-alt"];
+            }
+            else {
+                element["data-title"] = element["data-alt"];
+            }
+        };
+        TitleTextBindingHandler.prototype.updateTitle = function (element) {
+            ko.bindingHandlers["attr"].update(element, function () { return { title: element["data-title"] }; });
+        };
+        return TitleTextBindingHandler;
+    }());
+    var ReadonlyBindingHandler = (function () {
+        function ReadonlyBindingHandler() {
+            this.init = function (element, valueAccessor, allBindingsAccessor, viewModel, bindingContext) {
+                return { controlsDescendantBindings: false };
+            };
+            this.update = function (element, valueAccessor) {
+                var value = ko.unwrap(valueAccessor());
+                element.readOnly = value;
+            };
+        }
+        return ReadonlyBindingHandler;
+    }());
+    exports.ReadonlyBindingHandler = ReadonlyBindingHandler;
+    var IndeterminateBindingHandler = (function () {
+        function IndeterminateBindingHandler() {
+            this.init = function (element, valueAccessor, allBindingsAccessor, viewModel, bindingContext) {
+                return { controlsDescendantBindings: false };
+            };
+            this.update = function (element, valueAccessor) {
+                var value = ko.utils.unwrapObservable(valueAccessor());
+                element.indeterminate = value;
+            };
+        }
+        return IndeterminateBindingHandler;
+    }());
+    exports.IndeterminateBindingHandler = IndeterminateBindingHandler;
+    var HtmlWithBindingHandler = (function () {
+        function HtmlWithBindingHandler() {
+            this.init = function (element, valueAccessor, allBindingsAccessor, vm, bindingContext) {
+                var _a = valueAccessor(), template = _a.template, viewModel = _a.viewModel;
+                element.innerHTML = template;
+                ko.applyBindingsToDescendants(viewModel || vm, element);
+                return { controlsDescendantBindings: true };
+            };
+        }
+        HtmlWithBindingHandler.className = "htmlWith";
+        return HtmlWithBindingHandler;
+    }());
+    exports.HtmlWithBindingHandler = HtmlWithBindingHandler;
+    var XListBindingHandler = (function () {
+        function XListBindingHandler() {
+            this.init = function (element, valueAccessor, allBindingsAccessor, vm, bindingContext) {
+                $(element).attr("tabIndex", 0);
+                var findTarget = function (event) {
+                    var parents = $(event.target).parents();
+                    var target;
+                    for (var i = 0; i < parents.length && !target; i++) {
+                        if (parents.get(i) === element) {
+                            target = (i > 0) ? parents.get(i - 1) : $(event.target).get(0);
+                        }
+                    }
+                    return target;
+                };
+                var clickHandler = function (event) {
+                    var target = findTarget(event);
+                    target.focus();
+                };
+                var keydownHandler = function (event) {
+                    var target = findTarget(event);
+                    if (event.keyCode === Microsoft.DataStudioUX.Helpers.Keycodes.ArrowUp) {
+                        if ($(target).prev().length !== 0) {
+                            $(target).prev().focus();
+                        }
+                        event.preventDefault();
+                    }
+                    else if (event.keyCode === Microsoft.DataStudioUX.Helpers.Keycodes.ArrowDown) {
+                        if ($(target).next().length !== 0) {
+                            $(target).next().focus();
+                        }
+                        event.preventDefault();
+                    }
+                    else if (event.keyCode === Microsoft.DataStudioUX.Helpers.Keycodes.Enter) {
+                        target.focus();
+                    }
+                    else if (event.keyCode === Microsoft.DataStudioUX.Helpers.Keycodes.Spacebar) {
+                        event.preventDefault();
+                    }
+                    return true;
+                };
+                var transferFocus = function (event) {
+                    if (event.target === event.currentTarget) {
+                        var children = $(element).children();
+                        if (children.length > 0) {
+                            children.first().focus();
+                        }
+                    }
+                };
+                element.addEventListener("click", clickHandler, false);
+                element.addEventListener("keydown", keydownHandler, false);
+                element.addEventListener("focus", transferFocus, false);
+                ko.utils.domNodeDisposal.addDisposeCallback(element, function () {
+                    element.removeEventListener("click", clickHandler, false);
+                    element.removeEventListener("keydown", keydownHandler, false);
+                    element.removeEventListener("focus", transferFocus, false);
+                });
+            };
+        }
+        XListBindingHandler.className = "xlist";
+        return XListBindingHandler;
+    }());
+    exports.XListBindingHandler = XListBindingHandler;
+    var Bootstrapper = (function () {
+        function Bootstrapper() {
+        }
+        Bootstrapper.initialize = function () {
+            ko.bindingHandlers["indeterminate"] = new IndeterminateBindingHandler();
+            ko.bindingHandlers["readonly"] = new ReadonlyBindingHandler;
+            ko.bindingHandlers["loading"] = new LoadingBindingHandler();
+            ko.bindingHandlers["winjslist"] = new WinJSListBindingHandler();
+            ko.bindingHandlers["winjsbutton"] = new WinJSButtonKnockoutBinding.WinJSButtonBindingHandler();
+            ko.bindingHandlers["winjstoolbar"] = new WinJSToolbarBindingHandler();
+            ko.bindingHandlers["pcGraphNodeContent"] = new GraphNodeContentBindingHandler();
+            ko.bindingHandlers["image"] = new ImageBindingHandler();
+            ko.bindingHandlers["titleText"] = new TitleTextBindingHandler();
+            ko.bindingHandlers["viewModel"] = new ViewModelBindingHandler();
+            ko.bindingHandlers[Wizard.WizardBindingHandler.bindingName] = new Wizard.WizardBindingHandler();
+            ko.bindingHandlers[FilterFlyoutKnockoutBinding.FilterFlyoutKnockoutBinding.className] = new FilterFlyoutKnockoutBinding.FilterFlyoutKnockoutBinding();
+            ko.bindingHandlers[StatusCalendarFlyoutKnockoutBinding.GraphNodeStatusBindingHandler.className] = new StatusCalendarFlyoutKnockoutBinding.GraphNodeStatusBindingHandler();
+            ko.bindingHandlers[StatusCalendarKnockoutBinding.StatusCalendarKnockoutBinding.className] = new StatusCalendarKnockoutBinding.StatusCalendarKnockoutBinding();
+            ko.bindingHandlers[StatusCalendarKnockoutBinding.StatusBoxKnockoutBinding.className] = new StatusCalendarKnockoutBinding.StatusBoxKnockoutBinding();
+            ko.bindingHandlers[LoadingBinding.LoadingBindingHandler.className] = new LoadingBinding.LoadingBindingHandler();
+            ko.bindingHandlers[TelemetryKnockoutBinding.TelemetryKnockoutBindingHandler.className] = new TelemetryKnockoutBinding.TelemetryKnockoutBindingHandler();
+            ko.bindingHandlers[JQueryUIBindings.DatetimeRangeBindingHandler.className] = new JQueryUIBindings.DatetimeRangeBindingHandler();
+            ko.bindingHandlers[CopyBinding.CopyBindingHandler.className] = new CopyBinding.CopyBindingHandler();
+            ko.bindingHandlers[BreadcrumbsBinding.BreadcrumbKnockoutBinding.className] = new BreadcrumbsBinding.BreadcrumbKnockoutBinding();
+            ko.bindingHandlers[CalloutBinding.CalloutKnockoutBinding.className] = new CalloutBinding.CalloutKnockoutBinding();
+            ko.bindingHandlers[PivotKnockoutBinding_1.PivotKnockoutBinding.className] = new PivotKnockoutBinding_1.PivotKnockoutBinding();
+            ko.bindingHandlers[WinJSKnockoutBindings.WinJSPivotKnockoutBinding.className] = new WinJSKnockoutBindings.WinJSPivotKnockoutBinding();
+            ko.bindingHandlers[CollapsibleBindings.CollapsibleKnockoutBinding.className] = new CollapsibleBindings.CollapsibleKnockoutBinding();
+            ko.bindingHandlers[HtmlWithBindingHandler.className] = new HtmlWithBindingHandler();
+            ko.bindingHandlers[ParameterGroupsBinding_1.ParameterGroupsBinding.className] = new ParameterGroupsBinding_1.ParameterGroupsBinding();
+            ko.bindingHandlers[MonacoEditorKnockoutBinding.MonacoEditorKnockoutBinding.className] = new MonacoEditorKnockoutBinding.MonacoEditorKnockoutBinding();
+            ko.bindingHandlers[InlineBlockBinding_1.InlineBlockBinding.className] = new InlineBlockBinding_1.InlineBlockBinding();
+            ko.bindingHandlers[XListBindingHandler.className] = new XListBindingHandler();
+        };
+        return Bootstrapper;
+    }());
+    exports.Bootstrapper = Bootstrapper;
+});
+//# sourceMappingURL=KnockoutBindings.js.mapò¥Hm;ª      [Öú[Öú?§çX[ØåS   Ž    :https://datafactory-endpoint.azureedge.net/node_modules/@ms-atlas-module/datastudio-datafactory/bootstrapper/KnockoutBindings.js?v=1.0.4164.1 necko:classified 1 strongly-framed 1 security-info FnhllAKWRHGAlo+ESXykKAAAAAAAAAAAwAAAAAAAAEaphjojH6pBabDSgSnsfLHeAAQAAgAAAAAAAAAAAAAAAAAAAAAB4vFIJp5wRkeyPxAQ9RJGKPqbqVvKO0mKuIl8ec8o/uhmCjImkVxP+7sgiYWmMt8FvcOXmlQiTNWFiWlrbpbqgwAAAAAAAAOwMIIDrDCCApSgAwIBAgIERTJgTjANBgkqhkiG9w0BAQsFADCBijEUMBIGA1UEBhMLUG9ydFN3aWdnZXIxFDASBgNVBAgTC1BvcnRTd2lnZ2VyMRQwEgYDVQQHEwtQb3J0U3dpZ2dlcjEUMBIGA1UEChMLUG9ydFN3aWdnZXIxFzAVBgNVBAsTDlBvcnRTd2lnZ2VyIENBMRcwFQYDVQQDEw5Qb3J0U3dpZ2dlciBDQTAeFw0xNDEwMjgxMzEyMTBaFw0zODEwMjgxMzEyMTBaMHIxFDASBgNVBAYTC1BvcnRTd2lnZ2VyMRQwEgYDVQQKEwtQb3J0U3dpZ2dlcjEXMBUGA1UECxMOUG9ydFN3aWdnZXIgQ0ExKzApBgNVBAMTImRhdGFmYWN0b3J5LWVuZHBvaW50LmF6dXJlZWRnZS5uZXQwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCKn7emKINsnWqPZ+C/VsqbQf/l4NsmIh34bXBR0xdNg9bfb+xcoghRlmbPjhZ/A26A2gJ6Rrg2d0GGMLpbqA8nTlRRGXEAD39321zk4ye09ElXClvqguGqdqOJpPQ05DPFD6wSOq+KVAEblE5bi+LMqBLipDERzgUe7xzeqVVk0i0ldh9yQOIk3YuzcBR9igSEuw5qladmMYvXKHYM9YZz0R7axMc8xAtadK7C9KfFPfEI5LS2nhmy4vBrTgFyYhfkEvKfmIj6HTX0ISFCAC2llcBLpEDcuiW76tAHp1pXDeWtSeaV36AeOctdleVgrbmsGs3fu6ppuRcWjEZUbjE3AgMBAAGjMTAvMC0GA1UdEQQmMCSCImRhdGFmYWN0b3J5LWVuZHBvaW50LmF6dXJlZWRnZS5uZXQwDQYJKoZIhvcNAQELBQADggEBAD5nTga0zudMitI/u0TfDiXUvU9MHWtnM1QsCR52LG8/P3zHlMPdW01WDRZUWTzCGka9MJHNjppqHPNsxY69i49nAksLYLzG7nK57bfwfvJQH/v27QUFGFMmKZNtpz+523V8pi+RJR9/DcmY0SQslyt1+Cj1SViKKOJYr8DiCwrYSUxWRp0XCM6ACnyoVhILHxIff7DQUE7Qq8eLX2UMcsrHHrlmbWpSCkEMtikIahIK4D2jjHj/CFWVzmKApRGZHRCenGUCvwPc6+mdefq6dna4yuo/9sC8unizedWeSL+sIj+Qxy7egEU4w3ZyvM8xUIozSNHY/VVwXW5ypPYqSlDALwEDAAAAAAEBAAAAAA== request-method GET request-Accept-Encoding gzip, deflate, br response-head HTTP/1.1 200 OK
+Content-Type: application/javascript
+Last-Modified: Sat, 06 Oct 2018 23:13:01 GMT
+Accept-Ranges: bytes
+Etag: "f853d420ca5dd41:0"
+Server: Microsoft-IIS/8.5
+X-Frame-Options: AllowAll
+X-XSS-Protection: 1; mode=block
+X-Content-Type-Options: nosniff
+Strict-Transport-Security: max-age=15724800; includeSubDomains
+Access-Control-Allow-Origin: *
+Vary: Accept-Encoding
+Content-Length: 23503
+Date: Sun, 28 Oct 2018 18:50:34 GMT
+ original-response-headers Content-Type: application/javascript
+Last-Modified: Sat, 06 Oct 2018 23:13:01 GMT
+Accept-Ranges: bytes
+Etag: "f853d420ca5dd41:0"
+Server: Microsoft-IIS/8.5
+X-Frame-Options: AllowAll
+X-XSS-Protection: 1; mode=block
+X-Content-Type-Options: nosniff
+Strict-Transport-Security: max-age=15724800; includeSubDomains
+Access-Control-Allow-Origin: *
+Vary: Accept-Encoding
+Content-Length: 23503
+Date: Sun, 28 Oct 2018 18:50:34 GMT
+Connection: close
+ uncompressed-len 0 net-response-time-onstart 604 net-response-time-onstop 605   [Ï

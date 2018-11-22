@@ -1,0 +1,285 @@
+/**
+ * Lightweight gremlin client javascript library for the browser:
+ * - specs: http://tinkerpop.apache.org/docs/3.0.1-incubating/#_developing_a_driver
+ * - inspired from gremlin-javascript for nodejs: https://github.com/jbmusso/gremlin-javascript
+ * - tested on cosmosdb gremlin server
+ * - only supports sessionless gremlin requests
+ * - Relies on text-encoding polyfill (github.com/inexorabletash/text-encoding) for TextEncoder/TextDecoder on IE, Edge.
+ */
+define(["require", "exports"], function (require, exports) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    var GremlinSimpleClient = /** @class */ (function () {
+        function GremlinSimpleClient(params) {
+            this.params = params;
+            this.pendingRequests = {};
+            this.requestsToSend = {};
+        }
+        GremlinSimpleClient.prototype.connect = function () {
+            if (this.ws) {
+                if (this.ws.readyState === WebSocket.CONNECTING) {
+                    // Wait until it connects to execute all requests
+                    return;
+                }
+                if (this.ws.readyState === WebSocket.OPEN) {
+                    // Connection already open
+                    this.executeRequestsToSend();
+                    return;
+                }
+            }
+            this.close();
+            var msg = "Connecting to " + this.params.endpoint + " as " + this.params.user;
+            console.log(msg);
+            if (this.params.infoCallback) {
+                this.params.infoCallback(msg);
+            }
+            this.ws = GremlinSimpleClient.createWebSocket(this.params.endpoint);
+            this.ws.onopen = this.onOpen.bind(this);
+            this.ws.onerror = this.onError.bind(this);
+            this.ws.onmessage = this.onMessage.bind(this);
+            this.ws.onclose = this.onClose.bind(this);
+            this.ws.binaryType = 'arraybuffer';
+        };
+        GremlinSimpleClient.createWebSocket = function (endpoint) {
+            return new WebSocket(endpoint);
+        };
+        GremlinSimpleClient.prototype.close = function () {
+            if (this.ws && this.ws.readyState !== WebSocket.CLOSING && this.ws.readyState !== WebSocket.CLOSED) {
+                var msg = "Disconnecting from " + this.params.endpoint + " as " + this.params.user;
+                console.log(msg);
+                if (this.params.infoCallback) {
+                    this.params.infoCallback(msg);
+                }
+                this.ws.close();
+            }
+        };
+        GremlinSimpleClient.prototype.onOpen = function (event) {
+            this.executeRequestsToSend();
+        };
+        GremlinSimpleClient.prototype.executeRequestsToSend = function () {
+            for (var requestId in this.requestsToSend) {
+                var request = this.requestsToSend[requestId];
+                this.sendGremlinMessage(request);
+                this.pendingRequests[request.requestId] = request;
+                delete this.requestsToSend[request.requestId];
+            }
+        };
+        GremlinSimpleClient.prototype.onError = function (err) {
+            if (this.params.failureCallback) {
+                this.params.failureCallback(null, err);
+            }
+        };
+        GremlinSimpleClient.prototype.decodeMessage = function (msg) {
+            if (msg.data === null) {
+                return null;
+            }
+            if (msg.data.byteLength === 0) {
+                if (this.params.infoCallback) {
+                    this.params.infoCallback('Received empty response');
+                }
+                return null;
+            }
+            try {
+                // msg.data is an ArrayBuffer of utf-8 characters, but handle string just in case
+                var data = typeof msg.data === 'string' ? msg.data : new TextDecoder('utf-8').decode(msg.data);
+                return JSON.parse(data);
+            }
+            catch (e) {
+                console.error(e, msg);
+                if (this.params.failureCallback) {
+                    this.params.failureCallback(null, "Unexpected error while decoding backend response: " + e + " msg:" + JSON.stringify(msg));
+                }
+                return null;
+            }
+        };
+        GremlinSimpleClient.prototype.onMessage = function (msg) {
+            if (!msg) {
+                if (this.params.failureCallback) {
+                    this.params.failureCallback(null, 'onMessage called with no message');
+                }
+                return;
+            }
+            var rawMessage = this.decodeMessage(msg);
+            if (!rawMessage) {
+                return;
+            }
+            var requestId = rawMessage.requestId;
+            var statusCode = rawMessage.status.code;
+            var statusMessage = rawMessage.status.message;
+            if (!this.pendingRequests[requestId]) {
+                if (this.params.failureCallback) {
+                    this.params.failureCallback(requestId, "Received response for missing or closed request: " + requestId + " code:" + statusCode + " message:" + statusMessage);
+                }
+                return;
+            }
+            switch (statusCode) {
+                case 200: // Success
+                    delete this.pendingRequests[requestId];
+                    if (this.params.successCallback) {
+                        this.params.successCallback({
+                            requestId: requestId,
+                            data: rawMessage.result.data
+                        });
+                    }
+                    break;
+                case 204: // No content
+                    delete this.pendingRequests[requestId];
+                    if (this.params.successCallback) {
+                        this.params.successCallback({
+                            requestId: requestId,
+                            data: null
+                        });
+                    }
+                    break;
+                case 206: // Partial content
+                    if (this.params.progressCallback) {
+                        this.params.progressCallback({
+                            requestId: requestId,
+                            data: rawMessage.result.data
+                        });
+                    }
+                    break;
+                case 407: // Request authentication
+                    var challengeResponse = this.buildChallengeResponse(this.pendingRequests[requestId]);
+                    this.sendGremlinMessage(challengeResponse);
+                    break;
+                case 401: // Unauthorized
+                    delete this.pendingRequests[requestId];
+                    if (this.params.failureCallback) {
+                        this.params.failureCallback(requestId, "Unauthorized: " + statusMessage);
+                    }
+                    break;
+                case 498: // Malformed request
+                    delete this.pendingRequests[requestId];
+                    if (this.params.failureCallback) {
+                        this.params.failureCallback(requestId, "Malformed request: " + statusMessage);
+                    }
+                    break;
+                case 500: // Server error
+                    delete this.pendingRequests[requestId];
+                    if (this.params.failureCallback) {
+                        this.params.failureCallback(requestId, "Server error: " + statusMessage);
+                    }
+                    break;
+                case 597: // Script eval error
+                    delete this.pendingRequests[requestId];
+                    if (this.params.failureCallback) {
+                        this.params.failureCallback(requestId, "Script eval error: " + statusMessage);
+                    }
+                    break;
+                case 598: // Server timeout
+                    delete this.pendingRequests[requestId];
+                    if (this.params.failureCallback) {
+                        this.params.failureCallback(requestId, "Server timeout: " + statusMessage);
+                    }
+                    break;
+                case 599: // Server serialization error
+                    delete this.pendingRequests[requestId];
+                    if (this.params.failureCallback) {
+                        this.params.failureCallback(requestId, "Server serialization error: " + statusMessage);
+                    }
+                    break;
+                default:
+                    delete this.pendingRequests[requestId];
+                    if (this.params.failureCallback) {
+                        this.params.failureCallback(requestId, "Error with status code: " + statusCode + ". Message: " + statusMessage);
+                    }
+                    break;
+            }
+        };
+        GremlinSimpleClient.prototype.onClose = function (event) {
+            this.requestsToSend = {};
+            this.pendingRequests = {};
+        };
+        /**
+         * RFC4122 version 4 compliant UUID
+        */
+        GremlinSimpleClient.uuidv4 = function () {
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+                var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+        };
+        /**
+         * This is the main function to use in order to execute a GremlinQuery
+         * @param query
+         * @param successCallback
+         * @param progressCallback
+         * @param failureCallback
+         */
+        GremlinSimpleClient.prototype.executeGremlinQuery = function (query) {
+            var requestId = GremlinSimpleClient.uuidv4();
+            this.requestsToSend[requestId] = {
+                requestId: requestId,
+                op: 'eval',
+                processor: '',
+                args: {
+                    gremlin: query,
+                    bindings: {},
+                    language: 'gremlin-groovy'
+                }
+            };
+            this.connect();
+            return requestId;
+        };
+        GremlinSimpleClient.prototype.buildChallengeResponse = function (request) {
+            var args = {
+                SASL: GremlinSimpleClient.utf8ToB64('\0' + this.params.user + '\0' + this.params.password)
+            };
+            return {
+                requestId: request.requestId,
+                processor: request.processor,
+                op: 'authentication',
+                args: args
+            };
+        };
+        GremlinSimpleClient.utf8ToB64 = function (utf8Str) {
+            return btoa(encodeURIComponent(utf8Str).replace(/%([0-9A-F]{2})/g, function (match, p1) {
+                return String.fromCharCode(parseInt(p1, 16));
+            }));
+        };
+        /**
+         * Gremlin binary frame is:
+         * mimeLength + mimeType + serialized message
+         * @param requestMessage
+         */
+        GremlinSimpleClient.buildGremlinMessage = function (requestMessage) {
+            var mimeType = 'application/json';
+            var serializedMessage = mimeType + JSON.stringify(requestMessage);
+            var encodedMessage = new TextEncoder().encode(serializedMessage);
+            var binaryMessage = new Uint8Array(1 + encodedMessage.length);
+            binaryMessage[0] = mimeType.length;
+            for (var i = 0; i < encodedMessage.length; i++) {
+                binaryMessage[i + 1] = encodedMessage[i];
+            }
+            return binaryMessage;
+        };
+        GremlinSimpleClient.prototype.sendGremlinMessage = function (gremlinRequestMessage) {
+            var gremlinFrame = GremlinSimpleClient.buildGremlinMessage(gremlinRequestMessage);
+            this.ws.send(gremlinFrame);
+        };
+        return GremlinSimpleClient;
+    }());
+    exports.GremlinSimpleClient = GremlinSimpleClient;
+});
+ýJ¶ƒ      [Õ¾ù[Ö?§¶Ò[×kp   d    :https://cosmos.azure.com/built/Explorer/Graph/GraphExplorerComponent/GremlinSimpleClient.js?v=1.0.1 necko:classified 1 strongly-framed 1 security-info FnhllAKWRHGAlo+ESXykKAAAAAAAAAAAwAAAAAAAAEaphjojH6pBabDSgSnsfLHeAAQAAgAAAAAAAAAAAAAAAAAAAAAB4vFIJp5wRkeyPxAQ9RJGKPqbqVvKO0mKuIl8ec8o/uhmCjImkVxP+7sgiYWmMt8FvcOXmlQiTNWFiWlrbpbqgwAAAAAAAAOMMIIDiDCCAnCgAwIBAgIERTJgUjANBgkqhkiG9w0BAQsFADCBijEUMBIGA1UEBhMLUG9ydFN3aWdnZXIxFDASBgNVBAgTC1BvcnRTd2lnZ2VyMRQwEgYDVQQHEwtQb3J0U3dpZ2dlcjEUMBIGA1UEChMLUG9ydFN3aWdnZXIxFzAVBgNVBAsTDlBvcnRTd2lnZ2VyIENBMRcwFQYDVQQDEw5Qb3J0U3dpZ2dlciBDQTAeFw0xNDEwMjgxMzEyMTBaFw0zODEwMjgxMzEyMTBaMGAxFDASBgNVBAYTC1BvcnRTd2lnZ2VyMRQwEgYDVQQKEwtQb3J0U3dpZ2dlcjEXMBUGA1UECxMOUG9ydFN3aWdnZXIgQ0ExGTAXBgNVBAMTEGNvc21vcy5henVyZS5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCKn7emKINsnWqPZ+C/VsqbQf/l4NsmIh34bXBR0xdNg9bfb+xcoghRlmbPjhZ/A26A2gJ6Rrg2d0GGMLpbqA8nTlRRGXEAD39321zk4ye09ElXClvqguGqdqOJpPQ05DPFD6wSOq+KVAEblE5bi+LMqBLipDERzgUe7xzeqVVk0i0ldh9yQOIk3YuzcBR9igSEuw5qladmMYvXKHYM9YZz0R7axMc8xAtadK7C9KfFPfEI5LS2nhmy4vBrTgFyYhfkEvKfmIj6HTX0ISFCAC2llcBLpEDcuiW76tAHp1pXDeWtSeaV36AeOctdleVgrbmsGs3fu6ppuRcWjEZUbjE3AgMBAAGjHzAdMBsGA1UdEQQUMBKCEGNvc21vcy5henVyZS5jb20wDQYJKoZIhvcNAQELBQADggEBABYikT6Y5YgJJ4IVJldlFDF5MKxp26YegXhvT8EmAbgr0yQBIlY2DtKEiHf7Q8wRoJ9y5Ajst1D7HmRba+XLjS6s3IHJ7gtuvc3fZj9MPKpbqSKRfHDB8bDOVIzmjBseg2BqckHTkcYak3b/pTWCTqKHM3LxKsDwN8F3HNQ2pY4d5ma2kR1EtWdTpRiIbir3QxJDcWVp8CgHONZcoMn33NNwnWWjAQMX6d8e1CPuBZi0t+myaYduCqPgKKox9qMXSubF6uifQkAJ5RdLZrZ2pghENA/4r1oz51wqEmpjPsStSUxRPwJ6wJrB4gwGtX7++ZHLjAaNrTSUCGwIOlAT4LnALwEDAAAAAAEBAAAAAA== request-method GET request-Accept-Encoding gzip, deflate, br response-head HTTP/1.1 200 OK
+Content-Length: 11807
+Content-Type: application/x-javascript
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:39:58 GMT
+ original-response-headers Content-Length: 11807
+Content-Type: application/x-javascript
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:39:58 GMT
+Connection: close
+ uncompressed-len 0 net-response-time-onstart 5810 net-response-time-onstop 5810   .

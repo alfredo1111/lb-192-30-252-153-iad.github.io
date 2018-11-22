@@ -1,0 +1,272 @@
+var __extends = (this && this.__extends) || (function () {
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    }
+    return function (d, b) {
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
+define(["require", "exports", "knockout", "q", "../Tree/ObjectId", "../../Contracts/ViewModels", "../../Shared/Telemetry/TelemetryConstants", "../../Common/Constants", "../../Common/MongoUtility", "../Tree/DocumentId", "../../Common/ErrorParserUtility", "./DocumentsTab", "../../Common/Logger", "../../Shared/Telemetry/TelemetryProcessor"], function (require, exports, ko, Q, ObjectId, ViewModels, TelemetryConstants_1, Constants, MongoUtility, DocumentId, ErrorParserUtility, DocumentsTab, Logger_1, TelemetryProcessor_1) {
+    "use strict";
+    var MongoDocumentsTab = /** @class */ (function (_super) {
+        __extends(MongoDocumentsTab, _super);
+        function MongoDocumentsTab(options) {
+            var _this = _super.call(this, options) || this;
+            _this.onSaveNewDocumentClick = function () {
+                var documentContent = JSON.parse(_this.selectedDocumentContent());
+                _this.displayedError("");
+                var startKey = TelemetryProcessor_1.default.traceStart(TelemetryConstants_1.Action.CreateDocument, {
+                    databaseAccountName: _this.collection && _this.collection.container.databaseAccount().name,
+                    defaultExperience: _this.collection && _this.collection.container.defaultExperience(),
+                    dataExplorerArea: Constants.Areas.Tab,
+                    tabTitle: _this.tabTitle()
+                }, _this.isRunningOnDaytona);
+                if (_this.partitionKeyProperty && _this.partitionKeyProperty !== '_id' && !_this._hasShardKeySpecified(documentContent)) {
+                    var message = "Mongo document is lacking the shard property: " + _this.partitionKeyProperty;
+                    if (!_this.isRunningOnDaytona) {
+                        _this.displayedError(message);
+                        var that_1 = _this;
+                        setTimeout(function () {
+                            that_1.displayedError("");
+                        }, Constants.ClientDefaults.errorNotificationTimeoutMs);
+                        _this.isExecutionError(true);
+                        TelemetryProcessor_1.default.traceFailure(TelemetryConstants_1.Action.CreateDocument, {
+                            databaseAccountName: _this.collection && _this.collection.container.databaseAccount().name,
+                            defaultExperience: _this.collection && _this.collection.container.defaultExperience(),
+                            dataExplorerArea: Constants.Areas.Tab,
+                            tabTitle: _this.tabTitle()
+                        }, startKey);
+                        Logger_1.Logger.logError("Failed to save new document: Document shard key not defined", "MongoDocumentsTab");
+                    }
+                    else {
+                        _this.daytonaContext && _this.daytonaContext.hostProxy.executeProviderOperation("CloudExplorer.Actions.Dialog.promptOK", {
+                            title: "Error",
+                            message: message,
+                            messageBoxType: "error"
+                        });
+                    }
+                    return Q.reject("Document without shard key");
+                }
+                _this.isExecutionError(false);
+                _this.isExecuting(true);
+                return _this.documentClientUtility.createDocument({ self: _this._selfLink, resourceName: _this.collection && _this.collection.id(), rid: _this.collection && _this.collection.rid }, documentContent, { skipGetPartitionKeyDefinition: true } /*options*/).then(function (savedDocument) {
+                    var partitionKeyValue = _this.documentClientUtility.extractPartitionKey(savedDocument, _this._getPartitionKeyDefinition());
+                    if (typeof partitionKeyValue === "object") {
+                        partitionKeyValue = partitionKeyValue[Object.keys(partitionKeyValue)[0]];
+                    }
+                    var id = new ObjectId(_this, savedDocument, partitionKeyValue);
+                    var ids = _this.documentIds();
+                    ids.push(id);
+                    delete savedDocument._self;
+                    var value = _this.renderObjectForEditor(savedDocument || {}, null, 4);
+                    _this.selectedDocumentContent.setBaseline(value);
+                    _this.selectedDocumentId(id);
+                    _this.documentIds(ids);
+                    _this.editorState(ViewModels.DocumentExplorerState.exisitingDocumentNoEdits);
+                    _this.daytonaContext && _this.daytonaContext.telemetry.sendEvent("StorageExplorer." + ViewModels.CollectionTabKind[_this.tabKind] + ".SaveNewDocument");
+                    TelemetryProcessor_1.default.traceSuccess(TelemetryConstants_1.Action.CreateDocument, {
+                        databaseAccountName: _this.collection && _this.collection.container.databaseAccount().name,
+                        defaultExperience: _this.collection && _this.collection.container.defaultExperience(),
+                        dataExplorerArea: Constants.Areas.Tab,
+                        tabTitle: _this.tabTitle()
+                    }, startKey, _this.isRunningOnDaytona);
+                }, function (reason) {
+                    _this.isExecutionError(true);
+                    var message = ErrorParserUtility.parse(reason)[0].message;
+                    if (_this.isRunningOnDaytona) {
+                        _this.daytonaContext && _this.daytonaContext.hostProxy.executeProviderOperation("CloudExplorer.Actions.Dialog.promptOK", {
+                            title: "Error",
+                            message: message,
+                            messageBoxType: "error"
+                        });
+                    }
+                    else {
+                        window.alert(message);
+                        TelemetryProcessor_1.default.traceFailure(TelemetryConstants_1.Action.CreateDocument, {
+                            databaseAccountName: _this.collection && _this.collection.container.databaseAccount().name,
+                            defaultExperience: _this.collection && _this.collection.container.defaultExperience(),
+                            dataExplorerArea: Constants.Areas.Tab,
+                            tabTitle: _this.tabTitle()
+                        }, startKey);
+                    }
+                }).finally(function () { return _this.isExecuting(false); });
+            };
+            _this.onSaveExisitingDocumentClick = function () {
+                var selectedDocumentId = _this.selectedDocumentId();
+                var documentContent = _this.selectedDocumentContent();
+                _this.isExecutionError(false);
+                _this.isExecuting(true);
+                var startKey = TelemetryProcessor_1.default.traceStart(TelemetryConstants_1.Action.UpdateDocument, {
+                    databaseAccountName: _this.collection && _this.collection.container.databaseAccount().name,
+                    defaultExperience: _this.collection && _this.collection.container.defaultExperience(),
+                    dataExplorerArea: Constants.Areas.Tab,
+                    tabTitle: _this.tabTitle()
+                }, _this.isRunningOnDaytona);
+                return _this.documentClientUtility.updateDocument(selectedDocumentId, documentContent, null /*options*/).then(function (updatedDocument) {
+                    var value = _this.renderObjectForEditor(updatedDocument || {}, null, 4);
+                    _this.selectedDocumentContent.setBaseline(value);
+                    _this.documentIds().forEach(function (documentId) {
+                        if (documentId.rid === updatedDocument._rid) {
+                            var partitionKeyValue = _this.documentClientUtility.extractPartitionKey(updatedDocument, _this._getPartitionKeyDefinition());
+                            var id = new ObjectId(_this, updatedDocument, partitionKeyValue);
+                            documentId.id(id.id());
+                        }
+                    });
+                    _this.editorState(ViewModels.DocumentExplorerState.exisitingDocumentNoEdits);
+                    TelemetryProcessor_1.default.traceSuccess(TelemetryConstants_1.Action.UpdateDocument, {
+                        databaseAccountName: _this.collection && _this.collection.container.databaseAccount().name,
+                        defaultExperience: _this.collection && _this.collection.container.defaultExperience(),
+                        dataExplorerArea: Constants.Areas.Tab,
+                        tabTitle: _this.tabTitle()
+                    }, startKey, _this.isRunningOnDaytona);
+                }, function (reason) {
+                    var message = ErrorParserUtility.parse(reason)[0].message;
+                    if (_this.isRunningOnDaytona) {
+                        _this.daytonaContext && _this.daytonaContext.hostProxy.executeProviderOperation("CloudExplorer.Actions.Dialog.promptOK", {
+                            title: "Error",
+                            message: message,
+                            messageBoxType: "error"
+                        });
+                    }
+                    else {
+                        window.alert(message);
+                        _this.isExecutionError(true);
+                        console.error(reason);
+                        TelemetryProcessor_1.default.traceFailure(TelemetryConstants_1.Action.UpdateDocument, {
+                            databaseAccountName: _this.collection && _this.collection.container.databaseAccount().name,
+                            defaultExperience: _this.collection && _this.collection.container.defaultExperience(),
+                            dataExplorerArea: Constants.Areas.Tab,
+                            tabTitle: _this.tabTitle()
+                        }, startKey, _this.isRunningOnDaytona);
+                    }
+                }).finally(function () { return _this.isExecuting(false); });
+            };
+            _this.lastFilterContents = ko.observableArray([
+                '{"id":"foo"}', '{ qty: { $gte: 20 } }'
+            ]);
+            if (_this.partitionKeyProperty && _this.partitionKeyProperty.indexOf('$v') > -1) {
+                // From $v.shard.$v.key.$v > shard.key
+                _this.partitionKeyProperty = _this.partitionKeyProperty.replace(/.\$v/g, "").replace(/\$v./g, "");
+                _this.partitionKeyPropertyHeader = '/' + _this.partitionKeyProperty;
+            }
+            _this.isFilterExpanded = ko.observable(!_this.isRunningOnDaytona);
+            _super.prototype.buildCommandBarOptions.bind(_this);
+            _super.prototype.buildCommandBarOptions.call(_this);
+            return _this;
+        }
+        MongoDocumentsTab.prototype._buildQuery = function (filter) {
+            return filter || "{}";
+        };
+        MongoDocumentsTab.prototype.loadNextPage = function () {
+            var _this = this;
+            this.isExecuting(true);
+            this.isExecutionError(false);
+            return this._loadNextPageInternal().then(function (documentsIdsData) {
+                var currentDocuments = _this.documentIds();
+                var currentDocumentsRids = currentDocuments.map(function (currentDocument) { return currentDocument.rid; });
+                var nextDocumentIds = documentsIdsData
+                    .filter(function (d) {
+                    return currentDocumentsRids.indexOf(d._rid) < 0;
+                })
+                    .map(function (rawDocument) {
+                    var partitionKeyValue = rawDocument._partitionKeyValue;
+                    return new DocumentId(_this, rawDocument, partitionKeyValue);
+                });
+                var merged = currentDocuments.concat(nextDocumentIds);
+                _this.documentIds(merged);
+                currentDocuments = _this.documentIds();
+                if (_this.filterContent().length > 0 && currentDocuments.length > 0) {
+                    currentDocuments[0].click();
+                }
+                else {
+                    _this.selectedDocumentContent("");
+                    _this.selectedDocumentId(null);
+                    _this.editorState(ViewModels.DocumentExplorerState.noDocumentSelected);
+                }
+                if (_this.onLoadStartKey != null && _this.onLoadStartKey != undefined) {
+                    TelemetryProcessor_1.default.traceSuccess(TelemetryConstants_1.Action.Tab, {
+                        databaseAccountName: _this.collection.container.databaseAccount().name,
+                        databaseName: _this.collection.database.id(),
+                        collectionName: _this.collection.id(),
+                        defaultExperience: _this.collection.container.defaultExperience(),
+                        dataExplorerArea: Constants.Areas.Tab,
+                        tabTitle: _this.tabTitle()
+                    }, _this.onLoadStartKey);
+                    _this.onLoadStartKey = null;
+                }
+            }, function (error) {
+                if (_this.onLoadStartKey != null && _this.onLoadStartKey != undefined) {
+                    TelemetryProcessor_1.default.traceFailure(TelemetryConstants_1.Action.Tab, {
+                        databaseAccountName: _this.collection.container.databaseAccount().name,
+                        databaseName: _this.collection.database.id(),
+                        collectionName: _this.collection.id(),
+                        defaultExperience: _this.collection.container.defaultExperience(),
+                        dataExplorerArea: Constants.Areas.Tab,
+                        tabTitle: _this.tabTitle(),
+                        error: error
+                    }, _this.onLoadStartKey);
+                    _this.onLoadStartKey = null;
+                }
+            }).finally(function () { return _this.isExecuting(false); });
+        };
+        MongoDocumentsTab.prototype._onEditorContentChange = function (newContent) {
+            try {
+                if (this.editorState() === ViewModels.DocumentExplorerState.newDocumentValid || this.editorState() === ViewModels.DocumentExplorerState.newDocumentInvalid) {
+                    var parsed = JSON.parse(newContent);
+                }
+                // Mongo uses BSON format for _id, trying to parse it as JSON blocks normal flow in an edit
+                this.onValidDocumentEdit();
+            }
+            catch (e) {
+                this.onInvalidDocumentEdit();
+            }
+        };
+        /** Renders a Javascript object to be displayed inside Monaco Editor */
+        MongoDocumentsTab.prototype.renderObjectForEditor = function (value, replacer, space) {
+            return MongoUtility.tojson(value, null, false);
+        };
+        MongoDocumentsTab.prototype._hasShardKeySpecified = function (document) {
+            var extraction = this.documentClientUtility.extractPartitionKey(document, this._getPartitionKeyDefinition());
+            return extraction && typeof extraction !== 'object';
+        };
+        MongoDocumentsTab.prototype._getPartitionKeyDefinition = function () {
+            var partitionKey = this.partitionKey;
+            if (this.partitionKey && this.partitionKey.paths && this.partitionKey.paths.length && this.partitionKey.paths.length > 0 && this.partitionKey.paths[0].indexOf('$v') > -1) {
+                // Convert BsonSchema2 to /path format
+                partitionKey = {
+                    kind: partitionKey.kind,
+                    paths: ['/' + this.partitionKeyProperty.replace(/\./g, '/')]
+                };
+            }
+            return partitionKey;
+        };
+        return MongoDocumentsTab;
+    }(DocumentsTab));
+    return MongoDocumentsTab;
+});
+D’u:&š      [Õ¾á[Õ¾ô?§¶Á[×kX   J    :https://cosmos.azure.com/built/Explorer/Tabs/MongoDocumentsTab.js?v=1.0.1 necko:classified 1 strongly-framed 1 security-info FnhllAKWRHGAlo+ESXykKAAAAAAAAAAAwAAAAAAAAEaphjojH6pBabDSgSnsfLHeAAQAAgAAAAAAAAAAAAAAAAAAAAAB4vFIJp5wRkeyPxAQ9RJGKPqbqVvKO0mKuIl8ec8o/uhmCjImkVxP+7sgiYWmMt8FvcOXmlQiTNWFiWlrbpbqgwAAAAAAAAOMMIIDiDCCAnCgAwIBAgIERTJgUjANBgkqhkiG9w0BAQsFADCBijEUMBIGA1UEBhMLUG9ydFN3aWdnZXIxFDASBgNVBAgTC1BvcnRTd2lnZ2VyMRQwEgYDVQQHEwtQb3J0U3dpZ2dlcjEUMBIGA1UEChMLUG9ydFN3aWdnZXIxFzAVBgNVBAsTDlBvcnRTd2lnZ2VyIENBMRcwFQYDVQQDEw5Qb3J0U3dpZ2dlciBDQTAeFw0xNDEwMjgxMzEyMTBaFw0zODEwMjgxMzEyMTBaMGAxFDASBgNVBAYTC1BvcnRTd2lnZ2VyMRQwEgYDVQQKEwtQb3J0U3dpZ2dlcjEXMBUGA1UECxMOUG9ydFN3aWdnZXIgQ0ExGTAXBgNVBAMTEGNvc21vcy5henVyZS5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCKn7emKINsnWqPZ+C/VsqbQf/l4NsmIh34bXBR0xdNg9bfb+xcoghRlmbPjhZ/A26A2gJ6Rrg2d0GGMLpbqA8nTlRRGXEAD39321zk4ye09ElXClvqguGqdqOJpPQ05DPFD6wSOq+KVAEblE5bi+LMqBLipDERzgUe7xzeqVVk0i0ldh9yQOIk3YuzcBR9igSEuw5qladmMYvXKHYM9YZz0R7axMc8xAtadK7C9KfFPfEI5LS2nhmy4vBrTgFyYhfkEvKfmIj6HTX0ISFCAC2llcBLpEDcuiW76tAHp1pXDeWtSeaV36AeOctdleVgrbmsGs3fu6ppuRcWjEZUbjE3AgMBAAGjHzAdMBsGA1UdEQQUMBKCEGNvc21vcy5henVyZS5jb20wDQYJKoZIhvcNAQELBQADggEBABYikT6Y5YgJJ4IVJldlFDF5MKxp26YegXhvT8EmAbgr0yQBIlY2DtKEiHf7Q8wRoJ9y5Ajst1D7HmRba+XLjS6s3IHJ7gtuvc3fZj9MPKpbqSKRfHDB8bDOVIzmjBseg2BqckHTkcYak3b/pTWCTqKHM3LxKsDwN8F3HNQ2pY4d5ma2kR1EtWdTpRiIbir3QxJDcWVp8CgHONZcoMn33NNwnWWjAQMX6d8e1CPuBZi0t+myaYduCqPgKKox9qMXSubF6uifQkAJ5RdLZrZ2pghENA/4r1oz51wqEmpjPsStSUxRPwJ6wJrB4gwGtX7++ZHLjAaNrTSUCGwIOlAT4LnALwEDAAAAAAEBAAAAAA== request-method GET request-Accept-Encoding gzip, deflate, br response-head HTTP/1.1 200 OK
+Content-Length: 16256
+Content-Type: application/x-javascript
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:39:48 GMT
+ original-response-headers Content-Length: 16256
+Content-Type: application/x-javascript
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:39:48 GMT
+Connection: close
+ uncompressed-len 0 net-response-time-onstart 19259 net-response-time-onstop 19260   ?€

@@ -1,0 +1,785 @@
+var __extends = (this && this.__extends) || function (d, b) {
+    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+    function __() { this.constructor = d; }
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+};
+define(["require", "exports", "../Util/Datetime", "../Shared/Disposable", "./Command", "../../../_generated/Svg", "./Loader", "../Util/Log", "../Util/Util", "text!./Templates/StatusCalendar.html"], function (require, exports, Datetime, Disposable, Command, Svg, Loader, Log, Util) {
+    "use strict";
+    var logger = Log.getLogger({
+        loggerName: "StatusCalendar"
+    });
+    var prevDirectionString = "prev";
+    var nextDirectionString = "next";
+    var genericLayoutTypeString = "Generic";
+    var numberOfRowsInMinuteCalendar = 12;
+    var numberOfRowsInHourCalendar = 7;
+    var numberOfYearsToShowInARow = 3;
+    var numberOfRowsInYearCalendar = 4;
+    exports.numberOfDatesInGenericCalendar = 10;
+    exports.numberOfDatesInGenericRow = 4;
+    var numberOfWeeksInARow = 4;
+    var numberOfWeeksInCalendar = 10;
+    var numberOfMonthsInARow = 3;
+    exports.maxNumberOfSlotsInARow = 24;
+    exports.maxNumberOfSlotsInACalendar = 24 * 7;
+    exports.maxNumberOfSlotsInARowMap = {};
+    exports.maxNumberOfSlotsInARowMap[Datetime.TimeUnit.Minute] = 4;
+    exports.maxNumberOfSlotsInARowMap[Datetime.TimeUnit.Hour] = 24;
+    exports.maxNumberOfSlotsInARowMap[Datetime.TimeUnit.Day] = 7;
+    exports.maxNumberOfSlotsInARowMap[Datetime.TimeUnit.Week] = 4;
+    exports.maxNumberOfSlotsInARowMap[Datetime.TimeUnit.Month] = 3;
+    exports.maxNumberOfSlotsInARowMap[Datetime.TimeUnit.Year] = 4;
+    exports.StatusBoxState = {
+        success: "success",
+        failed: "failed",
+        inprogress: "inprogress",
+        waiting: "waiting",
+        missing: "missing"
+    };
+    (function (StatusCalendarUpdateResultEnum) {
+        StatusCalendarUpdateResultEnum[StatusCalendarUpdateResultEnum["complete"] = 0] = "complete";
+        StatusCalendarUpdateResultEnum[StatusCalendarUpdateResultEnum["aborted"] = 1] = "aborted";
+        StatusCalendarUpdateResultEnum[StatusCalendarUpdateResultEnum["failed"] = 2] = "failed";
+    })(exports.StatusCalendarUpdateResultEnum || (exports.StatusCalendarUpdateResultEnum = {}));
+    var StatusCalendarUpdateResultEnum = exports.StatusCalendarUpdateResultEnum;
+    ;
+    exports.UpdateResultString = {};
+    exports.UpdateResultString[StatusCalendarUpdateResultEnum.complete] = "complete";
+    exports.UpdateResultString[StatusCalendarUpdateResultEnum.aborted] = "aborted";
+    exports.UpdateResultString[StatusCalendarUpdateResultEnum.failed] = "failed";
+    var StatusCalendarPage = (function (_super) {
+        __extends(StatusCalendarPage, _super);
+        function StatusCalendarPage(lifetimeManager) {
+            _super.call(this, lifetimeManager);
+            this.statusBoxRows = ko.observableArray([]);
+            this.rowLabels = ko.observableArray([]);
+            this.colLabels = ko.observableArray([]);
+            this.rowSeparatorCount = ko.observable(0);
+            this.dateRange = null;
+            this.loading = ko.observable(Loader.LoadingState.BlockingUiLoading);
+            this.pageHeader = ko.observable();
+        }
+        StatusCalendarPage.prototype.calculateLabelsAndSeparator = function (statusBoxes, frequency, interval, isGeneric) {
+            var rowLabels = [];
+            var colLabels = [];
+            var pageHeader = "";
+            this.rowSeparatorCount(0);
+            var firstDate = statusBoxes[0][0].date;
+            var lastDate = statusBoxes[statusBoxes.length - 1][statusBoxes[0].length - 1].date;
+            var headerSeparator = "{0} - {1}";
+            if (isGeneric) {
+                for (var i = 0; i < statusBoxes.length; i++) {
+                    rowLabels.push(Datetime.fullDate.format(statusBoxes[i][0].date.getTime()));
+                }
+                this.rowSeparatorCount(1);
+            }
+            else {
+                switch (frequency) {
+                    case Datetime.TimeUnit.Minute:
+                        for (var i = 0; i < statusBoxes[0].length; i++) {
+                            colLabels.push(":" + i * interval);
+                        }
+                        for (var i = 0; i < statusBoxes.length; i++) {
+                            rowLabels.push(Datetime.shortHour.format(statusBoxes[i][0].date.getTime()));
+                        }
+                        this.rowSeparatorCount(1);
+                        pageHeader = getConciseDateRangeLabel(firstDate, lastDate);
+                        break;
+                    case Datetime.TimeUnit.Hour:
+                        var nCols = statusBoxes[0].length;
+                        var colIncrements = 1;
+                        for (var i = 6; i >= 1; i--) {
+                            if (nCols % i === 0) {
+                                colIncrements = statusBoxes[0].length / i;
+                                break;
+                            }
+                        }
+                        for (var i = 0; i < nCols; i += colIncrements) {
+                            var tempUTCHours = (i * 24 / nCols + 11) % 12 + 1;
+                            var colLabel = null;
+                            if (tempUTCHours === 12) {
+                                colLabel = tempUTCHours.toString() + (i === 0 ? "AM" : "PM");
+                            }
+                            else {
+                                colLabel = tempUTCHours.toString();
+                            }
+                            colLabels.push(colLabel);
+                        }
+                        for (var i = 0; i < statusBoxes.length; i += 1) {
+                            rowLabels.push(Datetime.shortDate.format(statusBoxes[i][0].date.getTime()));
+                        }
+                        this.rowSeparatorCount(1);
+                        pageHeader = getConciseDateRangeLabel(firstDate, lastDate);
+                        break;
+                    case Datetime.TimeUnit.Day:
+                        statusBoxes.forEach(function (rowStatusBox) {
+                            rowStatusBox.forEach(function (statusBox) {
+                                statusBox.boxLabel = statusBox.date.getUTCDate().toString();
+                            });
+                        });
+                        statusBoxes[0].forEach(function (statusBox) {
+                            colLabels.push(Datetime.narowWeekday.format(statusBox.date.getTime()));
+                        });
+                        pageHeader = Datetime.shortMonthYear.format(firstDate.getTime() + Datetime.timeUnitToMilliseconds[Datetime.TimeUnit.Week]);
+                        break;
+                    case Datetime.TimeUnit.Week:
+                        for (var i = 0; i < statusBoxes.length; i++) {
+                            var weekStart = statusBoxes[i][0].date;
+                            var weekEnd = new Date(weekStart.getTime() + (7 - 1) * Datetime.timeUnitToMilliseconds[Datetime.TimeUnit.Day]);
+                            rowLabels.push(getConciseDateRangeLabel(weekStart, weekEnd));
+                            if (i === statusBoxes.length - 1) {
+                                pageHeader = getConciseDateRangeLabel(statusBoxes[0][0].date, weekEnd);
+                            }
+                        }
+                        this.rowSeparatorCount(1);
+                        break;
+                    case Datetime.TimeUnit.Month:
+                        statusBoxes.forEach(function (rowStatusBox) {
+                            rowStatusBox.forEach(function (statusBox) {
+                                statusBox.boxLabel = Datetime.shortMonth.format(statusBox.date.getTime());
+                            });
+                        });
+                        pageHeader = Datetime.fullYear.format(firstDate.getTime());
+                        break;
+                    case Datetime.TimeUnit.Year:
+                        statusBoxes.forEach(function (rowStatusBox) {
+                            rowStatusBox.forEach(function (statusBox) {
+                                statusBox.boxLabel = Datetime.fullYear.format(statusBox.date.getTime());
+                            });
+                        });
+                        pageHeader = headerSeparator.format(Datetime.fullYear.format(firstDate.getTime()), Datetime.fullYear.format(lastDate.getTime()));
+                        break;
+                    default:
+                        logger.logError("Unexpected switch statement value: " + frequency);
+                        break;
+                }
+            }
+            this.rowLabels(rowLabels);
+            this.colLabels(colLabels);
+            if (isGeneric) {
+                this.pageHeader("");
+            }
+            else {
+                this.pageHeader(pageHeader);
+            }
+        };
+        StatusCalendarPage.prototype.updateHiglightedNodeSubscription = function (pageData, highlightedNodes) {
+            if (this._highlightedNodesSubscription) {
+                this._highlightedNodesSubscription.dispose();
+            }
+            if (highlightedNodes) {
+                this._lifetimeManager.registerForDispose(Util.subscribeAndCall(highlightedNodes, function (highlightedNodesLocal) {
+                    var pageDateMap = {};
+                    pageData.forEach(function (statusBoxRow) {
+                        statusBoxRow.forEach(function (statusBox) {
+                            pageDateMap[statusBox.date.getTime()] = statusBox;
+                            statusBox.highlight = null;
+                        });
+                    });
+                    highlightedNodesLocal.forEach(function (highlightedNode) {
+                        var statusBox = pageDateMap[highlightedNode];
+                        if (statusBox) {
+                            statusBox.highlight = ko.observable(true);
+                        }
+                    });
+                }));
+            }
+        };
+        StatusCalendarPage.prototype.clean = function () {
+            this.statusBoxRows([]);
+        };
+        return StatusCalendarPage;
+    }(Disposable.ChildDisposable));
+    exports.StatusCalendarPage = StatusCalendarPage;
+    var StatusCalendar = (function (_super) {
+        __extends(StatusCalendar, _super);
+        function StatusCalendar(lifetimeManager, statusCalendarConfig) {
+            var _this = this;
+            _super.call(this, lifetimeManager);
+            this.loading = ko.observable(Loader.LoadingState.BlockingUiLoading);
+            this.header = ko.observable();
+            this.subHeader = ko.observable();
+            this.footer = ko.observable();
+            this.type = ko.observable();
+            this.pages = ko.observableArray();
+            this.nextButtonOptions = null;
+            this.previousButtonOptions = null;
+            this._currentUpdateLifetimeManager = null;
+            this._updateConfig = null;
+            this._refreshId = 0;
+            this.selectedDate = ko.observable();
+            this._lifetimeManager = lifetimeManager.createChildLifetime();
+            this.nextButtonOptions = new Command.ObservableCommand({
+                icon: Svg.rightarrow,
+                onclick: function () { _this.navigatePage(nextDirectionString); },
+                name: "next",
+                label: ClientResources.nextButtonText,
+                tooltip: ClientResources.nextButtonText
+            });
+            this.previousButtonOptions = new Command.ObservableCommand({
+                icon: Svg.leftarrow,
+                onclick: function () { _this.navigatePage(prevDirectionString); },
+                name: "previous",
+                label: ClientResources.previousButtonText,
+                tooltip: ClientResources.previousButtonText
+            });
+            var pages = [];
+            for (var i = 0; i < statusCalendarConfig.size; i++) {
+                var page = new StatusCalendarPage(this._lifetimeManager);
+                pages.push(page);
+            }
+            this.pages(pages);
+        }
+        StatusCalendar.prototype.navigatePage = function (direction) {
+            var _this = this;
+            if (this.loading() !== Loader.LoadingState.Ready) {
+                return;
+            }
+            this.loading(Loader.LoadingState.Loading);
+            var currentRefreshId = this._refreshId;
+            var baseDate = null;
+            if (direction === prevDirectionString) {
+                baseDate = getBaseDate(this.pages()[0].dateRange, this._updateConfig.frequency, this._updateConfig.interval, this._updateConfig.isGeneric, false);
+            }
+            else if (direction === nextDirectionString) {
+                var pages = this.pages();
+                baseDate = getBaseDate(pages[pages.length - 1].dateRange, this._updateConfig.frequency, this._updateConfig.interval, this._updateConfig.isGeneric, true);
+            }
+            if (baseDate) {
+                var newPage_1 = new StatusCalendarPage(this._lifetimeManager);
+                var dateRange_1 = getStartEndDateRange(baseDate, this._updateConfig.frequency, this._updateConfig.interval, this._updateConfig.isGeneric, true);
+                this._updateConfig.pageCallback(dateRange_1).then(function (statusBoxes) {
+                    if (currentRefreshId !== _this._refreshId) {
+                        return;
+                    }
+                    var pageData = [];
+                    try {
+                        pageData = sanitizeIncomingData(statusBoxes, dateRange_1, _this._updateConfig.frequency, _this._updateConfig.interval, _this._updateConfig.isGeneric, true);
+                        newPage_1.dateRange = getPageDateRange(pageData, _this._updateConfig.frequency, _this._updateConfig.interval);
+                    }
+                    catch (ex) {
+                        _this.enterFailedState();
+                        return;
+                    }
+                    newPage_1.calculateLabelsAndSeparator(pageData, _this._updateConfig.frequency, _this._updateConfig.interval, _this._updateConfig.isGeneric);
+                    newPage_1.updateHiglightedNodeSubscription(pageData, _this._updateConfig.highlightedDates);
+                    newPage_1.statusBoxRows(pageData);
+                    var pages = _this.pages().slice();
+                    if (direction === prevDirectionString) {
+                        pages.pop().dispose();
+                        pages.unshift(newPage_1);
+                    }
+                    else if (direction === nextDirectionString) {
+                        pages.shift().dispose();
+                        pages.push(newPage_1);
+                    }
+                    _this.pages(pages);
+                    _this.disableCalendarNavigationIfOutsideOfRange(pages, _this._updateConfig.dateRange);
+                    _this.loading(Loader.LoadingState.Ready);
+                }, function (reason) {
+                    _this.enterFailedState();
+                    logger.logError(reason.responseText);
+                });
+            }
+        };
+        StatusCalendar.prototype.update = function (updateConfig) {
+            var _this = this;
+            this.loading(Loader.LoadingState.BlockingUiLoading);
+            var currentRefreshId = ++this._refreshId;
+            var deferred = Q.defer();
+            if (this._currentUpdateLifetimeManager) {
+                this._currentUpdateLifetimeManager.dispose();
+            }
+            this._currentUpdateLifetimeManager = this._lifetimeManager.createChildLifetime();
+            this._updateConfig = updateConfig;
+            this.header(updateConfig.header);
+            this.subHeader(updateConfig.subHeader);
+            this.footer(updateConfig.footer);
+            this.selectedDate(null);
+            var baseDate = updateConfig.baseDate;
+            updateConfig.isGeneric = hasGenericCalendar(updateConfig.frequency, updateConfig.interval);
+            this.pages().forEach(function (page) {
+                page.dateRange = getStartEndDateRange(baseDate, updateConfig.frequency, updateConfig.interval, updateConfig.isGeneric, true);
+                baseDate = new Date(page.dateRange.startDate.getTime() - 1);
+            });
+            var combinedDateRange = {
+                startDate: this.pages()[0].dateRange.startDate,
+                endDate: this.pages()[this.pages().length - 1].dateRange.endDate
+            };
+            updateConfig.pageCallback(combinedDateRange).then(function (statusBoxes) {
+                if (currentRefreshId !== _this._refreshId) {
+                    deferred.reject({
+                        result: StatusCalendarUpdateResultEnum.aborted
+                    });
+                }
+                for (var i = 0; i < _this.pages().length; i++) {
+                    var page = _this.pages()[i];
+                    var pageData = [];
+                    try {
+                        pageData = sanitizeIncomingData(statusBoxes, page.dateRange, updateConfig.frequency, updateConfig.interval, updateConfig.isGeneric, true);
+                        page.dateRange = getPageDateRange(pageData, updateConfig.frequency, updateConfig.interval);
+                    }
+                    catch (ex) {
+                        _this.enterFailedState();
+                        deferred.reject({
+                            result: StatusCalendarUpdateResultEnum.failed,
+                            reason: ex
+                        });
+                        return;
+                    }
+                    page.calculateLabelsAndSeparator(pageData, updateConfig.frequency, updateConfig.interval, updateConfig.isGeneric);
+                    page.updateHiglightedNodeSubscription(pageData, updateConfig.highlightedDates);
+                    page.statusBoxRows(pageData);
+                }
+                _this.loading(Loader.LoadingState.Ready);
+                _this.disableCalendarNavigationIfOutsideOfRange(_this.pages(), _this._updateConfig.dateRange);
+                deferred.resolve({
+                    result: StatusCalendarUpdateResultEnum.complete
+                });
+            }, function (reason) {
+                _this.enterFailedState();
+                deferred.reject({
+                    result: StatusCalendarUpdateResultEnum.failed,
+                    reason: reason
+                });
+            });
+            this.cleanCurrentState();
+            if (updateConfig.isGeneric) {
+                this.type(genericLayoutTypeString);
+            }
+            else {
+                this.type(updateConfig.frequency);
+            }
+            return deferred.promise;
+        };
+        StatusCalendar.prototype.updateSelection = function (selectedDate) {
+            if (!selectedDate) {
+                this.selectedDate(null);
+                return;
+            }
+            this.selectedDate(selectedDate);
+        };
+        StatusCalendar.prototype.enterFailedState = function () {
+            this.loading(Loader.LoadingState.Failed);
+            this.cleanCurrentState();
+        };
+        StatusCalendar.prototype.cleanCurrentState = function () {
+            this.pages().forEach(function (page) {
+                page.clean();
+            });
+        };
+        StatusCalendar.prototype.disableCalendarNavigationIfOutsideOfRange = function (pages, dateRange) {
+            this.previousButtonOptions.disabled(false);
+            this.nextButtonOptions.disabled(false);
+            if (!dateRange) {
+                return;
+            }
+            var startDate = pages[0].dateRange.startDate;
+            var endDate = pages[pages.length - 1].dateRange.endDate;
+            if (startDate.getTime() <= dateRange.startDate.getTime()) {
+                this.previousButtonOptions.disabled(true);
+            }
+            if (dateRange.endDate.getTime() < endDate.getTime()) {
+                this.nextButtonOptions.disabled(true);
+            }
+        };
+        StatusCalendar.prototype.dispose = function () {
+            this._lifetimeManager.dispose();
+        };
+        StatusCalendar.template = require("text!./Templates/StatusCalendar.html");
+        StatusCalendar.statusCalendars = {};
+        return StatusCalendar;
+    }(Disposable.ChildDisposable));
+    exports.StatusCalendar = StatusCalendar;
+    exports.timeScales = [
+        { unit: Datetime.TimeUnit.Minute, scaleFactor: 60 },
+        { unit: Datetime.TimeUnit.Hour, scaleFactor: 24 },
+        { unit: Datetime.TimeUnit.Day, scaleFactor: 7 },
+        { unit: Datetime.TimeUnit.Week, scaleFactor: -1 },
+        { unit: Datetime.TimeUnit.Month, scaleFactor: 12 },
+        { unit: Datetime.TimeUnit.Year, scaleFactor: -1 },
+    ];
+    exports.timeScaleMap = {};
+    exports.timeScales.forEach(function (timeScale) {
+        exports.timeScaleMap[timeScale.unit] = timeScale;
+    });
+    function findCorrectFrequencyAndInterval(frequency, interval) {
+        for (var i = 0; i < exports.timeScales.length; i++) {
+            var timeUnit = exports.timeScales[i];
+            if (timeUnit.unit === frequency) {
+                if (timeUnit.scaleFactor === -1) {
+                }
+                else {
+                    if (interval < timeUnit.scaleFactor) {
+                        if (!(timeUnit.scaleFactor % interval === 0)) {
+                        }
+                    }
+                    else {
+                        if (interval % timeUnit.scaleFactor === 0) {
+                            frequency = exports.timeScales[i + 1].unit;
+                            interval /= timeUnit.scaleFactor;
+                        }
+                    }
+                }
+            }
+        }
+        return [frequency, interval];
+    }
+    exports.findCorrectFrequencyAndInterval = findCorrectFrequencyAndInterval;
+    function getGapInMillis(frequency, interval) {
+        return Datetime.timeUnitToMilliseconds[frequency] * interval;
+    }
+    exports.getGapInMillis = getGapInMillis;
+    function getStartEndDateRange(date, frequency, interval, isGeneric, fullCalendar) {
+        var startDate = null;
+        var endDate = null;
+        var dateMoment = moment.utc(date.getTime());
+        if (isGeneric) {
+            endDate = dateMoment.add(1, Datetime.TimeUnit.Millisecond).valueOf();
+            startDate = dateMoment.subtract(interval * (fullCalendar ? exports.numberOfDatesInGenericCalendar : exports.numberOfDatesInGenericRow), frequency).valueOf();
+            return {
+                startDate: new Date(startDate),
+                endDate: new Date(endDate)
+            };
+        }
+        if (!fullCalendar) {
+            switch (frequency) {
+                case Datetime.TimeUnit.Minute:
+                case Datetime.TimeUnit.Hour:
+                    var intervalMillis = Datetime.timeUnitToMilliseconds[frequency] * interval;
+                    endDate = Math.floor(date.getTime() / intervalMillis) * intervalMillis + intervalMillis;
+                    var gap = exports.timeScaleMap[frequency].scaleFactor * Datetime.timeUnitToMilliseconds[frequency];
+                    startDate = endDate - gap;
+                    break;
+                case Datetime.TimeUnit.Day:
+                    endDate = getStartOfNextTimeUnit(dateMoment, Datetime.TimeUnit.Day).valueOf();
+                    startDate = dateMoment.subtract(exports.timeScaleMap[frequency].scaleFactor, Datetime.TimeUnit.Day).valueOf();
+                    break;
+                case Datetime.TimeUnit.Week:
+                    endDate = getStartOfNextTimeUnit(dateMoment, Datetime.TimeUnit.Week).valueOf();
+                    startDate = dateMoment.subtract(numberOfWeeksInARow, Datetime.TimeUnit.Week).valueOf();
+                    break;
+                case Datetime.TimeUnit.Month:
+                    endDate = getStartOfNextTimeUnit(dateMoment, Datetime.TimeUnit.Month).valueOf();
+                    startDate = dateMoment.subtract(numberOfMonthsInARow, Datetime.TimeUnit.Month).valueOf();
+                    break;
+                case Datetime.TimeUnit.Year:
+                    endDate = getStartOfNextTimeUnit(dateMoment, Datetime.TimeUnit.Year).valueOf();
+                    startDate = dateMoment.subtract(numberOfYearsToShowInARow, Datetime.TimeUnit.Year).valueOf();
+                    break;
+                default:
+                    logger.logError("Unexpected switch statement value: " + frequency);
+                    break;
+            }
+        }
+        else {
+            switch (frequency) {
+                case Datetime.TimeUnit.Minute:
+                    endDate = getStartOfNextTimeUnit(dateMoment, Datetime.TimeUnit.Hour).valueOf();
+                    startDate = dateMoment.subtract(numberOfRowsInMinuteCalendar, Datetime.TimeUnit.Hour).valueOf();
+                    break;
+                case Datetime.TimeUnit.Hour:
+                    endDate = getStartOfNextTimeUnit(dateMoment, Datetime.TimeUnit.Day).valueOf();
+                    startDate = dateMoment.subtract(numberOfRowsInHourCalendar, Datetime.TimeUnit.Day).valueOf();
+                    break;
+                case Datetime.TimeUnit.Day:
+                    var nextMonthStartMoment = getStartOfNextTimeUnit(dateMoment.clone(), Datetime.TimeUnit.Month);
+                    var nextMonthMillis = nextMonthStartMoment.valueOf();
+                    if (nextMonthStartMoment.startOf(Datetime.TimeUnit.Week).valueOf() !== nextMonthMillis) {
+                        nextMonthStartMoment.add(1, Datetime.TimeUnit.Week);
+                    }
+                    endDate = nextMonthStartMoment.valueOf();
+                    startDate = dateMoment.startOf(Datetime.TimeUnit.Month).startOf(Datetime.TimeUnit.Week).valueOf();
+                    break;
+                case Datetime.TimeUnit.Week:
+                    endDate = getStartOfNextTimeUnit(dateMoment, Datetime.TimeUnit.Week).valueOf();
+                    startDate = dateMoment.subtract(numberOfWeeksInCalendar, Datetime.TimeUnit.Week).valueOf();
+                    break;
+                case Datetime.TimeUnit.Month:
+                    endDate = getStartOfNextTimeUnit(dateMoment, Datetime.TimeUnit.Year).valueOf();
+                    startDate = dateMoment.subtract(1, Datetime.TimeUnit.Year).valueOf();
+                    break;
+                case Datetime.TimeUnit.Year:
+                    endDate = getStartOfNextTimeUnit(dateMoment, Datetime.TimeUnit.Year).valueOf();
+                    startDate = dateMoment.subtract(numberOfYearsToShowInARow * numberOfRowsInYearCalendar, Datetime.TimeUnit.Year).valueOf();
+                    break;
+                default:
+                    logger.logError("Unexpected switch statement value: " + frequency);
+                    break;
+            }
+        }
+        return {
+            startDate: new Date(startDate),
+            endDate: new Date(endDate)
+        };
+    }
+    exports.getStartEndDateRange = getStartEndDateRange;
+    function sanitizeIncomingData(data, dateRange, frequency, interval, isGeneric, isFullCalendar) {
+        var sanitizedData = [];
+        var _a = getGridSizeForFrequencyInterval(dateRange, frequency, interval, isGeneric, isFullCalendar), nCols = _a.nCols, nRows = _a.nRows;
+        var firstKnownDate = data.length > 0 ? data[0].date : dateRange.endDate;
+        var curMoment = moment.utc(firstKnownDate);
+        var getMissingStatusBox = function (millis) {
+            return { date: new Date(millis), status: ko.observable(exports.StatusBoxState.missing) };
+        };
+        curMoment.subtract(interval, frequency);
+        while (curMoment.valueOf() >= dateRange.startDate.getTime()) {
+            sanitizedData.push(getMissingStatusBox(curMoment.valueOf()));
+            curMoment.subtract(interval, frequency);
+        }
+        sanitizedData.reverse();
+        curMoment = moment.utc(lowerBoundDate(firstKnownDate, dateRange.startDate, frequency, interval));
+        var dataIndex = 0, dataLength = data.length;
+        dataIndex = lowerBoundIndex(data, curMoment.toDate());
+        while (curMoment.valueOf() < dateRange.endDate.getTime()) {
+            var addMissingStatusBox = true;
+            for (; dataIndex < dataLength; dataIndex++) {
+                var dataItemMillis = data[dataIndex].date.getTime();
+                if (dataItemMillis === curMoment.valueOf()) {
+                    sanitizedData.push(data[dataIndex]);
+                    dataIndex++;
+                    addMissingStatusBox = false;
+                    break;
+                }
+                else if (dataItemMillis > curMoment.valueOf()) {
+                    addMissingStatusBox = true;
+                    break;
+                }
+                else if (dataItemMillis < curMoment.valueOf()) {
+                    logger.logInfo("Unxepected dataItem. The date value of {0} is less than the expected value {1} for {2}.".format(data[dataIndex].date.toISOString(), curMoment.toISOString(), JSON.stringify(data[dataIndex])));
+                }
+            }
+            if (addMissingStatusBox) {
+                sanitizedData.push(getMissingStatusBox(curMoment.valueOf()));
+            }
+            curMoment.add(interval, frequency);
+        }
+        var returnData = [];
+        for (var i = 0; i < nRows; i++) {
+            if ((i + 1) * nCols <= sanitizedData.length) {
+                returnData.push(sanitizedData.slice(i * nCols, (i + 1) * nCols));
+            }
+            else {
+                logger.logError("The grid size is different than the size of data generated for {0}, {1}, {2}, {3}; grid: nCols {4}, nRows{5}".format(JSON.stringify(dateRange), frequency, interval, isFullCalendar, nCols, nRows));
+                break;
+            }
+        }
+        return returnData;
+    }
+    exports.sanitizeIncomingData = sanitizeIncomingData;
+    function getGridSizeForFrequencyInterval(dateRange, frequency, interval, isGeneric, isFullCalendar) {
+        if (isGeneric) {
+            if (isFullCalendar) {
+                return {
+                    nCols: 1,
+                    nRows: exports.numberOfDatesInGenericCalendar
+                };
+            }
+            else {
+                return {
+                    nCols: exports.numberOfDatesInGenericRow,
+                    nRows: 1
+                };
+            }
+        }
+        var nCols = null, nRows = null;
+        switch (frequency) {
+            case Datetime.TimeUnit.Minute:
+            case Datetime.TimeUnit.Hour:
+            case Datetime.TimeUnit.Day:
+                nCols = exports.timeScaleMap[frequency].scaleFactor / interval;
+                if (isFullCalendar) {
+                    nRows = (dateRange.endDate.getTime() - dateRange.startDate.getTime()) / (Datetime.timeUnitToMilliseconds[frequency] * exports.timeScaleMap[frequency].scaleFactor);
+                }
+                else {
+                    nRows = 1;
+                }
+                break;
+            case Datetime.TimeUnit.Week:
+                if (isFullCalendar) {
+                    nRows = numberOfWeeksInCalendar;
+                    nCols = 1;
+                }
+                else {
+                    nRows = 1;
+                    nCols = numberOfWeeksInARow;
+                }
+                break;
+            case Datetime.TimeUnit.Month:
+                nCols = numberOfMonthsInARow;
+                nRows = isFullCalendar ? (12 / numberOfMonthsInARow) : 1;
+                break;
+            case Datetime.TimeUnit.Year:
+                nCols = numberOfYearsToShowInARow;
+                nRows = isFullCalendar ? numberOfRowsInYearCalendar : 1;
+                break;
+            default:
+                logger.logError("Unexpected switch statement value: " + frequency);
+                break;
+        }
+        return {
+            nCols: nCols,
+            nRows: nRows
+        };
+    }
+    function hasGenericCalendar(frequency, interval) {
+        var isGeneric = false;
+        switch (frequency) {
+            case Datetime.TimeUnit.Minute:
+            case Datetime.TimeUnit.Hour:
+                if (exports.timeScaleMap[frequency].scaleFactor % interval !== 0) {
+                    isGeneric = true;
+                }
+                break;
+            case Datetime.TimeUnit.Week:
+            case Datetime.TimeUnit.Day:
+            case Datetime.TimeUnit.Month:
+            case Datetime.TimeUnit.Year:
+                if (interval !== 1) {
+                    isGeneric = true;
+                }
+                break;
+            default:
+                logger.logError("hasGenericCalendar: Unexpected switch statement value: " + frequency);
+                break;
+        }
+        return isGeneric;
+    }
+    exports.hasGenericCalendar = hasGenericCalendar;
+    function getBaseDate(dateRange, frequency, interval, isGeneric, next) {
+        var newBaseDate = null;
+        var curDate = null;
+        if (!next) {
+            if (isGeneric) {
+                return new Date(dateRange.startDate.getTime() - 1);
+            }
+            else {
+                return moment.utc(dateRange.startDate).subtract(interval, frequency).toDate();
+            }
+        }
+        if (isGeneric) {
+            return moment.utc(dateRange.endDate).add(interval * exports.numberOfDatesInGenericCalendar, frequency).subtract(1, Datetime.TimeUnit.Millisecond).toDate();
+        }
+        curDate = new Date(dateRange.endDate.getTime());
+        switch (frequency) {
+            case Datetime.TimeUnit.Minute:
+                newBaseDate = new Date(curDate.getTime() + (numberOfRowsInMinuteCalendar - 1) * Datetime.timeUnitToMilliseconds[Datetime.TimeUnit.Hour]);
+                break;
+            case Datetime.TimeUnit.Hour:
+                newBaseDate = new Date(curDate.getTime() + (numberOfRowsInHourCalendar - 1) * Datetime.timeUnitToMilliseconds[Datetime.TimeUnit.Day]);
+                break;
+            case Datetime.TimeUnit.Week:
+                newBaseDate = new Date(curDate.getTime() + (numberOfWeeksInCalendar - 1) * Datetime.timeUnitToMilliseconds[Datetime.TimeUnit.Week]);
+                break;
+            case Datetime.TimeUnit.Day:
+            case Datetime.TimeUnit.Month:
+                newBaseDate = moment.utc(curDate).add(1, frequency).toDate();
+                break;
+            case Datetime.TimeUnit.Year:
+                newBaseDate = moment.utc(curDate).add(numberOfYearsToShowInARow * numberOfRowsInYearCalendar - 1, Datetime.TimeUnit.Year).toDate();
+                break;
+            default:
+                logger.logError("Unexpected switch statement value: " + frequency);
+                break;
+        }
+        return newBaseDate;
+    }
+    exports.getBaseDate = getBaseDate;
+    function getConciseDateRangeLabel(firstDate, lastDate) {
+        var label = "";
+        var headerSeparator = "{0} - {1}";
+        if (firstDate.getUTCFullYear() === lastDate.getUTCFullYear()) {
+            if (firstDate.getUTCMonth() === lastDate.getUTCMonth()) {
+                if (firstDate.getUTCDate() === lastDate.getUTCDate()) {
+                    label = Datetime.format1.format(firstDate.getTime());
+                }
+                else {
+                    label = Datetime.shortMonth.format(firstDate.getTime()) + " " +
+                        headerSeparator.format(firstDate.getUTCDate(), lastDate.getUTCDate()) + " " + firstDate.getUTCFullYear();
+                }
+            }
+            else {
+                label = headerSeparator.format(Datetime.shortDayMonth.format(firstDate.getTime()), Datetime.shortDayMonth.format(lastDate.getTime())) + " " + firstDate.getUTCFullYear();
+            }
+        }
+        else {
+            label = headerSeparator.format(Datetime.fullDate.format(firstDate.getTime()), Datetime.fullDate.format(lastDate.getTime()));
+        }
+        return label;
+    }
+    function getStartOfNextTimeUnit(currentMoment, timeUnit) {
+        return currentMoment.add(1, timeUnit).startOf(timeUnit);
+    }
+    function getPageDateRange(pageData, frequency, interval) {
+        if (pageData.length > 0 && pageData[0].length > 0) {
+            return {
+                startDate: new Date(pageData[0][0].date.getTime()),
+                endDate: moment.utc(pageData[pageData.length - 1][pageData[0].length - 1].date).add(interval, frequency).toDate()
+            };
+        }
+        else {
+            return null;
+        }
+    }
+    function lowerBoundDate(curDate, lowerBound, frequency, interval) {
+        var curMoment = moment.utc(curDate), lowerBoundMillis = lowerBound.getTime(), bestLowerBound = curDate.getTime();
+        var start = 0, end = 100000, mid = 0;
+        while (start <= end) {
+            mid = Math.floor((start + end) / 2);
+            var tempMoment = curMoment.clone().add(mid * interval, frequency).valueOf();
+            if (tempMoment >= lowerBoundMillis) {
+                bestLowerBound = tempMoment;
+                end = mid - 1;
+            }
+            else {
+                start = mid + 1;
+            }
+        }
+        return new Date(bestLowerBound);
+    }
+    function lowerBoundIndex(data, lowerBound) {
+        var lowerBoundMillis = lowerBound.getTime(), bestLowerBound = data.length;
+        var start = 0, end = data.length - 1, mid = 0;
+        while (start <= end) {
+            mid = Math.floor((start + end) / 2);
+            var tempDate = data[mid].date.getTime();
+            if (tempDate >= lowerBoundMillis) {
+                bestLowerBound = mid;
+                end = mid - 1;
+            }
+            else {
+                start = mid + 1;
+            }
+        }
+        return bestLowerBound;
+    }
+});
+//# sourceMappingURL=StatusCalendar.js.map¦ž}´Mz      [Öþ[Ö?§ç[[ØåW   ”    :https://datafactory-endpoint.azureedge.net/node_modules/@ms-atlas-module/datastudio-datafactory/scripts/Framework/UI/StatusCalendar.js?v=1.0.4164.1 necko:classified 1 strongly-framed 1 security-info FnhllAKWRHGAlo+ESXykKAAAAAAAAAAAwAAAAAAAAEaphjojH6pBabDSgSnsfLHeAAQAAgAAAAAAAAAAAAAAAAAAAAAB4vFIJp5wRkeyPxAQ9RJGKPqbqVvKO0mKuIl8ec8o/uhmCjImkVxP+7sgiYWmMt8FvcOXmlQiTNWFiWlrbpbqgwAAAAAAAAOwMIIDrDCCApSgAwIBAgIERTJgTjANBgkqhkiG9w0BAQsFADCBijEUMBIGA1UEBhMLUG9ydFN3aWdnZXIxFDASBgNVBAgTC1BvcnRTd2lnZ2VyMRQwEgYDVQQHEwtQb3J0U3dpZ2dlcjEUMBIGA1UEChMLUG9ydFN3aWdnZXIxFzAVBgNVBAsTDlBvcnRTd2lnZ2VyIENBMRcwFQYDVQQDEw5Qb3J0U3dpZ2dlciBDQTAeFw0xNDEwMjgxMzEyMTBaFw0zODEwMjgxMzEyMTBaMHIxFDASBgNVBAYTC1BvcnRTd2lnZ2VyMRQwEgYDVQQKEwtQb3J0U3dpZ2dlcjEXMBUGA1UECxMOUG9ydFN3aWdnZXIgQ0ExKzApBgNVBAMTImRhdGFmYWN0b3J5LWVuZHBvaW50LmF6dXJlZWRnZS5uZXQwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCKn7emKINsnWqPZ+C/VsqbQf/l4NsmIh34bXBR0xdNg9bfb+xcoghRlmbPjhZ/A26A2gJ6Rrg2d0GGMLpbqA8nTlRRGXEAD39321zk4ye09ElXClvqguGqdqOJpPQ05DPFD6wSOq+KVAEblE5bi+LMqBLipDERzgUe7xzeqVVk0i0ldh9yQOIk3YuzcBR9igSEuw5qladmMYvXKHYM9YZz0R7axMc8xAtadK7C9KfFPfEI5LS2nhmy4vBrTgFyYhfkEvKfmIj6HTX0ISFCAC2llcBLpEDcuiW76tAHp1pXDeWtSeaV36AeOctdleVgrbmsGs3fu6ppuRcWjEZUbjE3AgMBAAGjMTAvMC0GA1UdEQQmMCSCImRhdGFmYWN0b3J5LWVuZHBvaW50LmF6dXJlZWRnZS5uZXQwDQYJKoZIhvcNAQELBQADggEBAD5nTga0zudMitI/u0TfDiXUvU9MHWtnM1QsCR52LG8/P3zHlMPdW01WDRZUWTzCGka9MJHNjppqHPNsxY69i49nAksLYLzG7nK57bfwfvJQH/v27QUFGFMmKZNtpz+523V8pi+RJR9/DcmY0SQslyt1+Cj1SViKKOJYr8DiCwrYSUxWRp0XCM6ACnyoVhILHxIff7DQUE7Qq8eLX2UMcsrHHrlmbWpSCkEMtikIahIK4D2jjHj/CFWVzmKApRGZHRCenGUCvwPc6+mdefq6dna4yuo/9sC8unizedWeSL+sIj+Qxy7egEU4w3ZyvM8xUIozSNHY/VVwXW5ypPYqSlDALwEDAAAAAAEBAAAAAA== request-method GET request-Accept-Encoding gzip, deflate, br response-head HTTP/1.1 200 OK
+Content-Type: application/javascript
+Last-Modified: Sat, 06 Oct 2018 23:13:01 GMT
+Accept-Ranges: bytes
+Etag: "ecdcfc20ca5dd41:0"
+Server: Microsoft-IIS/8.5
+X-Frame-Options: AllowAll
+X-XSS-Protection: 1; mode=block
+X-Content-Type-Options: nosniff
+Strict-Transport-Security: max-age=15724800; includeSubDomains
+Access-Control-Allow-Origin: *
+Vary: Accept-Encoding
+Content-Length: 38372
+Date: Sun, 28 Oct 2018 18:50:41 GMT
+ original-response-headers Content-Type: application/javascript
+Last-Modified: Sat, 06 Oct 2018 23:13:01 GMT
+Accept-Ranges: bytes
+Etag: "ecdcfc20ca5dd41:0"
+Server: Microsoft-IIS/8.5
+X-Frame-Options: AllowAll
+X-XSS-Protection: 1; mode=block
+X-Content-Type-Options: nosniff
+Strict-Transport-Security: max-age=15724800; includeSubDomains
+Access-Control-Allow-Origin: *
+Vary: Accept-Encoding
+Content-Length: 38372
+Date: Sun, 28 Oct 2018 18:50:41 GMT
+Connection: close
+ uncompressed-len 0 net-response-time-onstart 4096 net-response-time-onstop 4096   •ä

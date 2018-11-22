@@ -1,0 +1,224 @@
+var __extends = (this && this.__extends) || (function () {
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    }
+    return function (d, b) {
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
+define(["require", "exports", "knockout", "./TabsBase", "../Tables/DataTable/TableEntityListViewModel", "../Tables/QueryBuilder/QueryViewModel", "../Tables/DataTable/TableCommands", "../Menus/CommandBar/CommandBarOptions"], function (require, exports, ko, TabsBase, TableEntityListViewModel_1, QueryViewModel_1, TableCommands_1, CommandBarOptions_1) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    // Will act as table explorer class
+    var QueryTablesTab = /** @class */ (function (_super) {
+        __extends(QueryTablesTab, _super);
+        function QueryTablesTab(options) {
+            var _this = _super.call(this, options) || this;
+            _this.tableEntityListViewModel = ko.observable();
+            _this.queryViewModel = ko.observable();
+            _this.queryText = ko.observable("PartitionKey eq 'partitionKey1'"); // Start out with an example they can modify
+            _this.selectedQueryText = ko.observable("").extend({ notify: "always" });
+            _this.commandBarOptions = {};
+            _this.onExecuteQueryClick = function () {
+                _this.queryViewModel().runQuery();
+                return null;
+            };
+            _this.onQueryBuilderClick = function () {
+                _this.queryViewModel().selectHelper();
+                return null;
+            };
+            _this.onQueryTextClick = function () {
+                _this.queryViewModel().selectEditor();
+                return null;
+            };
+            _this.onAddEntityClick = function () {
+                _this.container.addTableEntityPane.tableViewModel = _this.tableEntityListViewModel();
+                _this.container.addTableEntityPane.open();
+                return null;
+            };
+            _this.onEditEntityClick = function () {
+                _this.tableCommands.editEntityCommand(_this.tableEntityListViewModel());
+                return null;
+            };
+            _this.onDeleteEntityClick = function () {
+                _this.tableCommands.deleteEntitiesCommand(_this.tableEntityListViewModel());
+                return null;
+            };
+            _this.container = options.collection && options.collection.container;
+            _this.tableCommands = new TableCommands_1.default(_this.container);
+            _this.tableDataClient = _this.container.tableDataClient;
+            _this.tableEntityListViewModel(new TableEntityListViewModel_1.default(_this.tableCommands, _this));
+            _this.tableEntityListViewModel().queryTablesTab = _this;
+            _this.queryViewModel(new QueryViewModel_1.default(_this));
+            var sampleQuerySubscription = _this.tableEntityListViewModel().items.subscribe(function () {
+                if (_this.tableEntityListViewModel().items().length > 0 && _this.container.isPreferredApiTable()) {
+                    _this.queryViewModel().queryBuilderViewModel().setExample();
+                }
+                sampleQuerySubscription.dispose();
+            });
+            _this.executeQueryButton = {
+                enabled: ko.computed(function () {
+                    return true;
+                }),
+                visible: ko.computed(function () {
+                    return true;
+                })
+            };
+            _this.queryBuilderButton = {
+                enabled: ko.computed(function () {
+                    return true;
+                }),
+                visible: ko.computed(function () {
+                    return true;
+                }),
+                isSelected: ko.computed(function () {
+                    return _this.queryViewModel() ? _this.queryViewModel().isHelperActive() : false;
+                })
+            };
+            _this.queryTextButton = {
+                enabled: ko.computed(function () {
+                    return true;
+                }),
+                visible: ko.computed(function () {
+                    return true;
+                }),
+                isSelected: ko.computed(function () {
+                    return _this.queryViewModel() ? _this.queryViewModel().isEditorActive() : false;
+                })
+            };
+            _this.addEntityButton = {
+                enabled: ko.computed(function () {
+                    return true;
+                }),
+                visible: ko.computed(function () {
+                    return true;
+                })
+            };
+            _this.editEntityButton = {
+                enabled: ko.computed(function () {
+                    return _this.tableCommands.isEnabled(TableCommands_1.default.editEntityCommand, _this.tableEntityListViewModel().selected());
+                }),
+                visible: ko.computed(function () {
+                    return true;
+                })
+            };
+            _this.deleteEntityButton = {
+                enabled: ko.computed(function () {
+                    return _this.tableCommands.isEnabled(TableCommands_1.default.deleteEntitiesCommand, _this.tableEntityListViewModel().selected());
+                }),
+                visible: ko.computed(function () {
+                    return true;
+                })
+            };
+            _this.buildCommandBarOptions();
+            return _this;
+        }
+        QueryTablesTab.prototype.onActivate = function () {
+            var _this = this;
+            return _super.prototype.onActivate.call(this).then(function () {
+                var columns = !!_this.tableEntityListViewModel()
+                    && !!_this.tableEntityListViewModel().table
+                    && _this.tableEntityListViewModel().table.columns;
+                if (!!columns) {
+                    columns.adjust();
+                    $(window).resize();
+                }
+            });
+        };
+        QueryTablesTab.prototype.buildCommandBarOptions = function () {
+            var _this = this;
+            var queryBuilderButtonOptions = {
+                iconSrc: 'images/Query-Builder.svg',
+                onCommandClick: this.onQueryBuilderClick,
+                commandButtonLabel: this.container.isPreferredApiCassandra() ? 'CQL Query Builder' : 'Query Builder',
+                hasPopup: false,
+                visible: ko.computed(function () { return _this.queryBuilderButton.visible(); }),
+                disabled: ko.computed(function () { return !_this.queryBuilderButton.enabled(); }),
+                isSelected: ko.computed(function () { return _this.queryBuilderButton.isSelected(); }),
+                tabIndex: ko.computed(function () { return _this.queryBuilderButton.enabled() ? 0 : -1; })
+            };
+            var queryTextButtonOptions = {
+                iconSrc: 'images/Query-Text.svg',
+                onCommandClick: this.onQueryTextClick,
+                commandButtonLabel: this.container.isPreferredApiCassandra() ? 'CQL Query Text' : 'Query Text',
+                hasPopup: false,
+                visible: ko.computed(function () { return _this.queryTextButton.visible(); }),
+                disabled: ko.computed(function () { return !_this.queryTextButton.enabled(); }),
+                isSelected: ko.computed(function () { return _this.queryTextButton.isSelected(); }),
+                tabIndex: ko.computed(function () { return _this.queryTextButton.enabled() ? 0 : -1; })
+            };
+            var executeQueryButtonOptions = {
+                iconSrc: 'images/ExecuteQuery.svg',
+                onCommandClick: this.onExecuteQueryClick,
+                commandButtonLabel: 'Run',
+                hasPopup: false,
+                visible: ko.computed(function () { return _this.executeQueryButton.visible(); }),
+                disabled: ko.computed(function () { return !_this.executeQueryButton.enabled(); }),
+                tabIndex: ko.computed(function () { return _this.executeQueryButton.enabled() ? 0 : -1; })
+            };
+            var addEntityButtonOptions = {
+                iconSrc: 'images/AddEntity.svg',
+                onCommandClick: this.onAddEntityClick,
+                commandButtonLabel: this.container.isPreferredApiCassandra() ? 'Add Row' : 'Add Entity',
+                hasPopup: true,
+                visible: ko.computed(function () { return _this.addEntityButton.visible(); }),
+                disabled: ko.computed(function () { return !_this.addEntityButton.enabled(); }),
+                tabIndex: ko.computed(function () { return _this.addEntityButton.enabled() ? 0 : -1; })
+            };
+            var editEntityButtonOptions = {
+                iconSrc: 'images/Edit-entity.svg',
+                onCommandClick: this.onEditEntityClick,
+                commandButtonLabel: this.container.isPreferredApiCassandra() ? 'Edit Row' : 'Edit Entity',
+                hasPopup: true,
+                visible: ko.computed(function () { return _this.editEntityButton.visible(); }),
+                disabled: ko.computed(function () { return !_this.editEntityButton.enabled(); }),
+                tabIndex: ko.computed(function () { return _this.editEntityButton.enabled() ? 0 : -1; })
+            };
+            var deleteEntityButtonOptions = {
+                iconSrc: 'images/DeleteEntities.svg',
+                onCommandClick: this.onDeleteEntityClick,
+                commandButtonLabel: this.container.isPreferredApiCassandra() ? 'Delete Rows' : 'Delete Entities',
+                hasPopup: true,
+                visible: ko.computed(function () { return _this.deleteEntityButton.visible(); }),
+                disabled: ko.computed(function () { return !_this.deleteEntityButton.enabled(); }),
+                tabIndex: ko.computed(function () { return _this.deleteEntityButton.enabled() ? 0 : -1; })
+            };
+            this.commandBarOptions = new CommandBarOptions_1.CommandBarOptions([
+                queryBuilderButtonOptions,
+                queryTextButtonOptions,
+                executeQueryButtonOptions,
+                addEntityButtonOptions,
+                editEntityButtonOptions,
+                deleteEntityButtonOptions
+            ]);
+        };
+        return QueryTablesTab;
+    }(TabsBase));
+    exports.default = QueryTablesTab;
+});
+`!Cb      [Õ¾á[Õ¾õ?§¶Á[×kX   G    :https://cosmos.azure.com/built/Explorer/Tabs/QueryTablesTab.js?v=1.0.1 necko:classified 1 strongly-framed 1 security-info FnhllAKWRHGAlo+ESXykKAAAAAAAAAAAwAAAAAAAAEaphjojH6pBabDSgSnsfLHeAAQAAgAAAAAAAAAAAAAAAAAAAAAB4vFIJp5wRkeyPxAQ9RJGKPqbqVvKO0mKuIl8ec8o/uhmCjImkVxP+7sgiYWmMt8FvcOXmlQiTNWFiWlrbpbqgwAAAAAAAAOMMIIDiDCCAnCgAwIBAgIERTJgUjANBgkqhkiG9w0BAQsFADCBijEUMBIGA1UEBhMLUG9ydFN3aWdnZXIxFDASBgNVBAgTC1BvcnRTd2lnZ2VyMRQwEgYDVQQHEwtQb3J0U3dpZ2dlcjEUMBIGA1UEChMLUG9ydFN3aWdnZXIxFzAVBgNVBAsTDlBvcnRTd2lnZ2VyIENBMRcwFQYDVQQDEw5Qb3J0U3dpZ2dlciBDQTAeFw0xNDEwMjgxMzEyMTBaFw0zODEwMjgxMzEyMTBaMGAxFDASBgNVBAYTC1BvcnRTd2lnZ2VyMRQwEgYDVQQKEwtQb3J0U3dpZ2dlcjEXMBUGA1UECxMOUG9ydFN3aWdnZXIgQ0ExGTAXBgNVBAMTEGNvc21vcy5henVyZS5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCKn7emKINsnWqPZ+C/VsqbQf/l4NsmIh34bXBR0xdNg9bfb+xcoghRlmbPjhZ/A26A2gJ6Rrg2d0GGMLpbqA8nTlRRGXEAD39321zk4ye09ElXClvqguGqdqOJpPQ05DPFD6wSOq+KVAEblE5bi+LMqBLipDERzgUe7xzeqVVk0i0ldh9yQOIk3YuzcBR9igSEuw5qladmMYvXKHYM9YZz0R7axMc8xAtadK7C9KfFPfEI5LS2nhmy4vBrTgFyYhfkEvKfmIj6HTX0ISFCAC2llcBLpEDcuiW76tAHp1pXDeWtSeaV36AeOctdleVgrbmsGs3fu6ppuRcWjEZUbjE3AgMBAAGjHzAdMBsGA1UdEQQUMBKCEGNvc21vcy5henVyZS5jb20wDQYJKoZIhvcNAQELBQADggEBABYikT6Y5YgJJ4IVJldlFDF5MKxp26YegXhvT8EmAbgr0yQBIlY2DtKEiHf7Q8wRoJ9y5Ajst1D7HmRba+XLjS6s3IHJ7gtuvc3fZj9MPKpbqSKRfHDB8bDOVIzmjBseg2BqckHTkcYak3b/pTWCTqKHM3LxKsDwN8F3HNQ2pY4d5ma2kR1EtWdTpRiIbir3QxJDcWVp8CgHONZcoMn33NNwnWWjAQMX6d8e1CPuBZi0t+myaYduCqPgKKox9qMXSubF6uifQkAJ5RdLZrZ2pghENA/4r1oz51wqEmpjPsStSUxRPwJ6wJrB4gwGtX7++ZHLjAaNrTSUCGwIOlAT4LnALwEDAAAAAAEBAAAAAA== request-method GET request-Accept-Encoding gzip, deflate, br response-head HTTP/1.1 200 OK
+Content-Length: 10704
+Content-Type: application/x-javascript
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:39:49 GMT
+ original-response-headers Content-Length: 10704
+Content-Type: application/x-javascript
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:39:49 GMT
+Connection: close
+ uncompressed-len 0 net-response-time-onstart 19854 net-response-time-onstop 19854   )Ð

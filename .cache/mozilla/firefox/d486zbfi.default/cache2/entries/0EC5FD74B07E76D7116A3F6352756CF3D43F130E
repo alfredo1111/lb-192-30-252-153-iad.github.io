@@ -1,0 +1,584 @@
+var __extends = (this && this.__extends) || (function () {
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    }
+    return function (d, b) {
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
+define(["require", "exports", "knockout", "underscore", "../../Contracts/ViewModels", "../../Common/Constants", "./ContextualPaneBase", "../../PlatformType", "../../Shared/AddCollectionUtility", "../../Common/ErrorParserUtility", "../../Shared/Constants", "../../Utils/PricingUtils", "../../Shared/Telemetry/TelemetryConstants", "../../Shared/Telemetry/TelemetryProcessor", "../../Common/HashMap", "../../Common/EditableUtility"], function (require, exports, ko, _, ViewModels, Constants, ContextualPaneBase_1, PlatformType_1, AddCollectionUtility, ErrorParserUtility, SharedConstants, PricingUtils, TelemetryConstants_1, TelemetryProcessor_1, HashMap_1, editable) {
+    "use strict";
+    var AddCollectionPane = /** @class */ (function (_super) {
+        __extends(AddCollectionPane, _super);
+        function AddCollectionPane(options) {
+            var _this = _super.call(this, options) || this;
+            _this.defaultFlight = ko.observable(SharedConstants.CollectionCreation.DefaultAddCollectionDefaultFlight);
+            _this.onMoreDetailsKeyPress = function (source, event) {
+                if (event.keyCode === Constants.KeyCodes.Space || event.keyCode === Constants.KeyCodes.Enter) {
+                    _this.showErrorDetails();
+                    return false;
+                }
+                return true;
+            };
+            _this.isNonTableApi = function () {
+                return !_this.container.isPreferredApiTable();
+            };
+            _this.isUnlimitedStorageSelected = function () {
+                return _this.storage() === Constants.BackendDefaults.multiPartitionStorageInGb;
+            };
+            _this.isFixedStorageSelected = function () {
+                return _this.storage() === Constants.BackendDefaults.singlePartitionStorageInGb;
+            };
+            _this.isSharedThroughputEnabled = ko.pureComputed(function () { return window.dataExplorerPlatform !== PlatformType_1.PlatformType.Emulator; });
+            _this.isFixedDatabaseId = ko.observable(!!options.databaseId);
+            _this._databaseOffers = new HashMap_1.HashMap();
+            _this.formWarnings = ko.observable();
+            _this.collectionId = ko.observable();
+            _this.databaseId = ko.observable();
+            _this.databaseCreateNew = ko.observable(!_this.isFixedDatabaseId);
+            _this.databaseCreateNewShared = ko.observable(false);
+            _this.collectionWithThroughputInShared = ko.observable(false);
+            _this.databaseIds = ko.observableArray();
+            _this.uniqueKeys = ko.observableArray();
+            if (!!_this.container) {
+                var updateDatabaseIds_1 = function (newDatabaseIds) {
+                    var cachedDatabaseIdsList = _.map(newDatabaseIds, function (database) {
+                        if (!!database.offer()) {
+                            _this._databaseOffers.set(database.id(), database.offer());
+                        }
+                        else if (database.isDatabaseShared()) {
+                            database.readSettings();
+                        }
+                        return database.id();
+                    });
+                    _this.databaseIds(cachedDatabaseIdsList);
+                };
+                _this.container.databases.subscribe(function (newDatabases) { return updateDatabaseIds_1(newDatabases); });
+                updateDatabaseIds_1(_this.container.databases());
+            }
+            _this.isPreferredApiTable = options.isPreferredApiTable;
+            _this.partitionKey = ko.observable();
+            _this.partitionKey.subscribe(function (newPartitionKey) {
+                if (_this.container.isPreferredApiMongoDB() || !newPartitionKey || newPartitionKey[0] === "/") {
+                    return;
+                }
+                _this.partitionKey("/" + newPartitionKey);
+            });
+            _this.partitionKey.extend({ rateLimit: 100 });
+            _this.rupm = ko.observable(Constants.RUPMStates.off);
+            _this.rupmVisible = ko.observable(false);
+            var featureSubcription = _this.container.features.subscribe(function () {
+                _this.rupmVisible(_this.container.isFeatureEnabled(Constants.Features.enableRupm));
+                featureSubcription.dispose();
+            });
+            _this.storage = ko.observable();
+            _this.throughputSinglePartition = editable.observable();
+            _this.throughputMultiPartition = editable.observable();
+            _this.throughputDatabase = editable.observable();
+            _this.collectionIdTitle = ko.observable();
+            _this.collectionWithThroughputInSharedTitle = ko.observable();
+            _this.collectionMaxSharedThroughputTitle = ko.observable();
+            _this.maxThroughputRU = ko.observable();
+            _this.minThroughputRU = ko.observable();
+            _this.maxThroughputRUText = ko.observable();
+            _this.throughputRangeText = ko.observable();
+            _this.throughputSpendAckText = ko.observable();
+            _this.throughputSpendAck = ko.observable(false);
+            _this.maxCollectionsReachedMessage = ko.observable();
+            _this.databaseHasSharedOffer = ko.observable(false);
+            _this.sharedThroughputCollectionMinValue = ko.computed(function () { return Constants.BackendDefaults.collectionSharedMinThroughput; });
+            _this.sharedThroughputCollectionMaxValue = ko.computed(function () {
+                if (_this.databaseCreateNew()) {
+                    return _this.throughputDatabase() || Constants.BackendDefaults.collectionSharedDefaultMaxThroughput;
+                }
+                else {
+                    var selectedDatabase = _this.container && _.find(_this.container.databases(), function (database) { return database.id() === _this.databaseId(); });
+                    return (selectedDatabase && selectedDatabase.offer() && selectedDatabase.offer().content.offerThroughput) || Constants.BackendDefaults.collectionSharedDefaultMaxThroughput;
+                }
+            });
+            _this.utilizeMaxSharedThroughput = ko.observable(true);
+            _this.databaseId(options.databaseId);
+            _this.requestUnitsUsageCost = ko.computed(function () {
+                var offerThroughput = _this._getThroughput();
+                if (offerThroughput < _this.minThroughputRU() || offerThroughput > _this.maxThroughputRU()) {
+                    return "";
+                }
+                var hourlyPrice = PricingUtils.computeRUUsagePriceHourly(_this.container.serverId(), _this.rupm() === Constants.RUPMStates.on, offerThroughput);
+                var dailyPrice = hourlyPrice * 24;
+                var currency = PricingUtils.getPriceCurrency(_this.container.serverId());
+                _this.throughputSpendAckText("I acknowledge the estimated $" + PricingUtils.calculateEstimateNumber(dailyPrice) + " daily charge for the throughput above.");
+                return "Estimated spend (" + currency + "): $" + PricingUtils.calculateEstimateNumber(hourlyPrice) + " hourly / $" + PricingUtils.calculateEstimateNumber(dailyPrice) + " daily.";
+            });
+            _this.isTryCosmosDBSubscription = ko.pureComputed(function () {
+                return _this.container && _this.container.isTryCosmosDBSubscription() || false;
+            });
+            _this.sharedThroughputConfiguration = ko.pureComputed(function () {
+                return _this.container && _this.container.sharedThroughputRange();
+            });
+            _this.isTryCosmosDBSubscription.subscribe(function (isTryCosmosDB) {
+                if (!!isTryCosmosDB) {
+                    _this.resetData();
+                }
+            });
+            _this.canRequestSupport = ko.pureComputed(function () {
+                if (!_this.container.isEmulator && !_this.container.isTryCosmosDBSubscription() && _this.container.getPlatformType() !== PlatformType_1.PlatformType.Portal) {
+                    var offerThroughput = _this._getThroughput();
+                    return offerThroughput <= 100000;
+                }
+                return false;
+            });
+            _this.maxThroughputRUText = ko.pureComputed(function () {
+                return _this.maxThroughputRU().toLocaleString();
+            });
+            _this.costsVisible = ko.pureComputed(function () {
+                return !_this.container.isEmulator;
+            });
+            _this.maxCollectionsReached = ko.computed(function () {
+                if (!_this.isTryCosmosDBSubscription()) {
+                    return false;
+                }
+                var currentCollections = _this.container.databases().map(function (db) {
+                    if (db.collections() && "length" in db.collections()) {
+                        return db.collections().length;
+                    }
+                    return 0;
+                }).reduce(function (totalCollections, collections) {
+                    return totalCollections + collections;
+                }, 0);
+                var maxCollections = Constants.TryCosmosExperience.collectionsPerAccount;
+                if (_this.container.isPreferredApiMongoDB()) {
+                    maxCollections = Constants.TryCosmosExperience.collectionsPerMongoAccount;
+                }
+                if (currentCollections >= maxCollections) {
+                    var typeOfContainer = "collection";
+                    if (_this.container.isPreferredApiGraph() || _this.container.isPreferredApiTable()) {
+                        typeOfContainer = "container";
+                    }
+                    _this.maxCollectionsReachedMessage("You cannot create more than " + maxCollections + " " + typeOfContainer + "(s) during the Try Cosmos DB trial period.");
+                    return true;
+                }
+                return false;
+            });
+            _this.storage.subscribe(_this._updateThroughputLimitByStorage.bind(_this));
+            // TODO: Create derived classes for Tables and Mongo to replace the If statements below
+            _this.partitionKeyName = ko.computed(function () {
+                if (_this.container && !!_this.container.isPreferredApiMongoDB()) {
+                    return "Shard key";
+                }
+                return "Partition key";
+            });
+            _this.partitionKeyPlaceholder = ko.computed(function () {
+                if (_this.container && !!_this.container.isPreferredApiMongoDB()) {
+                    return "e.g., address.zipCode";
+                }
+                return "e.g., /address/zipCode";
+            });
+            _this.uniqueKeysPlaceholder = ko.pureComputed(function () {
+                if (_this.container && !!_this.container.isPreferredApiMongoDB()) {
+                    return "Comma separated paths e.g. firstName,address.zipCode";
+                }
+                return "Comma separated paths e.g. /firstName,/address/zipCode";
+            });
+            _this.uniqueKeysVisible = ko.pureComputed(function () {
+                if (_this.container == null || !!_this.container.isPreferredApiTable() || !!_this.container.isPreferredApiCassandra() || !!_this.container.isPreferredApiGraph()) {
+                    return false;
+                }
+                return true;
+            });
+            _this.partitionKeyVisible = ko.computed(function () {
+                if (_this.container == null || !!_this.container.isPreferredApiTable()) {
+                    return false;
+                }
+                if (!_this.isUnlimitedStorageSelected() && !_this.databaseHasSharedOffer()) {
+                    return false;
+                }
+                return true;
+            });
+            _this.throughputSpendAckVisible = ko.pureComputed(function () {
+                var selectedThroughput = _this._getThroughput();
+                var maxRU = _this.maxThroughputRU && _this.maxThroughputRU();
+                return maxRU > Constants.BackendDefaults.multiplePartitionMaxThroughput && selectedThroughput > Constants.BackendDefaults.multiplePartitionMaxThroughput;
+            });
+            _this.databaseCreateNew.subscribe(function (createNew) {
+                if (!createNew) {
+                    _this.databaseCreateNewShared(false);
+                }
+            });
+            _this.databaseId.subscribe(function (selectedDatabaseId) {
+                if (!selectedDatabaseId) {
+                    return;
+                }
+                if (!_this.databaseCreateNew()) {
+                    _this.databaseHasSharedOffer(_this._databaseOffers.has(selectedDatabaseId));
+                }
+            });
+            _this.databaseCreateNewShared.subscribe(function (useShared) {
+                _this._updateThroughputLimitByStorage();
+                _this.databaseHasSharedOffer(useShared);
+            });
+            _this.resetData();
+            _this.defaultFlight.subscribe(function () {
+                _this.resetData();
+            });
+            return _this;
+        }
+        AddCollectionPane.prototype.open = function (databaseId) {
+            _super.prototype.open.call(this);
+            // TODO: Figure out if a database level partition split is about to happen once shared throughput read is available
+            this.formWarnings("");
+            this.databaseHasSharedOffer(false);
+            if (this.isPreferredApiTable() && !databaseId) {
+                databaseId = SharedConstants.CollectionCreation.TablesAPIDefaultDatabase;
+            }
+            this.isFixedDatabaseId(!!databaseId);
+            this.databaseCreateNew(!this.isFixedDatabaseId());
+            this.collectionWithThroughputInShared(false);
+            this.databaseId(databaseId);
+            var addCollectionPaneOpenMessage = {
+                databaseAccountName: this.container.databaseAccount().name,
+                defaultExperience: this.container.defaultExperience(),
+                collection: ko.toJS({
+                    id: this.collectionId(),
+                    storage: this.storage(),
+                    offerThroughput: this._getThroughput(),
+                    partitionKey: this.partitionKey(),
+                    databaseId: this.databaseId(),
+                    rupm: this.rupm()
+                }),
+                subscriptionType: ViewModels.SubscriptionType[this.container.subscriptionType()],
+                subscriptionQuotaId: this.container.quotaId(),
+                defaultsCheck: {
+                    storage: this.storage() === Constants.BackendDefaults.singlePartitionStorageInGb ? "f" : "u",
+                    throughput: this._getThroughput(),
+                    defaultFlight: this.defaultFlight()
+                },
+                dataExplorerArea: Constants.Areas.ContextualPane
+            };
+            TelemetryProcessor_1.default.trace(TelemetryConstants_1.Action.CreateCollection, TelemetryConstants_1.ActionModifiers.Open, addCollectionPaneOpenMessage);
+        };
+        AddCollectionPane.prototype.submit = function () {
+            var _this = this;
+            if (!this._isValid()) {
+                return;
+            }
+            if (!!this.container.isPreferredApiTable()) {
+                // Table require fixed Database: TablesDB, and fixed Partition Key: /'$pk'
+                this.databaseId(SharedConstants.CollectionCreation.TablesAPIDefaultDatabase);
+                this.partitionKey("/'$pk'");
+            }
+            var partitionKeyPath = this.partitionKey();
+            var uniqueKeyPolicy = this._getUniqueKeyPolicy();
+            if (!!this.container.isPreferredApiMongoDB()) {
+                partitionKeyPath = this._convertShardKeyToPartitionKey(partitionKeyPath, this.container.databaseAccount().properties.configurationOverrides);
+            }
+            var offerThroughput = this._getThroughput();
+            var addCollectionPaneStartMessage = {
+                databaseAccountName: this.container.databaseAccount().name,
+                defaultExperience: this.container.defaultExperience(),
+                database: ko.toJS({
+                    id: this.databaseId(),
+                    "new": this.databaseCreateNew(),
+                    shared: this.databaseHasSharedOffer()
+                }),
+                offerThroughput: offerThroughput,
+                collection: ko.toJS({
+                    id: this.collectionId(),
+                    storage: this.storage(),
+                    partitionKey: partitionKeyPath,
+                    rupm: this.rupm(),
+                    uniqueKeyPolicy: uniqueKeyPolicy,
+                    collectionWithThroughputInShared: this.collectionWithThroughputInShared()
+                }),
+                subscriptionType: ViewModels.SubscriptionType[this.container.subscriptionType()],
+                subscriptionQuotaId: this.container.quotaId(),
+                defaultsCheck: {
+                    storage: this.storage() === Constants.BackendDefaults.singlePartitionStorageInGb ? "f" : "u",
+                    throughput: offerThroughput,
+                    defaultFlight: this.defaultFlight()
+                },
+                dataExplorerArea: Constants.Areas.ContextualPane
+            };
+            var startKey = TelemetryProcessor_1.default.traceStart(TelemetryConstants_1.Action.CreateCollection, addCollectionPaneStartMessage);
+            var databaseId = this.databaseId();
+            var collectionId = this.collectionId();
+            var partitionKey = (partitionKeyPath.trim()) ? { paths: [partitionKeyPath], kind: Constants.BackendDefaults.partitionKeyKind } : null;
+            var rupm = this.rupm() === Constants.RUPMStates.on;
+            var indexingPolicy = (this.container.isPreferredApiMongoDB())
+                ? SharedConstants.IndexingPolicies.Mongo
+                : SharedConstants.IndexingPolicies.Default;
+            this.formErrors("");
+            this.isExecuting(true);
+            var createRequest = {
+                collectionId: collectionId,
+                databaseId: databaseId,
+                offerThroughput: offerThroughput,
+                databaseLevelThroughput: this.databaseHasSharedOffer() && !this.collectionWithThroughputInShared(),
+                rupmEnabled: rupm,
+                partitionKey: partitionKey,
+                indexingPolicy: indexingPolicy,
+                uniqueKeyPolicy: uniqueKeyPolicy
+            };
+            var options = {};
+            if (this.databaseHasSharedOffer() && !this.collectionWithThroughputInShared()) {
+                if (this.utilizeMaxSharedThroughput()) {
+                    options.sharedOfferThroughput = this.sharedThroughputCollectionMaxValue();
+                }
+                else {
+                    options.sharedOfferThroughput = this.sharedThroughputCollectionMinValue();
+                }
+            }
+            this.container.documentClientUtility.getOrCreateDatabaseAndCollection(createRequest, options, null /*afterGetOrCreateDatabase*/)
+                .then(function (collection) {
+                _this.isExecuting(false);
+                _this.close();
+                _this.container.refreshAllDatabases();
+                var addCollectionPaneSuccessMessage = {
+                    databaseAccountName: _this.container.databaseAccount().name,
+                    defaultExperience: _this.container.defaultExperience(),
+                    database: ko.toJS({
+                        id: _this.databaseId(),
+                        "new": _this.databaseCreateNew(),
+                        shared: _this.databaseHasSharedOffer()
+                    }),
+                    offerThroughput: offerThroughput,
+                    collection: ko.toJS({
+                        id: _this.collectionId(),
+                        storage: _this.storage(),
+                        partitionKey: partitionKeyPath,
+                        rupm: _this.rupm(),
+                        uniqueKeyPolicy: uniqueKeyPolicy,
+                        collectionWithThroughputInShared: _this.collectionWithThroughputInShared()
+                    }),
+                    subscriptionType: ViewModels.SubscriptionType[_this.container.subscriptionType()],
+                    subscriptionQuotaId: _this.container.quotaId(),
+                    defaultsCheck: {
+                        storage: _this.storage() === Constants.BackendDefaults.singlePartitionStorageInGb ? "f" : "u",
+                        throughput: offerThroughput,
+                        defaultFlight: _this.defaultFlight()
+                    },
+                    dataExplorerArea: Constants.Areas.ContextualPane
+                };
+                TelemetryProcessor_1.default.traceSuccess(TelemetryConstants_1.Action.CreateCollection, addCollectionPaneSuccessMessage, startKey);
+                _this.resetData();
+            }, function (reason) {
+                _this.isExecuting(false);
+                var message = ErrorParserUtility.parse(reason);
+                _this.formErrors(message[0].message);
+                _this.formErrorsDetails(message[0].message);
+                var addCollectionPaneFailedMessage = {
+                    databaseAccountName: _this.container.databaseAccount().name,
+                    defaultExperience: _this.container.defaultExperience(),
+                    database: ko.toJS({
+                        id: _this.databaseId(),
+                        "new": _this.databaseCreateNew(),
+                        shared: _this.databaseHasSharedOffer()
+                    }),
+                    offerThroughput: offerThroughput,
+                    collection: {
+                        id: _this.collectionId(),
+                        storage: _this.storage(),
+                        partitionKey: partitionKeyPath,
+                        rupm: _this.rupm(),
+                        uniqueKeyPolicy: uniqueKeyPolicy,
+                        collectionWithThroughputInShared: _this.collectionWithThroughputInShared()
+                    },
+                    subscriptionType: ViewModels.SubscriptionType[_this.container.subscriptionType()],
+                    subscriptionQuotaId: _this.container.quotaId(),
+                    defaultsCheck: {
+                        storage: _this.storage() === Constants.BackendDefaults.singlePartitionStorageInGb ? "f" : "u",
+                        throughput: offerThroughput,
+                        defaultFlight: _this.defaultFlight()
+                    },
+                    dataExplorerArea: Constants.Areas.ContextualPane,
+                    error: reason
+                };
+                TelemetryProcessor_1.default.traceFailure(TelemetryConstants_1.Action.CreateCollection, addCollectionPaneFailedMessage, startKey);
+            });
+        };
+        AddCollectionPane.prototype.resetData = function () {
+            this.collectionId("");
+            this.databaseId("");
+            this.partitionKey("");
+            this.uniqueKeys([]);
+            var subscriptionType = this.container.subscriptionType();
+            var defaultStorageOption = AddCollectionUtility.Utilities.getDefaultStorageOption(subscriptionType, this.defaultFlight());
+            var defaultRUsFixed = AddCollectionUtility.Utilities.getDefaultRUs(subscriptionType, this.defaultFlight(), Constants.BackendDefaults.singlePartitionStorageInGb);
+            var defaultRUsUnlimited = AddCollectionUtility.Utilities.getDefaultRUs(subscriptionType, this.defaultFlight(), Constants.BackendDefaults.multiPartitionStorageInGb);
+            this.storage(defaultStorageOption);
+            this.throughputSinglePartition(defaultRUsFixed);
+            this.throughputMultiPartition(defaultRUsUnlimited);
+            var sharedThroughputConfiguration = this.sharedThroughputConfiguration();
+            this.throughputDatabase(sharedThroughputConfiguration.defaultRU);
+            this.databaseCreateNew(true);
+            this.collectionWithThroughputInShared(false);
+            this.databaseCreateNewShared(false);
+            if (this.isTryCosmosDBSubscription()) {
+                this._resetDataForTryCosmosDB();
+            }
+            this._updateThroughputLimitByStorage();
+            _super.prototype.resetData.call(this);
+        };
+        AddCollectionPane.prototype.onStorageOptionsKeyDown = function (source, event) {
+            if (event.keyCode === Constants.KeyCodes.RightArrow) {
+                this.storage(Constants.BackendDefaults.multiPartitionStorageInGb);
+                return false;
+            }
+            if (event.keyCode === Constants.KeyCodes.LeftArrow) {
+                this.storage(Constants.BackendDefaults.singlePartitionStorageInGb);
+                return false;
+            }
+            return true;
+        };
+        AddCollectionPane.prototype.onRupmOptionsKeyDown = function (source, event) {
+            if (event.key === "ArrowRight") {
+                this.rupm("off");
+                return false;
+            }
+            if (event.key === "ArrowLeft") {
+                this.rupm("on");
+                return false;
+            }
+            return true;
+        };
+        AddCollectionPane.prototype._isValid = function () {
+            // TODO add feature flag that disables validation for customers with custom accounts
+            var throughput = this._getThroughput();
+            var maxThroughputWithRUPM = SharedConstants.CollectionCreation.MaxRUPMPerPartition * this._calculateNumberOfPartitions();
+            if (this.rupm() === Constants.RUPMStates.on && throughput > maxThroughputWithRUPM) {
+                this.formErrors("The maximum supported provisioned throughput with RU/m enabled is " + maxThroughputWithRUPM + " RU/s. Please turn off RU/m to incease thoughput above " + maxThroughputWithRUPM + " RU/s.");
+                return false;
+            }
+            if (throughput > Constants.BackendDefaults.multiplePartitionMaxThroughput && !this.throughputSpendAck()) {
+                this.formErrors("Please acknowledge the estimated daily spend.");
+                return false;
+            }
+            return true;
+        };
+        AddCollectionPane.prototype._getThroughput = function () {
+            var throughput = (this.storage() === Constants.BackendDefaults.singlePartitionStorageInGb) ? this.throughputSinglePartition() : this.throughputMultiPartition();
+            if (this.databaseHasSharedOffer()) {
+                if (this.collectionWithThroughputInShared()) {
+                    throughput = this.throughputMultiPartition();
+                }
+                else {
+                    throughput = this.throughputDatabase();
+                }
+            }
+            return isNaN(throughput) ? 0 : Number(throughput);
+        };
+        AddCollectionPane.prototype._calculateNumberOfPartitions = function () {
+            // Note: this will not validate properly on accounts that have been set up for custom partitioning,
+            // but there is no way to know the number of partitions for that case.
+            return (this.storage() === Constants.BackendDefaults.singlePartitionStorageInGb) ? SharedConstants.CollectionCreation.NumberOfPartitionsInFixedCollection : SharedConstants.CollectionCreation.NumberOfPartitionsInUnlimitedCollection;
+        };
+        AddCollectionPane.prototype._convertShardKeyToPartitionKey = function (shardKey, configurationOverrides) {
+            if (!shardKey) {
+                return shardKey;
+            }
+            var shardKeyParts = shardKey.split('.');
+            var partitionKey = shardKeyParts.join('/');
+            var bsonSchema = configurationOverrides && configurationOverrides.EnableBsonSchema;
+            if (bsonSchema && bsonSchema.toLowerCase() === Constants.ConfigurationOverridesValues.IsBsonSchemaV2) {
+                // [prop1, prop2, prop3] => prop1/$v/prop2/$v/prop3/$v
+                partitionKey = "'$v'/" + shardKeyParts.join("/'$v'/") + "/'$v'";
+            }
+            if (partitionKey[0] !== '/') {
+                partitionKey = '/' + partitionKey;
+            }
+            return partitionKey;
+        };
+        AddCollectionPane.prototype._resetDataForTryCosmosDB = function () {
+            this.storage(Constants.BackendDefaults.singlePartitionStorageInGb);
+            this.throughputSinglePartition(Constants.TryCosmosExperience.defaultRU);
+            this.throughputDatabase(Constants.BackendDefaults.databaseLevelMinThroughput);
+        };
+        AddCollectionPane.prototype._updateThroughputLimitByStorage = function () {
+            if (this.databaseCreateNewShared()) {
+                this._updateThroughputLimitByDatabase();
+            }
+            else {
+                this._updateThroughputLimitByCollectionStorage();
+            }
+            this.throughputRangeText("Throughput (" + this.minThroughputRU().toLocaleString() + " - " + this.maxThroughputRU().toLocaleString() + " RU/s)");
+        };
+        AddCollectionPane.prototype._updateThroughputLimitByCollectionStorage = function () {
+            if (this.isTryCosmosDBSubscription()) {
+                this.maxThroughputRU(Constants.TryCosmosExperience.maxRU);
+                this.minThroughputRU(Constants.BackendDefaults.singlePartitionMinThroughput);
+            }
+            else {
+                var subscriptionType = this.container.subscriptionType();
+                this.maxThroughputRU(AddCollectionUtility.Utilities.getMaxRUForStorageOption(subscriptionType, this.defaultFlight(), this.storage()));
+                this.minThroughputRU(AddCollectionUtility.Utilities.getMinRUForStorageOption(subscriptionType, this.defaultFlight(), this.storage()));
+            }
+        };
+        AddCollectionPane.prototype._updateThroughputLimitByDatabase = function () {
+            var sharedThroughputConfiguration = this.sharedThroughputConfiguration();
+            this.maxThroughputRU(sharedThroughputConfiguration.maximumRU);
+            this.minThroughputRU(sharedThroughputConfiguration.minimumRU);
+        };
+        /**
+         * Obtains the UniqueKeyPolicy and applies transformations for Mongo APIs
+         */
+        AddCollectionPane.prototype._getUniqueKeyPolicy = function () {
+            var _this = this;
+            var transform = function (value) { return value; };
+            if (this.container.isPreferredApiMongoDB()) {
+                transform = function (value) {
+                    return _this._convertShardKeyToPartitionKey(value, _this.container.databaseAccount().properties.configurationOverrides);
+                };
+            }
+            return this._parseUniqueIndexes(transform);
+        };
+        /**
+         * Obtains the current added unique keys and applies cleaning, removing spaces and empty entries
+         * @param transform Transformation process for each detected key
+         */
+        AddCollectionPane.prototype._parseUniqueIndexes = function (transform) {
+            if (this.uniqueKeys().length === 0) {
+                return null;
+            }
+            var uniqueKeyPolicy = { uniqueKeys: [] };
+            this.uniqueKeys().forEach(function (uniqueIndexPaths) {
+                var uniqueIndexPathValue = uniqueIndexPaths.value();
+                if (!!uniqueIndexPathValue && uniqueIndexPathValue.length > 0) {
+                    var validPaths = _.filter(uniqueIndexPathValue.split(','), function (path) { return !!path && path.length > 0; });
+                    var cleanedUpPaths = validPaths.map(function (path) { return transform(path.trim()); });
+                    if (cleanedUpPaths.length > 0) {
+                        var uniqueKey = { paths: cleanedUpPaths };
+                        uniqueKeyPolicy.uniqueKeys.push(uniqueKey);
+                    }
+                }
+            });
+            return uniqueKeyPolicy;
+        };
+        return AddCollectionPane;
+    }(ContextualPaneBase_1.ContextualPaneBase));
+    return AddCollectionPane;
+});
+°<Ipõ{      [Õ¾Ê[Õ¾Ñ?§¶²[×k>   K    :https://cosmos.azure.com/built/Explorer/Panes/AddCollectionPane.js?v=1.0.1 necko:classified 1 strongly-framed 1 security-info FnhllAKWRHGAlo+ESXykKAAAAAAAAAAAwAAAAAAAAEaphjojH6pBabDSgSnsfLHeAAQAAgAAAAAAAAAAAAAAAAAAAAAB4vFIJp5wRkeyPxAQ9RJGKPqbqVvKO0mKuIl8ec8o/uhmCjImkVxP+7sgiYWmMt8FvcOXmlQiTNWFiWlrbpbqgwAAAAAAAAOMMIIDiDCCAnCgAwIBAgIERTJgUjANBgkqhkiG9w0BAQsFADCBijEUMBIGA1UEBhMLUG9ydFN3aWdnZXIxFDASBgNVBAgTC1BvcnRTd2lnZ2VyMRQwEgYDVQQHEwtQb3J0U3dpZ2dlcjEUMBIGA1UEChMLUG9ydFN3aWdnZXIxFzAVBgNVBAsTDlBvcnRTd2lnZ2VyIENBMRcwFQYDVQQDEw5Qb3J0U3dpZ2dlciBDQTAeFw0xNDEwMjgxMzEyMTBaFw0zODEwMjgxMzEyMTBaMGAxFDASBgNVBAYTC1BvcnRTd2lnZ2VyMRQwEgYDVQQKEwtQb3J0U3dpZ2dlcjEXMBUGA1UECxMOUG9ydFN3aWdnZXIgQ0ExGTAXBgNVBAMTEGNvc21vcy5henVyZS5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCKn7emKINsnWqPZ+C/VsqbQf/l4NsmIh34bXBR0xdNg9bfb+xcoghRlmbPjhZ/A26A2gJ6Rrg2d0GGMLpbqA8nTlRRGXEAD39321zk4ye09ElXClvqguGqdqOJpPQ05DPFD6wSOq+KVAEblE5bi+LMqBLipDERzgUe7xzeqVVk0i0ldh9yQOIk3YuzcBR9igSEuw5qladmMYvXKHYM9YZz0R7axMc8xAtadK7C9KfFPfEI5LS2nhmy4vBrTgFyYhfkEvKfmIj6HTX0ISFCAC2llcBLpEDcuiW76tAHp1pXDeWtSeaV36AeOctdleVgrbmsGs3fu6ppuRcWjEZUbjE3AgMBAAGjHzAdMBsGA1UdEQQUMBKCEGNvc21vcy5henVyZS5jb20wDQYJKoZIhvcNAQELBQADggEBABYikT6Y5YgJJ4IVJldlFDF5MKxp26YegXhvT8EmAbgr0yQBIlY2DtKEiHf7Q8wRoJ9y5Ajst1D7HmRba+XLjS6s3IHJ7gtuvc3fZj9MPKpbqSKRfHDB8bDOVIzmjBseg2BqckHTkcYak3b/pTWCTqKHM3LxKsDwN8F3HNQ2pY4d5ma2kR1EtWdTpRiIbir3QxJDcWVp8CgHONZcoMn33NNwnWWjAQMX6d8e1CPuBZi0t+myaYduCqPgKKox9qMXSubF6uifQkAJ5RdLZrZ2pghENA/4r1oz51wqEmpjPsStSUxRPwJ6wJrB4gwGtX7++ZHLjAaNrTSUCGwIOlAT4LnALwEDAAAAAAEBAAAAAA== request-method GET request-Accept-Encoding gzip, deflate, br response-head HTTP/1.1 200 OK
+Content-Length: 32436
+Content-Type: application/x-javascript
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:39:13 GMT
+ original-response-headers Content-Length: 32436
+Content-Type: application/x-javascript
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:39:13 GMT
+Connection: close
+ uncompressed-len 0 net-response-time-onstart 6974 net-response-time-onstop 6977   ~´

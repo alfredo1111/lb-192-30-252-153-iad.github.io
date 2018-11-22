@@ -1,0 +1,2565 @@
+/******************************************************************************
+                                FONTS
+/******************************************************************************/
+@font-face {
+  font-family: wf_segoe-ui_normal;
+  src: url('../fonts/segoe-ui/west-european/normal/latest.woff');
+}
+/******************************************************************************
+                                COLORS
+/******************************************************************************/
+/******************************************************************************
+                                METRICS
+/******************************************************************************/
+/**********************************************************************************
+                              Common Flex Property
+/**********************************************************************************/
+/*************************************************************************************
+                                 High contrast mode active
+**************************************************************************************/
+@media all and (-ms-high-contrast: none), (-ms-high-contrast: active) {
+  .selectedRadio,
+  .selectedRadio:hover,
+  .selectedRadio:active,
+  .selectedRadio.dirty,
+  .tab [type=radio]:checked ~ label,
+  .tab [type=radio]:checked ~ label:hover {
+    -ms-high-contrast-adjust: none;
+    -webkit-text-fill-color: HighlightText;
+    color: HighlightText;
+    border-color: HighlightText;
+    background-color: Highlight;
+  }
+  .queryMetricsSummaryTuple th:nth-child(2),
+  .queryMetricsSummaryTuple td:nth-child(2) {
+    width: 650px;
+  }
+  .queryMetricsSummaryTuple th:nth-child(3),
+  .queryMetricsSummaryTuple td:nth-child(3) {
+    width: 50%;
+  }
+}
+/********************************************************************************************
+                            Common Hover and Active color
+*********************************************************************************************/
+/************************************************************************************************
+                               Common Toggle Switch
+*************************************************************************************************/
+/********************************************************************************************************
+                             Common Data Explorer Icons
+*********************************************************************************************************/
+/*********************************************************************************************************
+                            Info Tooltip
+**********************************************************************************************************/
+/*********************************************************************************************************
+                          Media Queries
+**********************************************************************************************************/
+@media only screen and (max-width: 1920px) {
+  .staticCommandExpand {
+    display: none;
+  }
+}
+@media only screen and (min-width: 1039px) and (max-width: 1112px) {
+  .visibleCommands command-button:nth-child(n+9) {
+    display: none;
+  }
+  .hiddenCommands command-button:not(:nth-child(n+3)) {
+    display: none;
+  }
+  .staticCommandExpand {
+    display: block;
+  }
+}
+@media only screen and (min-width: 874px) and (max-width: 1038px) {
+  .visibleCommands command-button:nth-child(n+8) {
+    display: none;
+  }
+  .hiddenCommands command-button:not(:nth-child(n+2)) {
+    display: none;
+  }
+  .staticCommandExpand {
+    display: block;
+  }
+}
+@media only screen and (min-width: 723px) and (max-width: 873px) {
+  .visibleCommands command-button:nth-child(n+7) {
+    display: none;
+  }
+  .hiddenCommands command-button:not(:nth-child(n+1)) {
+    display: none;
+  }
+  .staticCommandExpand {
+    display: block;
+  }
+}
+@media only screen and (max-width: 722px) {
+  .visibleCommands command-button:nth-child(n+7) {
+    display: none;
+  }
+  .hiddenCommands command-button:not(:nth-child(n+1)) {
+    display: none;
+  }
+  .staticCommandExpand {
+    display: block;
+  }
+}
+html {
+  font-family: wf_segoe-ui_normal, "Segoe UI", "Segoe WP", Tahoma, Arial, sans-serif;
+  padding: 0px;
+  margin: 0px;
+  overflow: hidden;
+  position: fixed;
+  width: 100%;
+  height: 100%;
+}
+body {
+  font-family: wf_segoe-ui_normal, "Segoe UI", "Segoe WP", Tahoma, Arial, sans-serif;
+  font-size: 12px;
+  height: 100%;
+}
+.float-right {
+  float: right;
+}
+.fixedleftpane {
+  background: #2f2d2d;
+  height: 100vh;
+  width: 80px;
+  float: left;
+}
+.ui-dialog.ui-corner-all.ui-widget.ui-front.ui-widget-content.shareUrlDialog.no-close {
+  box-shadow: 0 0 8px rgba(118, 118, 118, 0.65);
+  display: inline-block;
+  position: absolute;
+  background: #fff;
+  border: 1px solid #CCCCCC;
+  margin: 42px 20px;
+  border-radius: 3px;
+}
+.ui-dialog.ui-corner-all.ui-widget.ui-front.ui-widget-content.shareUrlDialog.no-close:before {
+  content: "";
+  position: absolute;
+  top: -10px;
+  left: 18px;
+  border-width: 0 10px 10px;
+  border-style: solid;
+  border-color: #CCCCCC rgba(0, 0, 0, 0);
+  display: block;
+  width: 0;
+}
+.ui-dialog.ui-corner-all.ui-widget.ui-front.ui-widget-content.shareUrlDialog.no-close:after {
+  content: "";
+  position: absolute;
+  top: -9px;
+  left: 19px;
+  border-width: 0 9px 9px;
+  border-style: solid;
+  border-color: #FFF rgba(0, 0, 0, 0);
+  display: block;
+  width: 0;
+}
+.ui-dialog.ui-corner-all.ui-widget.ui-front.ui-widget-content.shareUrlDialog.no-close .ui-dialog-titlebar.ui-corner-all.ui-helper-clearfix.ui-widget-header.shareUrlTitle {
+  border: none;
+  background-color: #FFFFFF;
+  color: #393939;
+  font-size: 16px;
+  font-family: wf_segoe-ui_normal, "Segoe UI", "Segoe WP", Tahoma, Arial, sans-serif;
+  padding: 12px;
+  margin: 0px 8px 0px 12px;
+  font-weight: normal;
+}
+.ui-dialog.ui-corner-all.ui-widget.ui-front.ui-widget-content.shareUrlDialog.no-close .ui-dialog-titlebar.ui-corner-all.ui-helper-clearfix.ui-widget-header.shareUrlTitle .ui-button.ui-corner-all.ui-widget.ui-button-icon-only.ui-dialog-titlebar-close.shareClose {
+  display: none;
+}
+.ui-dialog.ui-corner-all.ui-widget.ui-front.ui-widget-content.shareUrlDialog.no-close .ui-dialog-titlebar.ui-corner-all.ui-helper-clearfix.ui-widget-header.shareUrlTitle .ui-button.ui-corner-all.ui-widget.ui-button-icon-only.ui-dialog-titlebar-close.shareClose .ui-button-icon.ui-icon {
+  display: none;
+}
+.ui-dialog.ui-corner-all.ui-widget.ui-front.ui-widget-content.shareUrlDialog.no-close .shareDataAccessFlyout {
+  overflow: visible;
+  margin-bottom: 16px;
+  padding: 8px 16px;
+}
+.ui-dialog.ui-corner-all.ui-widget.ui-front.ui-widget-content.shareUrlDialog.no-close .shareDataAccessFlyout .shareDataAccessFlyoutContent {
+  height: 100%;
+  width: 100%;
+}
+.ui-dialog.ui-corner-all.ui-widget.ui-front.ui-widget-content.shareUrlDialog.no-close .shareDataAccessFlyout .shareDataAccessFlyoutContent .urlContainer {
+  margin-left: 8px;
+}
+.ui-dialog.ui-corner-all.ui-widget.ui-front.ui-widget-content.shareUrlDialog.no-close .shareDataAccessFlyout .shareDataAccessFlyoutContent .urlContainer .urlContentText {
+  color: #393939;
+  font-size: 12px;
+  font-family: wf_segoe-ui_normal, "Segoe UI", "Segoe WP", Tahoma, Arial, sans-serif;
+}
+.ui-dialog.ui-corner-all.ui-widget.ui-front.ui-widget-content.shareUrlDialog.no-close .shareDataAccessFlyout .shareDataAccessFlyoutContent .urlContainer .toggles {
+  height: 30px;
+  width: 180px;
+  margin: 24px 0px 16px 0px;
+}
+.ui-dialog.ui-corner-all.ui-widget.ui-front.ui-widget-content.shareUrlDialog.no-close .shareDataAccessFlyout .shareDataAccessFlyoutContent .urlContainer .toggles:focus {
+  outline: 1px dashed #004E87;
+}
+.ui-dialog.ui-corner-all.ui-widget.ui-front.ui-widget-content.shareUrlDialog.no-close .shareDataAccessFlyout .shareDataAccessFlyoutContent .urlContainer .toggles .tab {
+  margin-right: 12px;
+}
+.ui-dialog.ui-corner-all.ui-widget.ui-front.ui-widget-content.shareUrlDialog.no-close .shareDataAccessFlyout .shareDataAccessFlyoutContent .urlContainer .toggles .toggleSwitch {
+  max-width: 100%;
+  margin-bottom: 4px;
+  padding: 4px;
+  cursor: pointer;
+  color: #393939;
+  font-weight: 400;
+  font-size: 12px;
+  font-family: wf_segoe-ui_normal, "Segoe UI", "Segoe WP", Tahoma, Arial, sans-serif;
+}
+.ui-dialog.ui-corner-all.ui-widget.ui-front.ui-widget-content.shareUrlDialog.no-close .shareDataAccessFlyout .shareDataAccessFlyoutContent .urlContainer .toggles .selectedToggle {
+  border-bottom: 2px solid #393939;
+}
+.ui-dialog.ui-corner-all.ui-widget.ui-front.ui-widget-content.shareUrlDialog.no-close .shareDataAccessFlyout .shareDataAccessFlyoutContent .urlContainer .toggles .unselectedToggle {
+  color: #0058AD;
+}
+.ui-dialog.ui-corner-all.ui-widget.ui-front.ui-widget-content.shareUrlDialog.no-close .shareDataAccessFlyout .shareDataAccessFlyoutContent .urlContainer .shareLabels {
+  color: #393939;
+  font-size: 12px;
+  font-family: wf_segoe-ui_normal, "Segoe UI", "Segoe WP", Tahoma, Arial, sans-serif;
+  margin-left: 8px;
+}
+.ui-dialog.ui-corner-all.ui-widget.ui-front.ui-widget-content.shareUrlDialog.no-close .shareDataAccessFlyout .shareDataAccessFlyoutContent .urlContainer .urlSpace {
+  margin: 16px 0px 8px 0px;
+}
+.ui-dialog.ui-corner-all.ui-widget.ui-front.ui-widget-content.shareUrlDialog.no-close .shareDataAccessFlyout .shareDataAccessFlyoutContent .urlContainer .urlSpace img {
+  cursor: pointer;
+}
+.ui-dialog.ui-corner-all.ui-widget.ui-front.ui-widget-content.shareUrlDialog.no-close .shareDataAccessFlyout .shareDataAccessFlyoutContent .urlContainer .tokenSpace {
+  margin-bottom: 24px;
+}
+.ui-dialog.ui-corner-all.ui-widget.ui-front.ui-widget-content.shareUrlDialog.no-close .shareDataAccessFlyout .shareDataAccessFlyoutContent .urlContainer .tokenSpace img {
+  cursor: pointer;
+}
+.ui-dialog.ui-corner-all.ui-widget.ui-front.ui-widget-content.shareUrlDialog.no-close .shareDataAccessFlyout .shareDataAccessFlyoutContent .urlContainer .urlTokenInfoTooltip {
+  position: relative;
+  display: inline-block;
+}
+.ui-dialog.ui-corner-all.ui-widget.ui-front.ui-widget-content.shareUrlDialog.no-close .shareDataAccessFlyout .shareDataAccessFlyoutContent .urlContainer .urlTokenInfoTooltip:hover .urlTokenTooltiptext {
+  visibility: visible;
+}
+.ui-dialog.ui-corner-all.ui-widget.ui-front.ui-widget-content.shareUrlDialog.no-close .shareDataAccessFlyout .shareDataAccessFlyoutContent .urlContainer .urlTokenInfoTooltip .urlTokenTooltiptext {
+  bottom: 28px;
+  width: 250px;
+  visibility: hidden;
+  background-color: #393939;
+  color: #FFFFFF;
+  position: absolute;
+  z-index: 1;
+  left: 12px;
+  padding: 12px;
+}
+.ui-dialog.ui-corner-all.ui-widget.ui-front.ui-widget-content.shareUrlDialog.no-close .shareDataAccessFlyout .shareDataAccessFlyoutContent .urlContainer .urlTokenInfoTooltip .urlTokenTooltiptext:after {
+  border-width: 24px 24px 0px 0px;
+  bottom: -15px;
+  content: "";
+  position: absolute;
+  right: 100%;
+  border-style: solid;
+  border-color: transparent #000000 transparent transparent;
+  left: 0px;
+  width: 0;
+  height: 0;
+  border-color: #3b3b3b transparent;
+}
+.ui-dialog.ui-corner-all.ui-widget.ui-front.ui-widget-content.shareUrlDialog.no-close .shareDataAccessFlyout .shareDataAccessFlyoutContent .urlContainer .urlTokenCopyInfoTooltip {
+  position: relative;
+  display: inline-block;
+  padding: 4px;
+}
+.ui-dialog.ui-corner-all.ui-widget.ui-front.ui-widget-content.shareUrlDialog.no-close .shareDataAccessFlyout .shareDataAccessFlyoutContent .urlContainer .urlTokenCopyInfoTooltip:hover {
+  background-color: #EEF7FF;
+}
+.ui-dialog.ui-corner-all.ui-widget.ui-front.ui-widget-content.shareUrlDialog.no-close .shareDataAccessFlyout .shareDataAccessFlyoutContent .urlContainer .urlTokenCopyInfoTooltip:active {
+  background-color: #DDF0FF;
+}
+.ui-dialog.ui-corner-all.ui-widget.ui-front.ui-widget-content.shareUrlDialog.no-close .shareDataAccessFlyout .shareDataAccessFlyoutContent .urlContainer .urlTokenCopyInfoTooltip:hover .urlTokenCopyTooltiptext {
+  visibility: visible;
+}
+.ui-dialog.ui-corner-all.ui-widget.ui-front.ui-widget-content.shareUrlDialog.no-close .shareDataAccessFlyout .shareDataAccessFlyoutContent .urlContainer .urlTokenCopyInfoTooltip .urlTokenCopyTooltiptext {
+  visibility: hidden;
+  text-align: center;
+  background-color: #393939;
+  color: #FFFFFF;
+  top: 32px;
+  width: 80px;
+  left: -26px;
+  position: absolute;
+  z-index: 1;
+  padding: 4px;
+  border-radius: 3px;
+}
+.ui-dialog.ui-corner-all.ui-widget.ui-front.ui-widget-content.shareUrlDialog.no-close .shareDataAccessFlyout .shareDataAccessFlyoutContent .urlContainer .urlTokenCopyInfoTooltip .urlTokenCopyTooltiptext:after {
+  content: "";
+  position: absolute;
+  border-style: solid;
+  border-color: transparent #000000 transparent transparent;
+  border-width: 0px 8px 6px 8px;
+  top: -5px;
+  left: 30px;
+  width: 0;
+  height: 0;
+  border-color: #3b3b3b transparent;
+}
+.ui-dialog.ui-corner-all.ui-widget.ui-front.ui-widget-content.shareUrlDialog.no-close .shareDataAccessFlyout .shareDataAccessFlyoutContent .urlContainer .shareLink {
+  width: 300px;
+  background-color: #FFFFFF;
+  border: 1px solid #CCCCCC;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 2px 4px 2px 4px;
+  margin: 4px 8px 0px 0px;
+  font-family: wf_segoe-ui_normal, "Segoe UI", "Segoe WP", Tahoma, Arial, sans-serif;
+}
+.ui-dialog.ui-corner-all.ui-widget.ui-front.ui-widget-content.shareUrlDialog.no-close .openFullScreenBtn {
+  background-color: #0058AD;
+  color: #FFFFFF;
+  padding: 4px 28px;
+}
+.ui-dialog.ui-corner-all.ui-widget.ui-front.ui-widget-content.shareUrlDialog.no-close .shareCancelButton {
+  background-color: #FFFFFF;
+  color: #0058AD;
+  padding: 4px 24px;
+}
+.ui-dialog.ui-corner-all.ui-widget.ui-front.ui-widget-content.shareUrlDialog.no-close .openFullScreenCancelBtn {
+  margin: 4px 8px 4px 4px;
+  border: 1px solid #0058AD;
+  cursor: pointer;
+  font-size: 12px;
+  border-radius: 0px;
+  font-family: wf_segoe-ui_normal, "Segoe UI", "Segoe WP", Tahoma, Arial, sans-serif;
+}
+.connectExplorerContainer {
+  height: 100%;
+  width: 100%;
+}
+.connectExplorerContainer .connectExplorerFormContainer {
+  display: -webkit-flex;
+  display: -ms-flexbox;
+  display: -ms-flex;
+  display: flex;
+  -webkit-flex-direction: column;
+  -ms-flex-direction: column;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+}
+.connectExplorerContainer .connectExplorer {
+  text-align: center;
+  display: -webkit-flex;
+  display: -ms-flexbox;
+  display: -ms-flex;
+  display: flex;
+  -webkit-flex-direction: column;
+  -ms-flex-direction: column;
+  flex-direction: column;
+  justify-content: center;
+  height: 100%;
+  margin-bottom: 60px;
+}
+.connectExplorerContainer .connectExplorer .welcomeText {
+  font-size: 14px;
+  color: #393939;
+  margin: 8px 8px 16px 8px;
+}
+.connectExplorerContainer .connectExplorer .connectStringText {
+  font-size: 12px;
+  color: #393939;
+}
+.connectExplorerContainer .connectExplorer .connectExplorerContent {
+  margin: 8px;
+  color: #393939;
+}
+.connectExplorerContainer .connectExplorer .connectExplorerContent .inputToken {
+  width: 300px;
+  padding: 0px 4px;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.connectExplorerContainer .connectExplorer .connectExplorerContent .inputToken::placeholder {
+  font-style: italic;
+}
+.connectExplorerContainer .connectExplorer .connectExplorerContent .errorDetailsInfoTooltip {
+  position: relative;
+  display: inline-block;
+  padding-left: 4px;
+  vertical-align: top;
+}
+.connectExplorerContainer .connectExplorer .connectExplorerContent .errorDetailsInfoTooltip:hover .errorDetails {
+  visibility: visible;
+}
+.connectExplorerContainer .connectExplorer .connectExplorerContent .errorDetailsInfoTooltip .errorDetails {
+  bottom: 24px;
+  width: 145px;
+  visibility: hidden;
+  background-color: #393939;
+  color: #FFFFFF;
+  position: absolute;
+  z-index: 1;
+  left: -10px;
+  padding: 6px;
+}
+.connectExplorerContainer .connectExplorer .connectExplorerContent .errorDetailsInfoTooltip .errorDetails:after {
+  border-width: 10px 10px 0px 10px;
+  bottom: -8px;
+  content: "";
+  position: absolute;
+  right: 100%;
+  border-style: solid;
+  left: 12px;
+  width: 0;
+  height: 0;
+  border-color: #3b3b3b transparent;
+}
+.connectExplorerContainer .connectExplorer .connectExplorerContent .errorDetailsInfoTooltip .errorImg {
+  height: 14px;
+  width: 14px;
+}
+.dataExplorerLoaderContainer {
+  /* this should have more z-index value than the splitter to disable it */
+  z-index: 5;
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background-color: #FFFFFF;
+  opacity: 0.65;
+}
+.dataExplorerPaneLoaderContainer {
+  right: 0;
+  width: 440px;
+  min-height: 565px;
+}
+.dataExplorerTabLoaderContainer {
+  left: initial;
+  top: initial;
+  z-index: 0;
+}
+.dataExplorerLoader {
+  display: block;
+  margin: 50vh auto;
+  width: 24px;
+  height: 6px;
+}
+.dataExplorerErrorConsoleContainer {
+  /* z-index should be greater than that of the splitter so it always overlaps the splitter */
+  z-index: 2;
+  align-self: flex-end;
+  width: 100%;
+  display: -webkit-flex;
+  display: -ms-flexbox;
+  display: -ms-flex;
+  display: flex;
+}
+.dataExplorerErrorConsoleContainer .notificationFlexContainer {
+  display: -webkit-flex;
+  display: -ms-flexbox;
+  display: -ms-flex;
+  display: flex;
+}
+.ui-dialog.ui-corner-all.ui-widget.ui-widget-content.ui-front.no-close.ui-dialog-buttons {
+  border: 1px solid #CCCCCC;
+  box-shadow: 0 0 8px rgba(118, 118, 118, 0.65);
+  padding: 0px;
+}
+.ui-dialog.ui-corner-all.ui-widget.ui-widget-content.ui-front.no-close.ui-dialog-buttons .ui-widget-header.ui-helper-clearfix.ui-dialog-titlebar.connectTitlebar {
+  background-color: #FFFFFF;
+  font-size: 16px;
+  color: #393939;
+  font-family: wf_segoe-ui_normal, "Segoe UI", "Segoe WP", Tahoma, Arial, sans-serif;
+  border: none;
+  font-weight: normal;
+  padding: 4px;
+  margin: 8px 16px 12px 24px;
+}
+.ui-dialog.ui-corner-all.ui-widget.ui-widget-content.ui-front.no-close.ui-dialog-buttons .ui-widget-header.ui-helper-clearfix.ui-dialog-titlebar.connectTitlebar .ui-button.ui-corner-all.ui-widget.ui-button-icon-only.ui-dialog-titlebar-close {
+  visibility: hidden;
+}
+.ui-dialog.ui-corner-all.ui-widget.ui-widget-content.ui-front.no-close.ui-dialog-buttons .dataAccessTokenModal {
+  margin: 16px 24px 24px;
+  padding: 4px;
+  overflow: visible;
+}
+.ui-dialog.ui-corner-all.ui-widget.ui-widget-content.ui-front.no-close.ui-dialog-buttons .dataAccessTokenModal .dataAccessTokenModalContent .dataAccessTokenExpireText {
+  margin-bottom: 16px;
+  color: #393939;
+  font-size: 14px;
+  font-family: wf_segoe-ui_normal, "Segoe UI", "Segoe WP", Tahoma, Arial, sans-serif;
+}
+.ui-dialog.ui-corner-all.ui-widget.ui-widget-content.ui-front.no-close.ui-dialog-buttons .ui-dialog-buttonpane.ui-widget-content.ui-helper-clearfix {
+  border-top: 1px solid #E6E6E6;
+  padding: 16px 20px;
+}
+.ui-dialog.ui-corner-all.ui-widget.ui-widget-content.ui-front.no-close.ui-dialog-buttons .ui-dialog-buttonpane.ui-widget-content.ui-helper-clearfix .ui-dialog-buttonset {
+  float: none;
+}
+.ui-dialog.ui-corner-all.ui-widget.ui-widget-content.ui-front.no-close.ui-dialog-buttons .ui-dialog-buttonpane.ui-widget-content.ui-helper-clearfix .ui-dialog-buttonset .connectDialogButtons {
+  margin: 4px 0px 4px 12px;
+  border: 1px solid #0058AD;
+  cursor: pointer;
+  font-size: 12px;
+  border-radius: 0px;
+  font-family: wf_segoe-ui_normal, "Segoe UI", "Segoe WP", Tahoma, Arial, sans-serif;
+}
+.ui-dialog.ui-corner-all.ui-widget.ui-widget-content.ui-front.no-close.ui-dialog-buttons .ui-dialog-buttonpane.ui-widget-content.ui-helper-clearfix .ui-dialog-buttonset .connectButton {
+  padding: 4px 16px;
+}
+.ui-dialog.ui-corner-all.ui-widget.ui-widget-content.ui-front.no-close.ui-dialog-buttons .ui-dialog-buttonpane.ui-widget-content.ui-helper-clearfix .ui-dialog-buttonset .okBtn {
+  padding: 4px 30px;
+}
+.ui-dialog.ui-corner-all.ui-widget.ui-widget-content.ui-front.no-close.ui-dialog-buttons .ui-dialog-buttonpane.ui-widget-content.ui-helper-clearfix .ui-dialog-buttonset .connectOkBtns {
+  background-color: #0058AD;
+  color: #FFFFFF;
+}
+.ui-dialog.ui-corner-all.ui-widget.ui-widget-content.ui-front.no-close.ui-dialog-buttons .ui-dialog-buttonpane.ui-widget-content.ui-helper-clearfix .ui-dialog-buttonset .cancelBtn {
+  background-color: #FFFFFF;
+  color: #0058AD;
+  margin-left: 8px;
+  padding: 4px 20px;
+}
+.ui-widget-overlay.ui-front {
+  background-color: #FFFFFF;
+  opacity: 0.65;
+}
+.renewAccessInfo {
+  color: #393939;
+  padding-right: 32px;
+  margin-bottom: 24px;
+}
+.renewUploadItemsHeader {
+  margin-bottom: 8px;
+  color: #393939;
+}
+.accessKeyInput {
+  width: 370px;
+  padding: 0px 4px;
+}
+.accessKeyInput::placeholder {
+  font-style: italic;
+}
+.renewAccessExpandCollapse {
+  margin-top: 24px;
+  cursor: pointer;
+}
+.renewAccessExpandCollapse img {
+  width: 12px;
+  height: 12px;
+  margin-bottom: 4px;
+}
+.AccountNavigationText {
+  font-size: 12px;
+  font-family: wf_segoe-ui_normal, "Segoe UI", "Segoe WP", Tahoma, Arial, sans-serif;
+}
+.renewAccessImg {
+  margin: 8px 12px 0px 16px;
+}
+.renewAccessImg img {
+  margin-top: 8px;
+  width: 350px;
+  height: 190px;
+}
+.importFilesTitle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  background-color: #FFFFFF;
+  border: 1px solid #CCCCCC;
+  height: 24px;
+  width: 300px;
+  padding: 0px 8px 0px 8px;
+}
+.fileImportImg {
+  padding: 4px;
+  vertical-align: top;
+  border: 1px solid transparent;
+}
+.fileImportImg:hover {
+  background-color: #E6E6E6;
+}
+.fileImportImg:active {
+  background-color: #E6E6E6;
+}
+.fileImportImg:focus {
+  outline: 1px dashed #004E87;
+}
+.fileUploadSummaryContainer {
+  margin-top: 40px;
+}
+.fileUploadSummaryContainer .fileUploadSummary {
+  margin-top: 8px;
+  width: calc(100% - 25px);
+  table-layout: fixed;
+}
+.fileUploadSummaryContainer .fileUploadSummary .fileUploadSummaryHeader {
+  font-size: 10px;
+}
+.fileUploadSummaryContainer .fileUploadSummary .fileUploadSummaryTuple {
+  text-overflow: ellipsis;
+  overflow: hidden;
+  border-bottom: 1px solid #CCCCCC;
+  height: 28px;
+}
+execute-sproc-params-pane .partitionKeyContainer .inputHeader {
+  padding-bottom: 4px;
+}
+execute-sproc-params-pane .partitionKeyContainer .partitionKeyValue {
+  width: 200px;
+}
+execute-sproc-params-pane .paramsTable {
+  padding-bottom: 8px;
+}
+execute-sproc-params-pane .paramsTable .enterInputParams {
+  margin-bottom: 4px;
+  font-size: 14px;
+}
+execute-sproc-params-pane .paramsTable .scrollBox {
+  width: 100%;
+  overflow: auto;
+  overflow-x: hidden;
+  padding-bottom: 4px;
+}
+execute-sproc-params-pane .paramsTable .scrollBox .paramsClauseTable {
+  border-spacing: 0px;
+  display: table;
+  width: 100%;
+  margin-top: 8px;
+}
+execute-sproc-params-pane .paramsTable .scrollBox .paramsClauseTable .paramTableTypeHead {
+  width: 110px;
+}
+execute-sproc-params-pane .paramsTable .scrollBox .paramsClauseTable .paramTemplateRow {
+  padding-top: 12px;
+}
+execute-sproc-params-pane .paramsTable .scrollBox .paramsClauseTable .dataTypeSelector {
+  width: 100px;
+  height: 24px;
+  border: 1px solid #CCCCCC;
+  color: #393939;
+  padding-left: 4px;
+}
+execute-sproc-params-pane .paramsTable .scrollBox .paramsClauseTable .valueTextBox {
+  width: 200px;
+  height: 24px;
+  border: 1px solid #CCCCCC;
+  padding: 4px 8px;
+}
+execute-sproc-params-pane .paramsTable .scrollBox .paramsClauseTable .spEntityAddCancel {
+  margin-right: 1px;
+  cursor: pointer;
+}
+execute-sproc-params-pane .paramsTable .scrollBox .paramsClauseTable .spEntityAddCancel:hover {
+  background-color: #EEF7FF;
+}
+execute-sproc-params-pane .paramsTable .scrollBox .paramsClauseTable .spEntityAddCancel:active {
+  background-color: #DDF0FF;
+}
+execute-sproc-params-pane .paramsTable .scrollBox .paramsClauseTable .spEntityAddCancel:focus {
+  outline: 1px dashed #004E87;
+}
+execute-sproc-params-pane .paramsTable .scrollBox .paramsClauseTable .spEntityAddCancel img {
+  width: 14px;
+  height: 14px;
+  margin: 0px 0px 4px 4px;
+}
+execute-sproc-params-pane .paramsTable .addNewParam {
+  padding: 8px 0px 5px 4px;
+  margin-top: 12px;
+  width: 125px;
+  cursor: pointer;
+}
+execute-sproc-params-pane .paramsTable .addNewParam:hover {
+  background-color: #EEF7FF;
+}
+execute-sproc-params-pane .paramsTable .addNewParam:active {
+  background-color: #DDF0FF;
+}
+execute-sproc-params-pane .paramsTable .addNewParam:focus {
+  outline: 1px dashed #004E87;
+}
+execute-sproc-params-pane .paramsTable .addNewParam img {
+  width: 14px;
+  height: 14px;
+  margin-bottom: 4px;
+}
+execute-sproc-params-pane .paramsTable .addNewParam .addNewParamLabel {
+  margin-left: 4px;
+}
+stored-procedure-tab .results-container,
+stored-procedure-tab .errors-container {
+  padding: 12px 0px 0px 12px;
+  height: 100%;
+  display: -webkit-flex;
+  display: -ms-flexbox;
+  display: -ms-flex;
+  display: flex;
+  -webkit-flex-direction: column;
+  -ms-flex-direction: column;
+  flex-direction: column;
+  overflow: hidden;
+}
+stored-procedure-tab .results-container .toggles,
+stored-procedure-tab .errors-container .toggles {
+  height: 30px;
+  width: 180px;
+  margin-left: 12px;
+}
+stored-procedure-tab .results-container .toggles:focus,
+stored-procedure-tab .errors-container .toggles:focus {
+  outline: 1px dashed #004E87;
+}
+stored-procedure-tab .results-container .toggles .tab,
+stored-procedure-tab .errors-container .toggles .tab {
+  margin-right: 12px;
+}
+stored-procedure-tab .results-container .toggles .toggleSwitch,
+stored-procedure-tab .errors-container .toggles .toggleSwitch {
+  max-width: 100%;
+  margin-bottom: 4px;
+  padding: 4px;
+  cursor: pointer;
+  color: #393939;
+  font-weight: 400;
+  font-size: 12px;
+  font-family: wf_segoe-ui_normal, "Segoe UI", "Segoe WP", Tahoma, Arial, sans-serif;
+}
+stored-procedure-tab .results-container .toggles .selectedToggle,
+stored-procedure-tab .errors-container .toggles .selectedToggle {
+  border-bottom: 2px solid #393939;
+}
+stored-procedure-tab .results-container .toggles .unselectedToggle,
+stored-procedure-tab .errors-container .toggles .unselectedToggle {
+  color: #0058AD;
+}
+stored-procedure-tab .results-container .enterInputParameters,
+stored-procedure-tab .errors-container .enterInputParameters {
+  padding: 16px 12px;
+}
+stored-procedure-tab .errors-container {
+  padding-left: 24px;
+}
+stored-procedure-tab .errors-container .errors-header {
+  font-weight: 700;
+  font-size: 14px;
+  padding-bottom: 8px;
+}
+stored-procedure-tab .errors-container .errorContent {
+  display: -webkit-flex;
+  display: -ms-flexbox;
+  display: -ms-flex;
+  display: flex;
+  width: 60%;
+  white-space: nowrap;
+  font-size: 12px;
+}
+stored-procedure-tab .errors-container .errorContent .errorMessage {
+  padding: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+stored-procedure-tab .errors-container .errorDetailsLink {
+  cursor: pointer;
+  padding: 4px;
+}
+stored-procedure-tab editor {
+  display: -webkit-flex;
+  display: -ms-flexbox;
+  display: -ms-flex;
+  display: flex;
+  -webkit-flex-direction: column;
+  -ms-flex-direction: column;
+  flex-direction: column;
+  overflow: hidden;
+  height: 100%;
+  width: 100%;
+  padding-left: 22px;
+}
+stored-procedure-tab json-editor {
+  display: -webkit-flex;
+  display: -ms-flexbox;
+  display: -ms-flex;
+  display: flex;
+  -webkit-flex-direction: column;
+  -ms-flex-direction: column;
+  flex-direction: column;
+  overflow: hidden;
+  height: 100%;
+  width: 100%;
+  padding: 4px 0px 4px 10px;
+}
+notification-console {
+  width: 100%;
+}
+#divQuickStart {
+  display: inline-block;
+  width: 100%;
+}
+#imgiconwidth1 {
+  width: 72%;
+}
+#Quickstart {
+  text-align: center;
+  width: 80px;
+  height: 60px;
+  margin: 0 auto;
+  padding-top: 5px;
+  position: relative;
+}
+.flexContainer {
+  height: 100%;
+  width: 100%;
+  display: -webkit-flex;
+  display: -ms-flexbox;
+  display: -ms-flex;
+  display: flex;
+  -webkit-flex-direction: column;
+  -ms-flex-direction: column;
+  flex-direction: column;
+}
+.hideOverflows {
+  overflow: hidden;
+}
+.explorerContent {
+  flex-grow: 1;
+}
+.collectionheading {
+  text-transform: uppercase;
+  font-size: 10px;
+}
+#Quickstart #imgiconwidth1 {
+  width: 24px;
+  height: 24px;
+  position: absolute;
+  right: 27px;
+}
+.topSelected {
+  border-left: 4px solid #0058AD;
+  background: #666666;
+}
+.topSelected:hover {
+  border-left: 4px solid #0058AD;
+  background: #666666!important;
+  cursor: default!important;
+}
+#Quickstart:hover span.activemenu,
+#Quickstart:active span.activemenu {
+  color: #fff;
+}
+#Explorer:hover span.menuExplorer,
+#Explorer:active span.menuExplorer {
+  color: #fff;
+}
+menuQuickStart {
+  margin-left: 0;
+  padding-left: 0;
+  display: block;
+  right: 12px;
+  top: 30px;
+  position: absolute;
+}
+#Explorer {
+  text-align: center;
+  display: inline-block;
+  width: 80px;
+  height: 60px;
+  margin: 0 auto;
+  padding-top: 9px;
+  position: relative;
+}
+#Explorer #imgiconwidth1,
+.feedbackstyle #imgiconwidth1,
+.settingstyle #imgiconwidth1 {
+  width: 24px;
+  height: 24px;
+  position: absolute;
+  right: 30px;
+}
+#Explorer span.menuExplorer {
+  margin-left: 0;
+  padding-left: 0;
+  display: block;
+  right: 19px;
+  top: 33px;
+  position: absolute;
+}
+.feedbackstyle span.menuExplorer {
+  margin-left: 0;
+  padding-left: 0;
+  display: block;
+  right: 19px;
+  top: 33px;
+  position: absolute;
+}
+.settingstyle span.menuExplorer {
+  margin-left: 0;
+  padding-left: 0;
+  display: block;
+  right: 19px;
+  top: 33px;
+  position: absolute;
+}
+.content {
+  display: inline-block;
+  width: 100%;
+  transition: all 0.4s ease-in-out;
+  -ms-transition: all 0.4s ease-in-out;
+  -webkit-transition: all 0.4s ease-in-out;
+  -moz-transition: all 0.4s ease-in-out;
+  height: 100vh;
+}
+.mini {
+  width: 0%;
+  float: left;
+  transition: all 0.4s ease-in-out;
+  -webkit-transition: all 0.4s ease-in-out;
+  -moz-transition: all 0.4s ease-in-out;
+  height: 100vh;
+  background-color: white;
+}
+#sidebar-wrapper {
+  z-index: 1000;
+  position: fixed;
+  left: 250px;
+  width: 0;
+  height: 100%;
+  margin-left: -250px;
+  overflow-y: auto;
+  background: white;
+  -webkit-transition: all 0.5s ease;
+  -moz-transition: all 0.5s ease;
+  -o-transition: all 0.5s ease;
+  transition: all 0.5s ease;
+}
+.toggle-left {
+  width: 0%;
+  overflow: hidden;
+}
+.toggle-minicontent {
+  width: 100%;
+}
+.toggle-maincontent {
+  width: 100%;
+}
+.toggle-mini {
+  width: 36px;
+}
+.toggle-main {
+  width: 100%;
+}
+.activepartitionmode {
+  background-color: #0058AD;
+}
+.paddingpartition {
+  color: white;
+  padding-left: 15px;
+  padding-top: 25px;
+}
+.paddingspan2 {
+  padding-top: 20px;
+  color: #000;
+  padding-left: 15px;
+}
+.paddingspan4 {
+  padding-top: 20px;
+  padding-bottom: 20px;
+  color: white;
+  padding-left: 15px;
+}
+.whitegroove {
+  width: 344px;
+  border: groove;
+}
+.dropdownbtn {
+  color: white;
+  width: 340px;
+  background: #262626;
+}
+.queryclr {
+  color: white;
+  background: #262626;
+}
+.contextual-pane {
+  top: 0px;
+  right: 0 !important;
+  left: auto;
+  -webkit-box-flex: 0;
+  -webkit-flex: 0 0 auto;
+  -ms-flex: 0 0 auto;
+  flex: 0 0 auto;
+  right: auto;
+  z-index: 1000 !important;
+  -webkit-align-self: auto !important;
+  -ms-flex-item-align: auto !important;
+  align-self: auto !important;
+  height: 100%;
+  position: absolute;
+  width: 440px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  font-size: 100%;
+  font: inherit;
+  vertical-align: baseline;
+  outline: none;
+  background-color: #fff;
+  /* border-left: 1px solid #cbcbcb; */
+  -webkit-animation: mymove 0.2s;
+  -webkit-animation-timing-function: cubic-bezier(0.47, 0, 0.75, 0.72);
+  animation: mymove 0.2s;
+  animation-timing-function: cubic-bezier(0.22, 0.61, 0.36, 1);
+  box-shadow: -5px 0px 7px 0px #cbcbcb;
+}
+@keyframes mymove {
+  from {
+    right: -1000px;
+  }
+  to {
+    right: 0px;
+  }
+}
+.contextual-pane-out {
+  width: 100%;
+  height: 100vh;
+  z-index: 1;
+  position: absolute;
+  top: 0px;
+  background-color: rgba(0, 0, 0, 0);
+}
+.contextual-pane-in {
+  width: 100%;
+  height: 100%;
+}
+.pointer {
+  cursor: pointer;
+}
+#tbodycontent > tr > td {
+  border-bottom: 1px solid #CCCCCC;
+  border-top: none;
+  padding: 6px;
+}
+#tbodycontent > tr:last-child > td {
+  border-bottom: 1px solid #ddd;
+}
+.documentsTabGridAndEditor {
+  height: 100%;
+  overflow: hidden;
+  display: -webkit-flex;
+  display: -ms-flexbox;
+  display: -ms-flex;
+  display: flex;
+}
+.documentsTabGridAndEditor.documentsTabGridAndEditorUpperPadding {
+  padding-top: 16px;
+}
+.documentsTabGridAndEditor .documentsContainerWithSplitter {
+  height: 100%;
+  width: 200px;
+  padding-left: 8px;
+  flex-shrink: 0;
+}
+.documentsTabGridAndEditor .documentWaterMark {
+  margin: auto;
+  height: 35vh;
+  text-align: center;
+}
+.documentsTabGridAndEditor .documentWaterMark p {
+  margin-bottom: 16px;
+}
+.documentsTabGridAndEditor .documentWaterMark .documentWaterMarkText {
+  color: #393939;
+  font-size: 14px;
+  font-family: wf_segoe-ui_normal, "Segoe UI", "Segoe WP", Tahoma, Arial, sans-serif;
+}
+.documentsTabGridAndEditor .documentWaterMark .loadErrorIcon {
+  width: 128px;
+  height: 128px;
+}
+.documentsTabGridAndEditor .documentWaterMark .loadErrorDetailsLink {
+  cursor: pointer;
+}
+.documentsTabGridAndEditor json-editor {
+  padding-top: 28px;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  display: -webkit-flex;
+  display: -ms-flexbox;
+  display: -ms-flex;
+  display: flex;
+}
+.documentsTabGridAndEditor json-editor .jsonEditor {
+  border: none;
+}
+.documentsTabGridAndEditor diff-editor {
+  padding-top: 28px;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  display: -webkit-flex;
+  display: -ms-flexbox;
+  display: -ms-flex;
+  display: flex;
+}
+.documentsTabGridAndEditor diff-editor .jsonEditor {
+  border: none;
+}
+.documentsTabGridAndEditor .conflictEditorContainer {
+  width: 100%;
+}
+.documentsTabGridAndEditor .conflictEditorContainer .conflictEditorHeader {
+  padding: 6px 12px;
+  width: 100%;
+  overflow: hidden;
+}
+.documentsTabGridAndEditor .conflictEditorContainer .conflictEditorHeader .conflictEditorHeaderLabel {
+  width: 50%;
+  float: left;
+  color: #000000;
+  font-weight: bold;
+}
+.documentsTabGridAndEditor .conflictEditorContainer json-editor {
+  padding-top: 0;
+}
+.documentsTabGridAndEditor .conflictEditorContainer diff-editor {
+  padding-top: 0;
+  height: calc(100% - 30px);
+}
+.gridRowSelected {
+  background-color: #DDF0FF;
+}
+.gridRowSelected:hover {
+  cursor: default;
+  background-color: #EEF7FF;
+}
+.gridRowHighlighted {
+  border-style: dotted;
+  border-width: 2px;
+}
+.table-hover > tbody > tr:hover {
+  background-color: #EEF7FF;
+}
+.collectionNodeSelected {
+  background-color: #DDF0FF;
+}
+.collectionNodeSelected:hover {
+  cursor: default;
+  background-color: #EEF7FF;
+}
+.databaseNodeSelected {
+  background-color: #DDF0FF;
+}
+.databaseNodeSelected:hover {
+  cursor: default;
+  background-color: #EEF7FF;
+}
+.leftsidepanle-hr {
+  margin: 16px 0px;
+  border-top: 1px solid #eee;
+  margin-left: -17px;
+  width: 100%;
+  color: 1px solid #53575B;
+}
+.partitioning-btn {
+  padding-bottom: 16px;
+}
+.btncreatecoll1 {
+  border: 1px solid #0058AD;
+  background-color: #0058AD;
+  color: #fff;
+  padding: 2px 30px;
+  cursor: pointer;
+  font-size: 12px;
+}
+.btncreatecoll1:hover {
+  background: #0058AD;
+  color: #fff;
+  border-color: #0058AD;
+  cursor: pointer;
+  font-size: 12px;
+}
+.btncreatecoll1:active {
+  border: 1px solid #0072c6;
+  background-color: #0072c6;
+  color: white;
+  padding: 2px 30px;
+  cursor: pointer;
+  font-size: 12px;
+}
+.btncreatecoll1-off {
+  border: 1px solid #969696;
+  background-color: #000;
+  color: white;
+  padding: 2px 30px;
+  cursor: pointer;
+  font-size: 12px;
+  margin-left: -5px;
+}
+.leftpanel-okbut {
+  padding: 20px 0px 24px 30px;
+}
+.btnpricepad {
+  margin-left: 24px;
+}
+.collid {
+  background: #fff;
+  width: 300px;
+}
+.textfontclr {
+  color: #000;
+}
+.collid-white {
+  width: 100%;
+  border: solid 1px #DDD;
+}
+.plusimg-but {
+  background-image: url(../images/plus_normal.svg);
+  background-repeat: no-repeat;
+  padding: 6px 16px;
+  position: static;
+  padding-top: 4px;
+}
+.plusimg-but:hover {
+  background-image: url(../images/plus_hover.svg);
+  background-repeat: no-repeat;
+  padding: 6px 16px;
+  position: static;
+  padding-top: 4px;
+}
+.plusimg-but:active {
+  background-image: url(../images/plus_pressed.svg);
+  background-repeat: no-repeat;
+  padding: 6px 16px;
+  position: static;
+  padding-top: 4px;
+}
+.plusimg-but:disabled {
+  background-image: url(../images/plus_disabled.svg);
+  background-repeat: no-repeat;
+  padding: 6px 16px;
+  position: static;
+  padding-top: 4px;
+}
+.minusimg-but {
+  background-image: url(../images/minus_normal.svg);
+  background-repeat: no-repeat;
+  padding: 6px 16px;
+  position: static;
+  padding-top: 4px;
+}
+.minusimg-but:hover {
+  background-image: url(../images/minus_hover.svg);
+  background-repeat: no-repeat;
+  padding: 6px 16px;
+  position: static;
+  padding-top: 4px;
+}
+.minusimg-but:active {
+  background-image: url(../images/minus_pressed.svg);
+  background-repeat: no-repeat;
+  padding: 6px 16px;
+  position: static;
+  padding-top: 4px;
+}
+.minusimg-but:disabled {
+  background-image: url(../images/minus_disabled.svg);
+  background-repeat: no-repeat;
+  padding: 6px 16px;
+  position: static;
+  padding-top: 4px;
+}
+.firstdivbg {
+  padding: 12px 0px 8px 32px;
+  background-color: #FFFFFF;
+}
+p {
+  margin: 0 0 4px;
+  color: #000;
+}
+.closeImg {
+  float: right;
+  margin: 4px 24px 0px 0px;
+  cursor: pointer;
+  padding: 4px 16px 16px 4px;
+  background-image: url(../images/cancel.svg);
+  background-repeat: no-repeat;
+  width: 16px;
+  height: 16px;
+}
+.closeImg:hover {
+  background-image: url(../images/cancel-hover.svg);
+  background-repeat: no-repeat;
+}
+.closeImg[tabindex]:active {
+  outline: none;
+}
+.seconddivpadding {
+  padding-top: 16px;
+}
+.seconddivbg {
+  height: 100vh;
+  padding-left: 32px;
+  padding-top: 16px;
+}
+.pkPadding {
+  padding-top: 12px;
+}
+.mandatoryStar {
+  color: #ff0707;
+  font-size: 14px;
+  font-weight: bold;
+}
+.createNewDatabaseOrUseExisting {
+  margin-bottom: 4px;
+}
+.createNewDatabaseOrUseExisting .createNewDatabaseOrUseExistingRadio {
+  vertical-align: text-bottom;
+}
+.createNewDatabaseOrUseExisting .createNewDatabaseOrUseExistingRadio:nth-child(n+2) {
+  margin-left: 16px;
+}
+.createNewDatabaseOrUseExisting .createNewDatabaseOrUseExistingSpace {
+  padding-left: 4px;
+}
+.databaseProvision {
+  margin-top: 4px;
+}
+.databaseProvision input {
+  vertical-align: text-bottom;
+}
+.databaseProvision .databaseProvisionText {
+  padding-left: 4px;
+}
+.infoImg {
+  margin: 0px 0px 2px 2px;
+}
+.infoTooltip {
+  position: relative;
+  display: inline-block;
+}
+.infoTooltip .tooltiptext {
+  top: 30px;
+  visibility: hidden;
+  background-color: #393939;
+  color: #FFFFFF;
+  position: absolute;
+  z-index: 1;
+  left: 12px;
+  padding: 12px;
+}
+.infoTooltip .tooltiptext::after {
+  border-width: 0px 24px 24px 0px;
+  top: -15px;
+  content: "";
+  position: absolute;
+  right: 100%;
+  border-style: solid;
+  border-color: transparent #000000 transparent transparent;
+  left: 0px;
+  width: 0;
+  height: 0;
+  border-color: #3b3b3b transparent;
+}
+.infoTooltip:hover .tooltiptext {
+  visibility: visible;
+}
+.nowrap {
+  white-space: nowrap;
+}
+.leftAlignInfoTooltip {
+  position: relative;
+  display: inline-block;
+  white-space: normal;
+}
+.leftAlignInfoTooltip .tooltiptext {
+  background-color: #393939;
+  color: #FFFFFF;
+  position: absolute;
+  z-index: 1;
+  left: 12px;
+  padding: 12px;
+  top: 30px;
+  visibility: hidden;
+  left: -300px;
+}
+.leftAlignInfoTooltip .tooltiptext::after {
+  content: "";
+  position: absolute;
+  right: 100%;
+  border-style: solid;
+  border-color: transparent #000000 transparent transparent;
+  left: 0px;
+  width: 0;
+  height: 0;
+  border-color: #3b3b3b transparent;
+  border-width: 0px 0px 24px 24px;
+  top: -15px;
+  left: 287px;
+}
+.leftAlignInfoTooltip:hover .tooltiptext {
+  visibility: visible;
+}
+.pageOptionTooltipWidth {
+  min-width: 210px;
+}
+.infoTooltipWidth {
+  min-width: 280px;
+}
+.sharedCollectionThroughputTooltipWidth {
+  min-width: 150px;
+}
+.addContainerThroughputInput {
+  min-width: 370px;
+}
+.renewInfoTooltipWidth {
+  width: 115px;
+}
+.throughputInfo {
+  min-width: 215px;
+}
+.throughtputRuInfo {
+  min-width: 175px;
+}
+.provisionDatabaseThroughput {
+  width: 200px;
+}
+.pricingtierimg {
+  padding-left: 20px;
+  padding-top: 10px;
+  padding-bottom: 20px;
+}
+.headerline {
+  color: #000000;
+  font-size: 16px;
+  border-bottom: 1px solid #CCCCCC;
+}
+.partitionkeystyle {
+  font-size: 10px;
+}
+.arrowprice {
+  margin-left: 230px;
+}
+.paddingspan {
+  padding: 20px;
+  color: white;
+  font-size: 14px;
+}
+.contextual-pane .paddingspan3 {
+  padding-left: 0px;
+  position: absolute;
+  width: 100%;
+  height: 100px;
+  bottom: -40px;
+  margin: 0 -15px;
+  border-top: solid 1px #bbbbbb;
+  margin-left: -32px;
+}
+/* Variant of paddingspan3 without the margins */
+.contextual-pane .paddingspan3b {
+  padding-left: 0px;
+  position: absolute;
+  width: 100%;
+  height: 100px;
+  bottom: -40px;
+  border-top: solid 1px #bbbbbb;
+}
+.contextual-pane hr {
+  border: 1px solid #53575B;
+  margin-right: 20px;
+}
+.contextual-pane .tabs .tab label {
+  padding: 5px 20px;
+  margin-bottom: 0px;
+}
+.contextual-pane .collid {
+  border: 1px solid #bbbbbb;
+  font-size: 10px;
+  padding: 5px 10px;
+  color: #000;
+}
+input::-webkit-calendar-picker-indicator {
+  opacity: 100;
+}
+.contextual-pane input.collid[type="text"] {
+  font-size: 12px;
+  /* color: #000; */
+  padding: 4px 10px;
+}
+/* Start -- Contextual pane components
+    Use these to specify the main elements of your contextual pane
+    <div class="paneContentContainer">
+        <div class="firstdivbg headerline">My Header</div>
+        <div class="paneErrors">errors go here</div>
+        <div class="paneMainContent">
+            The main content will stretch all the way down to the footer.
+        </div>
+        <div class="footer">For the OK button</div>
+    </div>
+*/
+.contextual-pane .paneContentContainer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+.contextual-pane .paneErrorDetailsContainer {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+.contextual-pane .paneErrorDetails {
+  padding: 16px 32px;
+  color: #000;
+  overflow-x: hidden;
+  overflow-y: auto;
+  flex: 1;
+}
+.contextual-pane .paneErrorDetailsHeader {
+  display: flex;
+  padding-top: 7px;
+  padding-bottom: 12px;
+  height: 46px;
+  background-color: #000;
+}
+.contextual-pane .backBtn {
+  cursor: pointer;
+}
+.contextual-pane .backBtn img {
+  width: 18px;
+  height: 18px;
+  margin-bottom: 4px;
+}
+.contextual-pane .moreDetails {
+  padding-left: 8px;
+}
+.contextual-pane .paneErrorDetailsHeader .errorDetailsTitle {
+  flex: 1;
+  padding-left: 8px;
+}
+.contextual-pane .paneErrors a {
+  cursor: pointer;
+}
+.contextual-pane .paneMainContent {
+  flex: 1;
+  padding-left: 34px;
+  padding-right: 34px;
+  color: #000000;
+  overflow-y: auto;
+  overflow-x: hidden;
+  margin: 24px 0px;
+}
+.contextual-pane .paneFooter {
+  width: 100%;
+  height: 60px;
+  border-top: solid 1px #bbbbbb;
+}
+/* End -- Contextual pane components */
+.paddingspan3 {
+  color: white;
+  font-size: 14px;
+  position: absolute;
+  width: 100%;
+  height: 100px;
+  bottom: 150px;
+}
+.paddingspan4 {
+  padding-top: 20px;
+  padding-left: 20px;
+  color: white;
+  font-size: 14px;
+}
+.closebtnn {
+  float: right;
+  padding: 0 10px;
+  cursor: pointer;
+}
+label {
+  white-space: nowrap;
+  font: 12px "Segoe UI";
+  padding: 5px 25px;
+}
+.Introlines {
+  padding-top: 27px;
+  padding-left: 40px;
+}
+.Introline1 {
+  font-size: 16px;
+}
+.Introline2 {
+  font-size: 14px;
+  padding-top: 10px;
+}
+.datalist-arrow {
+  position: relative;
+}
+.datalist-arrow:hover:after {
+  background: #969696;
+}
+.datalist-arrow:focus:after,
+.datalist-arrow:active:after {
+  background: #1EBBEE;
+}
+input::-webkit-calendar-picker-indicator::after {
+  content: '\276F';
+  right: 0;
+  top: -8%;
+  display: block;
+  width: 27px;
+  height: 25px;
+  line-height: 25px;
+  color: #fff;
+  text-align: center;
+  pointer-events: none;
+  transform: rotate(90deg);
+}
+.datalist-arrow:after:hover {
+  content: '\276F';
+  position: absolute;
+  right: 1px;
+  top: 6%;
+  transform: rotate(90deg);
+  display: block;
+  width: 27px;
+  height: 25px;
+  line-height: 25px;
+  color: #fff;
+  text-align: center;
+  pointer-events: none;
+  background-color: #1EBBEE;
+}
+.Introline3 {
+  padding-top: 10px;
+  font-size: 14px;
+  font-weight: 1000;
+}
+.collectionsTreeWithSplitter {
+  height: 100%;
+}
+.collectionCollapsed {
+  color: black;
+  font-weight: 400;
+  font-size: 14px;
+  position: relative;
+  display: block;
+  padding: 0px 8px 4px 4px;
+  cursor: pointer;
+  float: right;
+}
+.resourceTreeCollapse {
+  margin-right: 2px;
+  padding: 2px 5px 0px 5px;
+  border: 1px solid #fff;
+}
+.resourceTreeCollapse:hover {
+  background-color: #F2F2F2;
+}
+.resourceTreeCollapse:active {
+  background-color: #DDEEFE;
+  outline: none;
+}
+.arrowCollapsed {
+  cursor: pointer;
+  width: 16px;
+  height: 16px;
+  transform: rotate(-90deg) translateX(-50%);
+  -webkit-transform: rotate(-90deg) translateX(-50%);
+  -ms-transform: rotate(-90deg) translateX(-50%);
+  float: right;
+}
+.qslevel {
+  padding-top: 10px;
+  border: none;
+}
+.qslevel > li > a {
+  border: none !important;
+}
+.qslevel > li.active {
+  border-bottom: 4px solid #767676;
+}
+.nav-tabs-margin {
+  padding-top: 8px;
+  background-color: #F2F2F2;
+}
+.navTabHeight {
+  height: 31px;
+}
+.qslevel > li.active > a,
+.qslevel > li > a:focus,
+.nav.nav-tabs.qslevel > li > a:hover {
+  border: none;
+  border-radius: 0;
+  background-color: transparent !important;
+  border-color: transparent;
+}
+.numbersize {
+  font-size: 60px;
+  display: inline;
+}
+.numberheading {
+  display: inline;
+  position: absolute;
+  padding-top: 20px;
+  font-size: 16px;
+  padding-left: 20px;
+}
+.numberheading > p {
+  padding-top: 10px;
+  font-size: 12px !important;
+}
+.numberheading > ul {
+  padding-top: 10px;
+}
+.numberheading > ul > li > a {
+  font-size: 12px !important;
+}
+.step1 {
+  padding-bottom: 60px;
+}
+.step1 > input {
+  font-size: 12px;
+}
+.btncreatecoll {
+  background: #0058AD;
+  color: #fff;
+  padding: 0 20px;
+  cursor: pointer;
+  font-size: 12px;
+  border: 1px solid #0058AD;
+}
+.atags:focus {
+  color: #0058AD;
+}
+.atags {
+  color: #0058AD;
+  font-weight: 400;
+  cursor: pointer;
+}
+.qsmenuicons {
+  width: 25px;
+  height: 25px;
+  margin-right: 5px;
+}
+.HeaderBg {
+  background-color: #202428;
+  height: 60px;
+}
+.title {
+  color: #0058AD;
+  font-size: 20px;
+  padding-left: 10px;
+}
+.items {
+  padding-left: 24px;
+  padding-top: 15px;
+}
+.divmenuquickstartpadding {
+  padding-left: 24px;
+  padding-bottom: 8px;
+}
+.menuQuickStart {
+  font-size: 12px;
+  color: white;
+  padding-left: 10px;
+}
+.menuExplorer {
+  font-size: 12px;
+  color: white;
+  padding-left: 20px;
+}
+.activemenu {
+  color: #fff;
+}
+.rightarrowimg {
+  padding-left: 5px;
+  padding-bottom: 2px;
+}
+a:hover,
+a:visited,
+a:active,
+a:link {
+  text-decoration: none;
+}
+.nav > li > a:focus {
+  background-color: white;
+  outline: none;
+}
+.iconpadclick {
+  background-color: #e6e6e6;
+  cursor: pointer;
+  border: 1px solid #1ebbee;
+  padding: 5px;
+}
+.divimgleftarrow {
+  display: inline-block;
+  margin-top: 16px;
+  margin-right: 10px;
+}
+.divimgleftarrow:hover {
+  background-color: #e6e6e6;
+  cursor: pointer;
+  border: 1px solid #1ebbee;
+}
+.adddeliconspan {
+  display: none;
+  float: right;
+  padding: 5px;
+}
+.spanparent:hover .adddeliconspan {
+  display: inline;
+}
+.spanchild:hover .adddeliconspan {
+  display: inline;
+}
+.resourceTreeAndTabs {
+  display: flex;
+  flex: 1 1 auto;
+  overflow: hidden;
+  height: 100%;
+}
+.collectiontitle {
+  font-size: 14px;
+  text-transform: uppercase;
+}
+.coltitle {
+  background: white;
+  text-align: justify;
+  padding: 4px 0px 8px 0px;
+}
+.titlepadcol {
+  padding-left: 20px;
+  font-weight: 500;
+  height: 28px;
+  display: inline-block;
+  padding-top: 5px;
+}
+.padimgcolrefresh {
+  padding: 0px 0px 4px 4px;
+}
+.padimgcolrefresh:hover {
+  background: #F2F2F2;
+}
+.padimgcolrefresh:active {
+  background: #DDEEFE;
+  outline: none;
+}
+.refreshcol {
+  cursor: pointer;
+  width: 14px;
+  height: 14px;
+}
+.refreshcol:focus {
+  border: Solid 1px #0058AD;
+}
+.refreshcol1 {
+  cursor: pointer;
+  width: 16px;
+  height: 16px;
+}
+.padimgcolrefresh1 {
+  padding: 0px 4px 4px 4px;
+}
+.padimgcolrefresh1:hover {
+  background-color: #F2F2F2;
+}
+.padimgcolrefresh1:active {
+  background-color: #DDEEFE;
+  outline: none;
+}
+.btnmainslide {
+  height: 14px;
+  margin-top: 14px;
+  cursor: pointer;
+}
+.well {
+  padding: 19px 0px;
+  padding-top: 0px;
+  margin-bottom: 20px;
+  border: 0px;
+  box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0);
+  background: white;
+}
+.splitter,
+.ui-resizable-handle.ui-resizable-e {
+  z-index: 1;
+  width: 5px;
+  border-right: 1px solid #CCCCCC;
+  border-bottom: none;
+  padding: 0px;
+  background-color: #FFFFFF;
+}
+.splitter,
+.ui-resizable-handle.ui-resizable-s {
+  z-index: 1;
+  height: 5px;
+  border-bottom: 1px solid #CCCCCC;
+  border-right: none;
+  padding: 0px;
+  background-color: transparent;
+}
+.ui-resizable-helper {
+  border: 1px dotted;
+}
+.testClass {
+  padding-left: 30px;
+}
+.level {
+  padding-left: 16px;
+  padding-top: 0px;
+}
+.tabCommandButton {
+  border-bottom: 1px solid #ddd;
+  box-sizing: border-box;
+  padding-left: 8px;
+  display: -webkit-flex;
+  display: -ms-flexbox;
+  display: -ms-flex;
+  display: flex;
+  flex: 0 0 auto;
+}
+.imgiconwidth {
+  margin-right: 5px;
+}
+.id {
+  padding-left: 8px;
+  color: #000;
+  font-weight: bold;
+  margin-left: 6px;
+}
+.documentsGridHeaderContainer {
+  padding-left: 5px;
+  width: 100%;
+  border-bottom: 1px solid #CCCCCC;
+}
+.documentsGridHeaderContainer > table {
+  width: 100%;
+  table-layout: fixed;
+}
+.documentsGridHeader {
+  padding-left: 8px;
+  color: #000;
+  font-weight: bold;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: default;
+  width: 50%;
+}
+.documentsGridPartition {
+  width: 30%;
+}
+.refreshColHeader {
+  padding: 3px 5px 6px 5px;
+  float: right;
+}
+.refreshColHeader:hover {
+  background-color: #F2F2F2;
+}
+.refreshColHeader:active {
+  background-color: #DDEEFE;
+}
+.fixedWidthHeader {
+  width: 82px;
+}
+.tabdocuments .scrollable {
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-left: 5px;
+  padding-right: 5px;
+  width: 100%;
+}
+.tabdocuments > .tabdocumentsGridElement {
+  width: 50%;
+}
+.tabdocuments > .evenlySpacedHeader {
+  width: 30%;
+}
+.tabdocuments.scrollable:focus,
+.tabdocuments.scrollable:active {
+  outline: 1px dotted;
+}
+.tabdocuments .scrollable table {
+  table-layout: fixed;
+}
+.tabdocuments .scrollable table td {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mongoDocumentEditor .monaco-editor.vs .redsquiggly {
+  display: none !important;
+}
+td a {
+  color: #393939;
+}
+td a:hover {
+  color: #393939;
+}
+.loadMore {
+  width: 100%;
+  padding-left: 30%;
+  padding-top: 2px;
+  cursor: pointer;
+}
+.loadMore > a:focus {
+  outline: 1px dotted;
+}
+#content.active .tabdocuments .scrollable {
+  height: 100%;
+  overflow-y: auto;
+}
+.table-fixed thead {
+  width: 97%;
+  padding-left: 18px;
+}
+.table-fixed tbody {
+  height: 510px;
+  overflow-y: auto;
+  width: 100%;
+  overflow-x: hidden;
+}
+.table-fixed thead,
+.table-fixed tbody,
+.table-fixed tr,
+.table-fixed td,
+.table-fixed th {
+  display: block;
+}
+.table-fixed tbody td,
+.table-fixed thead > tr > th {
+  float: left;
+  border-bottom-width: 0;
+}
+a:hover,
+a:visited,
+a:active,
+a:link {
+  text-decoration: none;
+}
+.tabs {
+  position: relative;
+  margin: 15px 0 25px 0;
+  display: table;
+  width: 100%;
+}
+.tab {
+  float: left;
+}
+.tab label {
+  border: 1px solid #bbbbbb;
+  margin-left: -1px;
+  position: inherit;
+  left: 1px;
+  color: #393939;
+}
+.tab [type=radio] {
+  display: none;
+}
+.tabcontent {
+  clear: both;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 12px 0px;
+}
+.tab [type=radio]:checked ~ label {
+  border: 1px solid #0072c6;
+  background-color: #0058AD;
+  color: white;
+  z-index: 2;
+}
+.tab [type=radio]:checked ~ label:hover {
+  border: 1px solid #0058AD;
+  background-color: #0058AD;
+  color: white;
+  z-index: 2;
+}
+.tab [type=radio]:checked ~ label:active {
+  border: 1px solid #0072c6;
+  background-color: #0072c6;
+  color: white;
+  z-index: 2;
+}
+.tab [type=radio]:checked ~ label ~ .tabcontent {
+  z-index: 1;
+  display: initial;
+}
+.tab [type=radio]:not(:checked) ~ label:hover {
+  border: 1px solid #969696;
+  background-color: #969696;
+  color: white;
+  cursor: pointer;
+}
+.tab [type=radio]:not(:checked) ~ label ~ .tabcontent {
+  display: none;
+}
+::-webkit-input-placeholder {
+  color: #969696;
+}
+::-moz-placeholder {
+  color: #969696;
+}
+:-ms-input-placeholder {
+  color: #969696;
+}
+:-moz-placeholder {
+  color: #969696;
+}
+::-ms-expand {
+  color: #969696;
+}
+.atagdetails {
+  padding-left: 55px!important;
+}
+.contextual-pane-in .form-errors + img {
+  display: block;
+  position: absolute;
+  top: 92px;
+  left: 12px;
+}
+.path {
+  color: lightgray;
+  font-style: italic;
+  padding-top: 12px;
+  padding-left: 20px;
+}
+.queryPath {
+  line-height: 16px;
+  padding-left: 33px;
+  padding-bottom: 12px;
+}
+.filterDocCollapsed {
+  display: -webkit-flex;
+  display: -ms-flexbox;
+  display: -ms-flex;
+  display: flex;
+  padding: 0px 36px 0px 20px;
+}
+.filterDocCollapsed.active {
+  display: block;
+}
+.selectQuery {
+  padding: 4px 4px 0px 0px;
+}
+.noFilterApplied {
+  padding-top: 4px;
+}
+.appliedQuery {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-top: 4px;
+}
+.filterDocExpanded {
+  padding-left: 20px;
+}
+.filterDocExpanded.active {
+  display: block;
+}
+.filterbtnstyle {
+  background: #0058AD;
+  width: 90px;
+  height: 25px;
+  color: white;
+  border: none;
+}
+.filterbtnstyle:hover {
+  background: #0058AD;
+  width: 90px;
+  height: 25px;
+  color: white;
+  border: none;
+}
+.filterbtnstyle:active {
+  background: #0072c6;
+  width: 90px;
+  height: 25px;
+  color: white;
+  border: none;
+}
+.filterbtnstyle:focus {
+  background: #0072c6;
+  width: 90px;
+  height: 25px;
+  color: white;
+  border: none;
+  border: 1px solid #0072c6;
+}
+.filterbtnstyle:not(:enabled) {
+  background: lightgray;
+  width: 90px;
+  height: 25px;
+  color: white;
+  border: none;
+}
+.queryButton {
+  margin-left: 16px;
+}
+.hrline1 {
+  color: #d6d7d8;
+  margin-left: -20px;
+}
+.filtdocheader {
+  font-size: 18px;
+}
+.editFilter {
+  margin-left: 20px;
+}
+.filterdivs {
+  padding-top: 15px;
+  height: 45px;
+  margin-bottom: 8px;
+  white-space: nowrap;
+}
+.editFilterContainer {
+  display: flex;
+}
+.filterspan {
+  margin-top: 4px;
+  padding: 0px 16px 0px 0px;
+}
+.filterclose {
+  padding: 4px 10px;
+  cursor: pointer;
+}
+.querydropdown {
+  border: 1px solid #CCCCCC;
+  font-style: normal;
+  width: 100%;
+}
+.querydropdown.placeholderVisible {
+  font-style: italic;
+}
+.querydropdown:hover {
+  background-color: #EDF6FF;
+}
+.querydropdown::-webkit-input-placeholder {
+  color: lightgray;
+  padding-left: 3px;
+}
+.querydropdown:-moz-placeholder {
+  /* Firefox 18- */
+  color: lightgray;
+}
+.querydropdown::-moz-placeholder {
+  /* Firefox 19+ */
+  color: lightgray;
+}
+.querydropdown:-ms-input-placeholder {
+  color: lightgray;
+  padding-left: 7px;
+}
+.rowoverride {
+  margin-left: 7px;
+  margin-top: 20px;
+}
+.tabPanesContainer {
+  display: flex;
+  height: 100%;
+  overflow: hidden;
+}
+.tabs-container {
+  height: 100%;
+  width: 100%;
+}
+.paddingspan4 {
+  padding-top: 20px;
+  color: white;
+  padding-left: 25px;
+  padding-right: 25px;
+}
+.colResizePointer {
+  cursor: col-resize;
+}
+.nav-tabs > li.active > .tabNavContentContainer,
+.nav-tabs > li.active > .tabNavContentContainer:focus,
+.nav-tabs > li.active > .tabNavContentContainer:hover {
+  color: #555;
+  cursor: default;
+  background-color: #FFFFFF;
+  border-color: #CCCCCC;
+  border-bottom-color: #FFFFFF;
+  border-style: solid;
+  border-width: 1px;
+  height: 31px;
+  width: 131px;
+}
+.tabNavContentContainer {
+  display: -webkit-flex;
+  display: -ms-flexbox;
+  display: -ms-flex;
+  display: flex;
+  height: 30px;
+  justify-content: space-between;
+  border-radius: 2px 2px 0 0;
+  padding: 8px 0px 4px 0px;
+  color: #393939;
+  width: 130px;
+  text-align: center;
+  position: relative;
+  border: 1px solid transparent;
+}
+.tabNavContentContainer:hover {
+  text-decoration: none;
+  background-color: #E6E6E6;
+  border-color: #E6E6E6;
+}
+.tabNavContentContainer:active {
+  background-color: #E6E6E6;
+}
+.tabNavContentContainer a:active {
+  outline: none;
+}
+.tabNavContentContainer .tab_Content {
+  display: -webkit-flex;
+  display: -ms-flexbox;
+  display: -ms-flex;
+  display: flex;
+  width: 130px;
+  border-right: 1px solid #CCCCCC;
+  white-space: nowrap;
+}
+.tabNavContentContainer .tab_Content .statusIconContainer {
+  width: 18px;
+  height: 18px;
+  margin-left: 4px;
+  display: inline-flex;
+}
+.tabNavContentContainer .tab_Content .statusIconContainer .errorIconContainer {
+  width: 16px;
+  height: 16px;
+  margin-top: 1px;
+}
+.tabNavContentContainer .tab_Content .statusIconContainer .errorIconContainer .errorIcon {
+  width: 3px;
+  height: 14px;
+  background-image: url(../images/error_no_outline.svg);
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 3px;
+  display: block;
+  margin: 1px 0px 0px 6px;
+}
+.tabNavContentContainer .tab_Content .statusIconContainer .errorIconContainer.actionsEnabled:hover {
+  background-color: #EEF7FF;
+}
+.tabNavContentContainer .tab_Content .statusIconContainer .errorIconContainer.actionsEnabled:focus {
+  outline: 1px dashed #004E87;
+}
+.tabNavContentContainer .tab_Content .statusIconContainer .errorIconContainer.actionsEnabled:active {
+  background-color: #DDF0FF;
+}
+.tabNavContentContainer .tab_Content .statusIconContainer .errorIconContainer[tabindex]:active {
+  outline: none;
+}
+.tabNavContentContainer .tab_Content .statusIconContainer .loadingIcon {
+  width: 14px;
+  height: 14px;
+  margin: 0px 0px 4px 4px;
+}
+.tabNavContentContainer .tab_Content .tabNavText {
+  margin-left: 4px;
+  margin-right: 2px;
+  color: #000000;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+  flex-grow: 1;
+}
+.tabNavContentContainer .tab_Content .tabIconSection {
+  width: 30px;
+  position: relative;
+  padding-top: 2px;
+}
+.tabNavContentContainer .tab_Content .tabIconSection .cancelButton {
+  padding: 0px 4px 0px 4px;
+}
+.tabNavContentContainer .tab_Content .tabIconSection .cancelButton:hover {
+  background-color: #EEF7FF;
+}
+.tabNavContentContainer .tab_Content .tabIconSection .cancelButton:focus {
+  outline: 1px dashed #004E87;
+}
+.tabNavContentContainer .tab_Content .tabIconSection .cancelButton:active {
+  background-color: #DDF0FF;
+}
+.tabNavContentContainer .tab_Content .tabIconSection .close-Icon {
+  background-image: url(../images/close-black.svg);
+  background-repeat: no-repeat;
+  background-size: 10px;
+  background-position: center;
+  padding: 0px 4px 0px 4px;
+}
+.cancelButton[tabindex]:active {
+  outline: none;
+}
+.clickableLink {
+  color: #0058AD;
+  font-family: wf_segoe-ui_normal, "Segoe UI", "Segoe WP", Tahoma, Arial, sans-serif;
+  font-size: 12px;
+  cursor: pointer;
+}
+.clickableLink:hover {
+  background-color: #e7f6fc;
+}
+.clickableLink:active {
+  background-color: #e6f8fe;
+}
+.clickableLink:focus {
+  outline: 1px dashed #000000;
+  outline-offset: 0px;
+}
+.paneselect {
+  height: 23px;
+}
+@media screen\0 {
+  .commandBar-ie {
+    padding-top: 7px;
+  }
+  .filterspan {
+    margin: 0px;
+    padding-top: 2px;
+  }
+  .tabdocuments .scrollable {
+    height: 100%;
+  }
+  .nav-tabs > li > a:active {
+    background-color: #e0e0e0;
+    width: 100%;
+    border: 1px solid #0058AD;
+    cursor: pointer;
+  }
+}
+.headerWithoutPartitionKey {
+  width: 172px;
+}
+.headerWithPartitionKey {
+  width: 86px;
+}
+.nodeIconSet {
+  color: black;
+  margin-left: 7px;
+  padding-left: 5px;
+}
+.tabCommandDisabled {
+  color: #CCCCCC;
+  cursor: default;
+  background-color: #FFFFFF;
+}
+.tabCommandDisabled:active {
+  border: 1px solid #FFFFFF;
+}
+.tabCommandDisabled:hover {
+  background-color: #FFFFFF;
+}
+#explorerNotificationConsole {
+  z-index: 1000;
+}
+.uniqueIndexesContainer {
+  width: 100%;
+}
+.uniqueIndexesContainer .uniqueKeys {
+  padding-bottom: 4px;
+}
+.uniqueIndexesContainer .uniqueKeys .uniqueInfoTooltip {
+  position: relative;
+  display: inline-block;
+}
+.uniqueIndexesContainer .uniqueKeys .uniqueInfoTooltip:hover .uniqueTooltiptext {
+  visibility: visible;
+}
+.uniqueIndexesContainer .uniqueKeys .uniqueInfoTooltip .uniqueTooltiptext {
+  bottom: 28px;
+  visibility: hidden;
+  background-color: #393939;
+  color: #FFFFFF;
+  position: absolute;
+  z-index: 1;
+  left: 12px;
+  padding: 12px;
+}
+.uniqueIndexesContainer .uniqueKeys .uniqueInfoTooltip .uniqueTooltiptext::after {
+  border-width: 24px 24px 0px 0px;
+  bottom: -15px;
+  content: "";
+  position: absolute;
+  right: 100%;
+  border-style: solid;
+  border-color: transparent #000000 transparent transparent;
+  left: 0px;
+  width: 0;
+  height: 0;
+  border-color: #3b3b3b transparent;
+}
+settings-pane .settingsSection {
+  border-bottom: 1px solid #CCCCCC;
+  margin-right: 24px;
+  padding: 12px 0px;
+}
+settings-pane .settingsSection:first-child {
+  padding-top: 0px;
+}
+settings-pane .settingsSection:last-child {
+  border-bottom: none;
+}
+settings-pane .settingsSection .settingsSectionPart {
+  padding-left: 8px;
+}
+settings-pane .settingsSection .settingsSectionLabel {
+  margin-bottom: 8px;
+}
+settings-pane .settingsSection .pageOptionsPart {
+  padding-bottom: 12px;
+}
+.commandButton {
+  padding: 6px 8px 8px;
+  border: 1px solid transparent;
+  color: #393939;
+  background-color: transparent;
+}
+.commandButton:hover:not(.commandDisabled) {
+  background-color: #EEF7FF;
+  cursor: pointer;
+}
+.commandButton:active:not(.commandDisabled) {
+  background-color: #DDF0FF;
+  border: 1px dashed #004E87;
+}
+.commandButton:focus:not(.commandDisabled) {
+  border: 1px dashed #004E87;
+}
+.commandButton .commandIcon {
+  margin: 0 4px 0 0;
+  vertical-align: text-top;
+  width: 18px;
+  height: 18px;
+}
+.commandButton.commandDisabled {
+  color: #767676;
+  opacity: 0.5;
+}
+.commandButton[tabindex]:focus {
+  outline: none;
+}
+žRh2„E      [Õ¾±[Õ¾³?§¶ [×k"   4    :https://cosmos.azure.com/css/DocumentDB.css?v=1.0.1 necko:classified 1 strongly-framed 1 security-info FnhllAKWRHGAlo+ESXykKAAAAAAAAAAAwAAAAAAAAEaphjojH6pBabDSgSnsfLHeAAQAAgAAAAAAAAAAAAAAAAAAAAAB4vFIJp5wRkeyPxAQ9RJGKPqbqVvKO0mKuIl8ec8o/uhmCjImkVxP+7sgiYWmMt8FvcOXmlQiTNWFiWlrbpbqgwAAAAAAAAOMMIIDiDCCAnCgAwIBAgIERTJgUjANBgkqhkiG9w0BAQsFADCBijEUMBIGA1UEBhMLUG9ydFN3aWdnZXIxFDASBgNVBAgTC1BvcnRTd2lnZ2VyMRQwEgYDVQQHEwtQb3J0U3dpZ2dlcjEUMBIGA1UEChMLUG9ydFN3aWdnZXIxFzAVBgNVBAsTDlBvcnRTd2lnZ2VyIENBMRcwFQYDVQQDEw5Qb3J0U3dpZ2dlciBDQTAeFw0xNDEwMjgxMzEyMTBaFw0zODEwMjgxMzEyMTBaMGAxFDASBgNVBAYTC1BvcnRTd2lnZ2VyMRQwEgYDVQQKEwtQb3J0U3dpZ2dlcjEXMBUGA1UECxMOUG9ydFN3aWdnZXIgQ0ExGTAXBgNVBAMTEGNvc21vcy5henVyZS5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCKn7emKINsnWqPZ+C/VsqbQf/l4NsmIh34bXBR0xdNg9bfb+xcoghRlmbPjhZ/A26A2gJ6Rrg2d0GGMLpbqA8nTlRRGXEAD39321zk4ye09ElXClvqguGqdqOJpPQ05DPFD6wSOq+KVAEblE5bi+LMqBLipDERzgUe7xzeqVVk0i0ldh9yQOIk3YuzcBR9igSEuw5qladmMYvXKHYM9YZz0R7axMc8xAtadK7C9KfFPfEI5LS2nhmy4vBrTgFyYhfkEvKfmIj6HTX0ISFCAC2llcBLpEDcuiW76tAHp1pXDeWtSeaV36AeOctdleVgrbmsGs3fu6ppuRcWjEZUbjE3AgMBAAGjHzAdMBsGA1UdEQQUMBKCEGNvc21vcy5henVyZS5jb20wDQYJKoZIhvcNAQELBQADggEBABYikT6Y5YgJJ4IVJldlFDF5MKxp26YegXhvT8EmAbgr0yQBIlY2DtKEiHf7Q8wRoJ9y5Ajst1D7HmRba+XLjS6s3IHJ7gtuvc3fZj9MPKpbqSKRfHDB8bDOVIzmjBseg2BqckHTkcYak3b/pTWCTqKHM3LxKsDwN8F3HNQ2pY4d5ma2kR1EtWdTpRiIbir3QxJDcWVp8CgHONZcoMn33NNwnWWjAQMX6d8e1CPuBZi0t+myaYduCqPgKKox9qMXSubF6uifQkAJ5RdLZrZ2pghENA/4r1oz51wqEmpjPsStSUxRPwJ6wJrB4gwGtX7++ZHLjAaNrTSUCGwIOlAT4LnALwEDAAAAAAEBAAAAAA== request-method GET request-Accept-Encoding gzip, deflate, br response-head HTTP/1.1 200 OK
+Content-Length: 61408
+Content-Type: text/css
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:38:42 GMT
+ original-response-headers Content-Length: 61408
+Content-Type: text/css
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:38:42 GMT
+Connection: close
+ uncompressed-len 0 net-response-time-onstart 1932 net-response-time-onstop 1934   ïà

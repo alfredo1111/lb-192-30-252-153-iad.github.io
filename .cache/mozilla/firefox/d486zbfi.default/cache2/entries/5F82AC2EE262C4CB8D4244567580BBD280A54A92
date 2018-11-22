@@ -1,0 +1,1006 @@
+define(["require", "exports", "knockout", "q", "d3", "./GraphData", "../../../Common/HashMap", "../../Menus/NotificationConsole/NotificationConsole", "../../../Utils/NotificationConsoleUtils"], function (require, exports, ko, Q, d3, GraphData_1, HashMap_1, NotificationConsole_1, NotificationConsoleUtils_1) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    var PAGE_ACTION;
+    (function (PAGE_ACTION) {
+        PAGE_ACTION[PAGE_ACTION["FIRST_PAGE"] = 0] = "FIRST_PAGE";
+        PAGE_ACTION[PAGE_ACTION["PREVIOUS_PAGE"] = 1] = "PREVIOUS_PAGE";
+        PAGE_ACTION[PAGE_ACTION["NEXT_PAGE"] = 2] = "NEXT_PAGE";
+    })(PAGE_ACTION = exports.PAGE_ACTION || (exports.PAGE_ACTION = {}));
+    /** This is the custom Knockout handler for the d3 graph */
+    var D3ForceGraph = /** @class */ (function () {
+        function D3ForceGraph(graphData) {
+            this.graphData = graphData;
+            this.highlightedNode = ko.observable(null);
+            this.idToSelect = ko.observable(null);
+            this.errorMsgs = ko.observableArray([]);
+            this.graphUpdatedTimestamp = ko.observable(0);
+            this.loadMoreData = ko.observable(null);
+            this.graphDataWrapper = null;
+            // Default graph configuration
+            this.graphConfig = {
+                nodeColor: ko.observable(D3ForceGraph.NODE_COLOR),
+                nodeColorKey: ko.observable(null),
+                linkColor: ko.observable(D3ForceGraph.LINK_COLOR),
+                showNeighborType: ko.observable(1 /* TARGETS_ONLY */),
+                nodeCaption: ko.observable(D3ForceGraph.DEFAULT_NODE_CAPTION),
+                nodeSize: ko.observable(D3ForceGraph.NODE_SIZE),
+                linkWidth: ko.observable(D3ForceGraph.LINK_WIDTH),
+                nodeIconKey: ko.observable(null),
+                iconsMap: ko.observable({})
+            };
+            this.width = D3ForceGraph.GRAPH_WIDTH_PX;
+            this.height = D3ForceGraph.GRAPH_HEIGHT_PX;
+            this.rootVertex = null;
+            this.isHighlightDisabled = false;
+            this.zoomTransform = { x: 0, y: 0, k: 1 };
+            this.viewCenter = { x: this.width / 2, y: this.height / 2 };
+            this.instanceIndex = D3ForceGraph.instanceCount++;
+        }
+        D3ForceGraph.prototype.init = function (element, valueAccessor, allBindingsAccessor, viewModel, bindingContext) {
+            this.initializeGraph(element);
+        };
+        ;
+        D3ForceGraph.prototype.update = function (element, valueAccessor, allBindingsAccessor, viewModel, bindingContext) {
+        };
+        /**
+         * Construct the graph
+         * @param graphData
+         */
+        D3ForceGraph.prototype.initializeGraph = function (element) {
+            var _this = this;
+            this.zoom = d3.zoom()
+                .scaleExtent([1 / 2, 4])
+                .on("zoom", this.zoomed.bind(this));
+            this.svg = d3.select(element)
+                .attr("viewBox", "0 0 " + this.width + " " + this.height)
+                .attr("preserveAspectRatio", "xMidYMid slice");
+            this.zoomBackground = this.svg.call(this.zoom);
+            element.addEventListener('click', function (e) {
+                // IE 11 doesn't support el.classList and there's no polyfill for it
+                // Don't auto-deselect when not clicking on a node
+                if (!(e.target).classList) {
+                    return;
+                }
+                if (!D3ForceGraph.closest(e.target, function (el) {
+                    return !!el && el !== document && el.classList.contains('node');
+                })) {
+                    _this.deselectNode();
+                }
+            });
+            this.g = this.svg.append("g");
+            this.linkSelection = this.g.append("g").attr("class", "links").selectAll(".link");
+            this.nodeSelection = this.g.append("g").attr("class", "nodes").selectAll(".node");
+            // Reset state variables
+            this.highlightedNode(null);
+            this.selectedNode = null;
+            this.isDragging = false;
+            // Watch for changes
+            this.graphData.subscribe(function (newVal) {
+                if (!newVal) {
+                    return;
+                }
+                // Build new GraphData object from it
+                _this.graphDataWrapper = new GraphData_1.GraphData();
+                _this.graphDataWrapper.setData(newVal);
+                // d3 expects source and target properties for each link (edge)
+                $.each(_this.graphDataWrapper.edges, function (i, e) {
+                    e.target = e.inV;
+                    e.source = e.outV;
+                });
+                _this.onGraphDataUpdate(_this.graphDataWrapper);
+            });
+            this.idToSelect.subscribe(function (newVal) {
+                if (!newVal) {
+                    _this.deselectNode();
+                    return;
+                }
+                var self = _this;
+                // Select this node id
+                d3.selectAll('.node').filter(function (d, i) { return d.id === newVal; }).each(function (d) {
+                    self.onNodeClicked(this, d);
+                });
+            });
+            // Redraw if any of these configs change
+            this.graphConfig.nodeColor.subscribe(this.redrawGraph.bind(this));
+            this.graphConfig.nodeColorKey.subscribe(function (key) {
+                // Compute colormap
+                _this.uniqueValues = [];
+                for (var i = 0; i < _this.graphDataWrapper.vertices.length; i++) {
+                    var vertex = _this.graphDataWrapper.vertices[i];
+                    var props = D3ForceGraph.getNodeProperties(vertex);
+                    if (props.indexOf(key) === -1) {
+                        // Vertex doesn't have the property
+                        continue;
+                    }
+                    var val = D3ForceGraph.getNodePropValue(vertex, key);
+                    if (typeof val !== 'string' && typeof val !== 'number') {
+                        // Not a type we can map
+                        continue;
+                    }
+                    // Map this value if new
+                    if (_this.uniqueValues.indexOf(val) === -1) {
+                        _this.uniqueValues.push(val);
+                    }
+                    if (_this.uniqueValues.length === D3ForceGraph.MAX_COLOR_NB) {
+                        _this.errorMsgs.push("Number of unique values for property " + key + " exceeds maximum (" + D3ForceGraph.MAX_COLOR_NB + ")");
+                        // ignore rest of values
+                        break;
+                    }
+                }
+                _this.redrawGraph();
+            });
+            this.graphConfig.linkColor.subscribe(this.redrawGraph.bind(this));
+            this.graphConfig.showNeighborType.subscribe(this.redrawGraph.bind(this));
+            this.graphConfig.nodeCaption.subscribe(this.redrawGraph.bind(this));
+            this.graphConfig.nodeSize.subscribe(this.redrawGraph.bind(this));
+            this.graphConfig.linkWidth.subscribe(this.redrawGraph.bind(this));
+            this.graphConfig.nodeIconKey.subscribe(this.redrawGraph.bind(this));
+            this.instantiateSimulation();
+        }; // initialize
+        D3ForceGraph.prototype.resetZoom = function () {
+            this.zoomBackground.call(this.zoom.transform, d3.zoomIdentity);
+            this.viewCenter = { x: this.width / 2, y: this.height / 2 };
+        };
+        /**
+         * Retrieve all node properties
+         * NOTE: This is DocDB specific. We expect to have 'id' and 'label' and a bunch of 'properties'
+         * @param node
+         */
+        D3ForceGraph.getNodeProperties = function (node) {
+            var props = ['id', 'label'];
+            if (node.hasOwnProperty('properties')) {
+                props = props.concat(Object.keys(node.properties));
+            }
+            return props;
+        };
+        /**
+         * Retrieve node's property value
+         * @param node
+         * @param prop
+         */
+        D3ForceGraph.getNodePropValue = function (node, prop) {
+            if (node.hasOwnProperty(prop)) {
+                return node[prop];
+            }
+            // This is DocDB specific
+            if (node.hasOwnProperty('properties') && node.properties.hasOwnProperty(prop)) {
+                return node.properties[prop][0]['value'];
+            }
+            return undefined;
+        };
+        // Click on non-nodes deselects
+        D3ForceGraph.closest = function (el, predicate) {
+            do
+                if (predicate(el))
+                    return el;
+            while (el = el && el.parentNode);
+        };
+        D3ForceGraph.prototype.zoomed = function () {
+            this.zoomTransform = {
+                x: d3.event.transform.x,
+                y: d3.event.transform.y,
+                k: d3.event.transform.k
+            };
+            this.g.attr("transform", d3.event.transform);
+        };
+        D3ForceGraph.prototype.getArrowHeadSymbolId = function () {
+            return "triangle-" + this.instanceIndex;
+        };
+        ;
+        D3ForceGraph.prototype.instantiateSimulation = function () {
+            this.simulation = d3.forceSimulation()
+                .force("link", d3.forceLink().id(function (d) { return d.id; })
+                .distance(D3ForceGraph.FORCE_LINK_DISTANCE).strength(D3ForceGraph.FORCE_LINK_STRENGTH))
+                .force("charge", d3.forceManyBody())
+                .force("collide", d3.forceCollide(D3ForceGraph.FORCE_COLLIDE_RADIUS)
+                .strength(D3ForceGraph.FORCE_COLLIDE_STRENGTH)
+                .iterations(D3ForceGraph.FORCE_COLLIDE_ITERATIONS));
+        };
+        ;
+        /**
+         * Shift graph to make this targetPosition as new center
+         * @param targetPosition
+         * @return promise with shift offset
+         */
+        D3ForceGraph.prototype.shiftGraph = function (targetPosition) {
+            var _this = this;
+            var deferred = Q.defer();
+            var offset = { x: this.width / 2 - targetPosition.x, y: this.height / 2 - targetPosition.y };
+            this.viewCenter = targetPosition;
+            if (Math.abs(offset.x) > 0.5 && Math.abs(offset.y) > 0.5) {
+                var transform = function () {
+                    return d3.zoomIdentity.translate(_this.width / 2, _this.height / 2).scale(_this.zoomTransform.k).translate(-targetPosition.x, -targetPosition.y);
+                };
+                this.zoomBackground.transition().duration(D3ForceGraph.TRANSITION_STEP1_MS).call(this.zoom.transform, transform)
+                    .on('end', function () {
+                    deferred.resolve(offset);
+                });
+            }
+            else {
+                deferred.resolve(null);
+            }
+            return deferred.promise;
+        };
+        ;
+        D3ForceGraph.prototype.onGraphDataUpdate = function (graph) {
+            var _this = this;
+            // shift all nodes so that new clicked on node is in the center
+            this.isHighlightDisabled = true;
+            this.unhighlightNode();
+            this.simulation.stop();
+            // Find root node position
+            var rootId = graph.findRootNodeId();
+            // Remember nodes current position
+            var posMap = new HashMap_1.HashMap();
+            this.simulation.nodes().forEach(function (d) {
+                if (d.x == undefined || d.y == undefined) {
+                    return;
+                }
+                posMap.set(d.id, { x: d.x, y: d.y });
+            });
+            var restartSimulation = function () {
+                _this.restartSimulation(graph, posMap);
+                _this.isHighlightDisabled = false;
+            };
+            if (rootId && posMap.has(rootId)) {
+                this.shiftGraph(posMap.get(rootId)).then(restartSimulation);
+            }
+            else {
+                restartSimulation();
+            }
+        };
+        D3ForceGraph.prototype.animateRemoveExitSelections = function () {
+            var deferred1 = Q.defer();
+            var deferred2 = Q.defer();
+            var linkExitSelection = this.linkSelection.exit();
+            var linkCounter = linkExitSelection.size();
+            if (linkCounter > 0) {
+                if (D3ForceGraph.useSvgMarkerEnd()) {
+                    this.svg.select("#" + this.getArrowHeadSymbolId() + "-marker").transition().duration(D3ForceGraph.TRANSITION_STEP2_MS)
+                        .attr('fill-opacity', 0).attr('stroke-opacity', 0);
+                }
+                else {
+                    this.svg.select("#" + this.getArrowHeadSymbolId() + "-nonMarker").classed('hidden', true);
+                }
+                linkExitSelection.select('.link').transition().duration(D3ForceGraph.TRANSITION_STEP2_MS).attr("stroke-width", 0);
+                linkExitSelection
+                    .transition().delay(D3ForceGraph.TRANSITION_STEP2_MS)
+                    .remove()
+                    .on('end', function () {
+                    if (--linkCounter <= 0) {
+                        deferred1.resolve();
+                    }
+                });
+            }
+            else {
+                deferred1.resolve();
+            }
+            var nodeExitSelection = this.nodeSelection.exit();
+            var nodeCounter = nodeExitSelection.size();
+            if (nodeCounter > 0) {
+                nodeExitSelection.selectAll('circle').transition().duration(D3ForceGraph.TRANSITION_STEP2_MS).attr("r", 0);
+                nodeExitSelection.selectAll('.iconContainer').transition().duration(D3ForceGraph.TRANSITION_STEP2_MS).attr("opacity", 0);
+                nodeExitSelection.selectAll('.loadmore').transition().duration(D3ForceGraph.TRANSITION_STEP2_MS).attr("opacity", 0);
+                nodeExitSelection.selectAll('text').transition().duration(D3ForceGraph.TRANSITION_STEP2_MS).style("opacity", 0);
+                nodeExitSelection
+                    .transition().delay(D3ForceGraph.TRANSITION_STEP2_MS)
+                    .remove()
+                    .on('end', function () {
+                    if (--nodeCounter <= 0) {
+                        deferred2.resolve();
+                    }
+                });
+            }
+            else {
+                deferred2.resolve();
+            }
+            return Q.allSettled([deferred1.promise, deferred2.promise]).then(undefined);
+        };
+        ;
+        /**
+         * All non-fixed nodes start from the center and spread them away from the center like fireworks.
+         * Then fade in the nodes labels and Load More icon.
+         * @param nodes
+         * @param newNodes
+         */
+        D3ForceGraph.prototype.animateBigBang = function (nodes, newNodes) {
+            var _this = this;
+            if (!nodes || nodes.length === 0) {
+                return;
+            }
+            var nodeFinalPositionMap = new HashMap_1.HashMap();
+            var viewCenter = this.viewCenter;
+            var nonFixedNodes = _.filter(nodes, function (node) {
+                return !node._isFixedPosition && node.x === viewCenter.x && node.y === viewCenter.y;
+            });
+            var n = nonFixedNodes.length;
+            var da = Math.PI * 2 / n;
+            var daOffset = Math.random() * Math.PI * 2;
+            for (var i = 0; i < n; i++) {
+                var d = nonFixedNodes[i];
+                var angle = da * i + daOffset;
+                d.fx = viewCenter.x;
+                d.fy = viewCenter.y;
+                var x = viewCenter.x + Math.cos(angle) * D3ForceGraph.INITIAL_POSITION_RADIUS;
+                var y = viewCenter.y + Math.sin(angle) * D3ForceGraph.INITIAL_POSITION_RADIUS;
+                nodeFinalPositionMap.set(d.id, { x: x, y: y });
+            }
+            // Animate nodes
+            newNodes.transition().duration(D3ForceGraph.TRANSITION_STEP3_MS)
+                .attrTween('transform', function (d) {
+                var finalPos = nodeFinalPositionMap.get(d.id) || { x: viewCenter.x, y: viewCenter.y };
+                var ix = d3.interpolateNumber(viewCenter.x, finalPos.x);
+                var iy = d3.interpolateNumber(viewCenter.y, finalPos.y);
+                return function (t) {
+                    d.fx = ix(t);
+                    d.fy = iy(t);
+                    return _this.positionNode(d);
+                };
+            }).on('end', function (d) {
+                if (!d._isFixedPosition) {
+                    d.fx = null;
+                    d.fy = null;
+                }
+            });
+            // Delay appearance of text and loadMore
+            newNodes.selectAll('.caption')
+                .attr('fill', '#ffffff').transition()
+                .delay(D3ForceGraph.TRANSITION_STEP3_MS - 100).duration(D3ForceGraph.TRANSITION_STEP3_MS)
+                .attrTween('fill', function (t) {
+                var ic = d3.interpolate('#ffffff', '#000000');
+                return function (t) {
+                    return ic(t);
+                };
+            });
+            newNodes.selectAll('.loadmore')
+                .attr('visibility', 'hidden').transition().delay(600).attr('visibility', 'visible');
+        };
+        ;
+        D3ForceGraph.prototype.restartSimulation = function (graph, posMap) {
+            var _this = this;
+            if (!graph) {
+                return;
+            }
+            var viewCenter = this.viewCenter;
+            // Distribute nodes initial position before simulation
+            var nodes = graph.vertices;
+            for (var i = 0; i < nodes.length; i++) {
+                var v = nodes[i];
+                if (v._isRoot) {
+                    this.rootVertex = v;
+                }
+                if (v._isFixedPosition && posMap.has(v.id)) {
+                    var pos = posMap.get(v.id);
+                    v.fx = pos.x;
+                    v.fy = pos.y;
+                }
+                else if (v._isRoot) {
+                    v.fx = viewCenter.x;
+                    v.fy = viewCenter.y;
+                }
+                else if (posMap.has(v.id)) {
+                    var pos = posMap.get(v.id);
+                    v.x = pos.x;
+                    v.y = pos.y;
+                }
+                else {
+                    v.x = viewCenter.x;
+                    v.y = viewCenter.y;
+                }
+            }
+            var nodeById = d3.map(nodes, function (d) { return d.id; });
+            var links = graph.edges;
+            links.forEach(function (link) {
+                link.source = nodeById.get(link.source);
+                link.target = nodeById.get(link.target);
+            });
+            this.linkSelection = this.linkSelection.data(links, function (l) {
+                return l.source.id + "_" + l.target.id;
+            });
+            this.nodeSelection = this.nodeSelection.data(nodes, function (d) { return d.id; });
+            var removePromise = this.animateRemoveExitSelections();
+            var self = this;
+            this.simulation
+                .nodes(nodes)
+                .on("tick", ticked);
+            this.simulation.force("link")
+                .links(graph.edges);
+            removePromise.then(function () {
+                if (D3ForceGraph.useSvgMarkerEnd()) {
+                    _this.svg.select("#" + _this.getArrowHeadSymbolId() + "-marker").attr('fill-opacity', 1).attr('stroke-opacity', 1);
+                }
+                else {
+                    _this.svg.select("#" + _this.getArrowHeadSymbolId() + "-nonMarker").classed('hidden', false);
+                }
+                var newNodes = _this.addNewNodes();
+                _this.updateLoadMore(_this.nodeSelection);
+                _this.addNewLinks();
+                var nodes = _this.simulation.nodes();
+                _this.redrawGraph();
+                _this.animateBigBang(nodes, newNodes);
+                _this.simulation.alpha(1).restart();
+                _this.graphUpdatedTimestamp(new Date().getTime());
+            });
+            function ticked() {
+                self.linkSelection.select('.link').attr("d", function (l) { return self.positionLink(l); });
+                if (!D3ForceGraph.useSvgMarkerEnd()) {
+                    self.linkSelection.select('.markerEnd').attr("transform", function (l) { return self.positionLinkEnd(l); });
+                }
+                self.nodeSelection.attr("transform", function (d) { return self.positionNode(d); });
+            }
+        };
+        D3ForceGraph.prototype.addNewLinks = function () {
+            var newLinks = this.linkSelection
+                .enter()
+                .append('g')
+                .attr('class', 'markerEndContainer');
+            var line = newLinks.append("path")
+                .attr('class', 'link')
+                .attr('fill', 'none')
+                .attr('stroke-width', this.graphConfig.linkWidth())
+                .attr('stroke', this.graphConfig.linkColor());
+            if (D3ForceGraph.useSvgMarkerEnd()) {
+                line.attr('marker-end', "url(#" + this.getArrowHeadSymbolId() + "-marker)");
+            }
+            else {
+                newLinks
+                    .append('g')
+                    .append('use')
+                    .attr('xlink:href', "#" + this.getArrowHeadSymbolId() + "-nonMarker")
+                    .attr('class', 'markerEnd link')
+                    .attr('fill', this.graphConfig.linkColor())
+                    .classed("" + this.getArrowHeadSymbolId(), true);
+            }
+            this.linkSelection = newLinks.merge(this.linkSelection);
+            return newLinks;
+        };
+        D3ForceGraph.prototype.addNewNodes = function () {
+            var _this = this;
+            var self = this;
+            var newNodes = this.nodeSelection
+                .enter()
+                .append('g')
+                .attr('class', function (d) { return d._isRoot ? 'node root' : 'node'; })
+                .call(d3.drag()
+                .on("start", function (d) { return _this.dragstarted(d); })
+                .on("drag", function (d) { return _this.dragged(d); })
+                .on("end", function (d) { return _this.dragended(d); }))
+                .on('mouseover', function (d) {
+                if (_this.isHighlightDisabled || _this.selectedNode || _this.isDragging) {
+                    return;
+                }
+                _this.highlightNode(_this, d);
+                _this.simulation.stop();
+            })
+                .on('mouseout', function (d) {
+                if (_this.isHighlightDisabled || _this.selectedNode || _this.isDragging) {
+                    return;
+                }
+                _this.unhighlightNode();
+                _this.simulation.restart();
+            })
+                .each(function (d) {
+                // Initial position for nodes. This prevents blinking as following the tween transition doesn't always start right away
+                d.x = self.viewCenter.x;
+                d.y = self.viewCenter.y;
+            });
+            newNodes.append("circle")
+                .attr("fill", this.getNodeColor.bind(this))
+                .attr('class', 'main')
+                .attr('r', this.graphConfig.nodeSize());
+            var iconGroup = newNodes.append('g').attr('class', 'iconContainer')
+                .on('dblclick', function (d) {
+                // this is the <g> element
+                self.onNodeClicked(this.parentNode, d);
+            })
+                .on('click', function (d) {
+                // this is the <g> element
+                self.onNodeClicked(this.parentNode, d);
+            });
+            var nodeSize = this.graphConfig.nodeSize();
+            var bgsize = nodeSize + 1;
+            iconGroup.append('rect')
+                .attr('x', -bgsize)
+                .attr('y', -bgsize)
+                .attr('width', bgsize * 2)
+                .attr('height', bgsize * 2)
+                .attr('fill-opacity', function (d) { return _this.graphConfig.nodeIconKey() ? 1 : 0; })
+                .attr('class', 'icon-background');
+            // Possible icon: if xlink:href is undefined, the image won't show
+            iconGroup.append("svg:image")
+                .attr("xlink:href", function (d) {
+                return D3ForceGraph.computeImageData(d, _this.graphConfig);
+            })
+                .attr("x", -nodeSize)
+                .attr("y", -nodeSize)
+                .attr("height", nodeSize * 2)
+                .attr("width", nodeSize * 2)
+                .attr('class', 'icon');
+            newNodes.append('text')
+                .attr('class', 'caption')
+                .attr('dx', D3ForceGraph.TEXT_DX)
+                .attr('dy', '.35em')
+                .text(function (d) { return _this.retrieveNodeCaption(d); });
+            this.nodeSelection = newNodes.merge(this.nodeSelection);
+            return newNodes;
+        };
+        /**
+         * Pagination display and buttons
+         * @param parent
+         * @param nodeSize
+         */
+        D3ForceGraph.prototype.createPaginationControl = function (parent, nodeSize) {
+            var self = this;
+            var gaugeWidth = 50;
+            var btnXOffset = gaugeWidth / 2;
+            var yOffset = 10 + nodeSize;
+            var gaugeYOffset = yOffset + 3;
+            var gaugeHeight = 14;
+            parent.append('line')
+                .attr('x1', 0)
+                .attr('y1', nodeSize)
+                .attr('x2', 0)
+                .attr('y2', gaugeYOffset)
+                .style('stroke-width', 1)
+                .style('stroke', D3ForceGraph.LINK_COLOR);
+            parent.append('use')
+                .attr('xlink:href', '#triangleRight')
+                .attr('class', 'pageButton')
+                .attr('y', yOffset)
+                .attr('x', btnXOffset)
+                .on('click', function (d) {
+                self.loadNeighbors(d, PAGE_ACTION.NEXT_PAGE);
+            })
+                .on('dblclick', function (d) {
+                self.loadNeighbors(d, PAGE_ACTION.NEXT_PAGE);
+            })
+                .on('mouseover', function (d) {
+                d3.select(this).classed('active', true);
+            })
+                .on('mouseout', function (d) {
+                d3.select(this).classed('active', false);
+            })
+                .attr('visibility', function (d) { return !d._outEAllLoaded || !d._inEAllLoaded ? 'visible' : 'hidden'; });
+            parent.append('use')
+                .attr('xlink:href', '#triangleRight')
+                .attr('class', 'pageButton')
+                .attr("y", yOffset)
+                .attr('transform', "translate(" + -btnXOffset + "), scale(-1, 1)")
+                .on('click', function (d) {
+                self.loadNeighbors(d, PAGE_ACTION.PREVIOUS_PAGE);
+            })
+                .on('dblclick', function (d) {
+                self.loadNeighbors(d, PAGE_ACTION.PREVIOUS_PAGE);
+            })
+                .on('mouseover', function (d) {
+                d3.select(this).classed('active', true);
+            })
+                .on('mouseout', function (d) {
+                d3.select(this).classed('active', false);
+            })
+                .attr('visibility', function (d) { return !d._pagination || d._pagination.currentPage.start !== 0 ? 'visible' : 'hidden'; });
+            parent.append('rect')
+                .attr('x', -btnXOffset)
+                .attr('y', gaugeYOffset)
+                .attr('width', gaugeWidth)
+                .attr('height', gaugeHeight)
+                .style('fill', 'white')
+                .style('stroke-width', 1)
+                .style('stroke', D3ForceGraph.LINK_COLOR);
+            parent.append('rect')
+                .attr('x', function (d) {
+                var pageInfo = d._pagination;
+                return pageInfo && pageInfo.total ? -btnXOffset + gaugeWidth * pageInfo.currentPage.start / pageInfo.total : 0;
+            })
+                .attr('y', gaugeYOffset)
+                .attr('width', function (d) {
+                var pageInfo = d._pagination;
+                return pageInfo && pageInfo.total ? gaugeWidth * (pageInfo.currentPage.end - pageInfo.currentPage.start) / pageInfo.total : 0;
+            })
+                .attr('height', gaugeHeight)
+                .style('fill', D3ForceGraph.NODE_COLOR)
+                .attr('visibility', function (d) { return d._pagination && d._pagination.total ? 'visible' : 'hidden'; });
+            parent.append('text')
+                .attr('x', 0)
+                .attr('y', gaugeYOffset + gaugeHeight / 2 + D3ForceGraph.PAGINATION_LINE1_Y_OFFSET_PX)
+                .text(function (d) {
+                var pageInfo = d._pagination;
+                /*
+                 * pageInfo is zero-based but for the purpose of user display, current page start and end are 1-based.
+                 * current page end is the upper-bound (not included), but for the purpose user display we show included upper-bound
+                 * For example: start = 0, end = 11 will display 1-10.
+                 */
+                // pageInfo is zero-based, but for the purpose of user display, current page start and end are 1-based.
+                //
+                return pageInfo.currentPage.start + 1 + "-" + pageInfo.currentPage.end;
+            })
+                .attr('text-anchor', 'middle')
+                .style('font-size', '10px');
+            parent.append('text')
+                .attr('x', 0)
+                .attr('y', gaugeYOffset +
+                gaugeHeight / 2 +
+                D3ForceGraph.PAGINATION_LINE1_Y_OFFSET_PX +
+                D3ForceGraph.PAGINATION_LINE2_Y_OFFSET_PX)
+                .text(function (d) {
+                var pageInfo = d._pagination;
+                return "total: " + pageInfo.total;
+            })
+                .attr('text-anchor', 'middle')
+                .style('font-size', '10px')
+                .attr('visibility', function (d) { return d._pagination && d._pagination.total ? 'visible' : 'hidden'; });
+        };
+        D3ForceGraph.prototype.createLoadMoreControl = function (parent, nodeSize) {
+            var self = this;
+            parent.append('use')
+                .attr('class', 'loadMoreIcon')
+                .attr('xlink:href', '#loadMoreIcon')
+                .attr("x", -15)
+                .attr("y", nodeSize)
+                .on('click', function (d) {
+                self.loadNeighbors(d, PAGE_ACTION.FIRST_PAGE);
+            })
+                .on('dblclick', function (d) {
+                self.loadNeighbors(d, PAGE_ACTION.FIRST_PAGE);
+            })
+                .on('mouseover', function (d) {
+                d3.select(this).classed('active', true);
+            })
+                .on('mouseout', function (d) {
+                d3.select(this).classed('active', false);
+            });
+        };
+        /**
+         * Count edges and store in a hashmap: vertex id <--> number of links
+         * @param linkSelection
+         */
+        D3ForceGraph.countEdges = function (links) {
+            var countMap = new HashMap_1.HashMap();
+            links.forEach(function (l) {
+                var val = countMap.get(l.inV) || 0;
+                val += 1;
+                countMap.set(l.inV, val);
+                val = countMap.get(l.outV) || 0;
+                val += 1;
+                countMap.set(l.outV, val);
+            });
+            return countMap;
+        };
+        /**
+         * Remove LoadMore subassembly for existing nodes that show all their children in the graph
+         */
+        D3ForceGraph.prototype.updateLoadMore = function (nodeSelection) {
+            var self = this;
+            nodeSelection.selectAll('.loadmore').remove();
+            var nodeSize = this.graphConfig.nodeSize();
+            var rootSelectionG = nodeSelection.filter(function (d) {
+                return !!d._isRoot && !!d._pagination;
+            })
+                .append('g')
+                .attr('class', 'loadmore');
+            this.createPaginationControl(rootSelectionG, nodeSize);
+            var nodeNeighborMap = D3ForceGraph.countEdges(this.linkSelection.data());
+            var missingNeighborNonRootG = nodeSelection.filter(function (d) {
+                return !(d._isRoot ||
+                    (d._outEAllLoaded && d._inEAllLoaded &&
+                        nodeNeighborMap.get(d.id) >= (d._outEdgeIds.length + d._inEdgeIds.length)));
+            })
+                .append('g')
+                .attr('class', 'loadmore');
+            this.createLoadMoreControl(missingNeighborNonRootG, nodeSize);
+            // Don't color icons individually, just the definitions
+            this.svg.selectAll('#loadMoreIcon ellipse').attr('fill', this.graphConfig.nodeColor());
+        };
+        /**
+         * Load neighbors of this node
+         */
+        D3ForceGraph.prototype.loadNeighbors = function (v, pageAction) {
+            if (!this.graphDataWrapper.hasVertexId(v.id)) {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Error, "Clicked node not in graph data. id: " + v.id);
+                return;
+            }
+            this.loadMoreData({
+                nodeId: v.id,
+                pageAction: pageAction
+            });
+        };
+        /**
+         * If not mapped, return max Color
+         * @param key
+         */
+        D3ForceGraph.prototype.lookupColorFromKey = function (key) {
+            var index = this.uniqueValues.indexOf(key);
+            if (index < 0 || index >= D3ForceGraph.MAX_COLOR_NB) {
+                index = D3ForceGraph.MAX_COLOR_NB - 1;
+            }
+            return D3ForceGraph.COLOR_SCHEME_20(index.toString());
+        };
+        /**
+         * Get node color
+         * If nodeColorKey is defined, lookup the node color from uniqueStrings.
+         * Otherwise use nodeColor.
+         * @param d
+         */
+        D3ForceGraph.prototype.getNodeColor = function (d) {
+            if (this.graphConfig.nodeColorKey()) {
+                var val = D3ForceGraph.getNodePropValue(d, this.graphConfig.nodeColorKey());
+                return this.lookupColorFromKey(val);
+            }
+            else {
+                return this.graphConfig.nodeColor();
+            }
+        };
+        D3ForceGraph.prototype.dragstarted = function (d) {
+            this.isDragging = true;
+            if (!d3.event.active)
+                this.simulation.alphaTarget(0.3).restart();
+            d.fx = d.x;
+            d.fy = d.y;
+        };
+        D3ForceGraph.prototype.dragged = function (d) {
+            d.fx = d3.event.x;
+            d.fy = d3.event.y;
+        };
+        D3ForceGraph.prototype.dragended = function (d) {
+            this.isDragging = false;
+            if (!d3.event.active)
+                this.simulation.alphaTarget(0);
+            d.fx = null;
+            d.fy = null;
+        };
+        D3ForceGraph.prototype.highlightNode = function (g, d) {
+            this.fadeNonNeighbors(d.id);
+            this.highlightedNode({ g: g, id: d.id });
+        };
+        D3ForceGraph.prototype.unhighlightNode = function () {
+            this.g.selectAll('.node').classed('inactive', false);
+            this.g.selectAll('.link').classed('inactive', false);
+            this.highlightedNode(null);
+            this.setRootAsHighlighted();
+        };
+        /**
+         * Set the root node as highlighted, but don't fade neighbors.
+         * We use this to show the root properties
+         */
+        D3ForceGraph.prototype.setRootAsHighlighted = function () {
+            if (!this.rootVertex) {
+                return;
+            }
+            this.highlightedNode({ g: null, id: this.rootVertex.id });
+        };
+        D3ForceGraph.prototype.fadeNonNeighbors = function (nodeId) {
+            var _this = this;
+            this.g.selectAll('.node').classed('inactive', function (d) {
+                var neighbors = (function (showNeighborType) {
+                    switch (showNeighborType) {
+                        case 0 /* SOURCES_ONLY */: return _this.graphDataWrapper.getSourcesForId(nodeId);
+                        case 1 /* TARGETS_ONLY */: return _this.graphDataWrapper.getTargetsForId(nodeId);
+                        default:
+                        case 2 /* BOTH */: return (_this.graphDataWrapper.getSourcesForId(nodeId) || []).concat(_this.graphDataWrapper.getTargetsForId(nodeId));
+                    }
+                })(_this.graphConfig.showNeighborType());
+                return (!neighbors || neighbors.indexOf(d.id) === -1) && d.id !== nodeId;
+            });
+            this.g.selectAll('.link')
+                .classed('inactive', function (l) {
+                switch (_this.graphConfig.showNeighborType()) {
+                    case 0 /* SOURCES_ONLY */: return l.target.id !== nodeId;
+                    case 1 /* TARGETS_ONLY */: return l.source.id !== nodeId;
+                    default:
+                    case 2 /* BOTH */: return l.target.id !== nodeId && l.source.id !== nodeId;
+                }
+            });
+        };
+        D3ForceGraph.prototype.onNodeClicked = function (g, d) {
+            if (this.isHighlightDisabled) {
+                return;
+            }
+            if (g === this.selectedNode) {
+                this.deselectNode();
+                return;
+            }
+            // unselect old none
+            d3.select(this.selectedNode).classed('selected', false);
+            this.unhighlightNode();
+            // select new one
+            d3.select(g).classed('selected', true);
+            this.selectedNode = g;
+            this.highlightNode(g, d);
+        };
+        D3ForceGraph.prototype.deselectNode = function () {
+            if (!this.selectedNode) {
+                return;
+            }
+            // Unselect
+            d3.select(this.selectedNode).classed('selected', false);
+            this.selectedNode = null;
+            this.unhighlightNode();
+        };
+        D3ForceGraph.prototype.retrieveNodeCaption = function (d) {
+            var key = this.graphConfig.nodeCaption();
+            var value = d.id || d.label;
+            if (key) {
+                value = D3ForceGraph.getNodePropValue(d, key) || '';
+            }
+            // Manually ellipsize
+            if (value.length > D3ForceGraph.NODE_LABEL_MAX_CHAR_LENGTH) {
+                value = value.substr(0, D3ForceGraph.NODE_LABEL_MAX_CHAR_LENGTH) + '\u2026';
+            }
+            return value;
+        };
+        D3ForceGraph.calculateClosestPIOver2 = function (angle) {
+            var CURVATURE_FACTOR = 40;
+            var result = (Math.atan(CURVATURE_FACTOR * (angle - (Math.PI / 4))) / 2) + (Math.PI / 4);
+            return result;
+        };
+        D3ForceGraph.calculateClosestPIOver4 = function (angle) {
+            var CURVATURE_FACTOR = 100;
+            var result = (Math.atan(CURVATURE_FACTOR * (angle - (Math.PI / 8))) / 4) + (Math.PI / 8);
+            return result;
+        };
+        D3ForceGraph.calculateControlPoint = function (start, end) {
+            var alpha = Math.atan2(end.y - start.y, end.x - start.x);
+            var n = Math.floor(alpha / (Math.PI / 2));
+            var reducedAlpha = alpha - (n * Math.PI / 2);
+            var reducedBeta = D3ForceGraph.calculateClosestPIOver2(reducedAlpha);
+            var beta = reducedBeta + (n * Math.PI / 2);
+            var length = Math.sqrt((end.y - start.y) * (end.y - start.y) + (end.x - start.x) * (end.x - start.x)) / 2;
+            var result = {
+                x: start.x + Math.cos(beta) * length,
+                y: start.y + Math.sin(beta) * length
+            };
+            return result;
+        };
+        D3ForceGraph.prototype.positionLinkEnd = function (l) {
+            var source = { x: l.source.x, y: l.source.y };
+            var target = { x: l.target.x, y: l.target.y };
+            var d1 = D3ForceGraph.calculateControlPoint(source, target);
+            var radius = this.graphConfig.nodeSize() + 3;
+            // End
+            var dx = target.x - d1.x;
+            var dy = target.y - d1.y;
+            var angle = Math.atan2(dy, dx);
+            var ux = target.x - (Math.cos(angle) * radius);
+            var uy = target.y - (Math.sin(angle) * radius);
+            return "translate(" + ux + "," + uy + ") rotate(" + angle * 180 / Math.PI + ")";
+        };
+        D3ForceGraph.prototype.positionLink = function (l) {
+            var source = { x: l.source.x, y: l.source.y };
+            var target = { x: l.target.x, y: l.target.y };
+            var d1 = D3ForceGraph.calculateControlPoint(source, target);
+            var radius = this.graphConfig.nodeSize() + 3;
+            // Start
+            var dx = d1.x - source.x;
+            var dy = d1.y - source.y;
+            var angle = Math.atan2(dy, dx);
+            var tx = source.x + (Math.cos(angle) * radius);
+            var ty = source.y + (Math.sin(angle) * radius);
+            // End
+            dx = target.x - d1.x;
+            dy = target.y - d1.y;
+            angle = Math.atan2(dy, dx);
+            var ux = target.x - (Math.cos(angle) * radius);
+            var uy = target.y - (Math.sin(angle) * radius);
+            return "M" + tx + "," + ty
+                + "S" + d1.x + "," + d1.y
+                + " " + ux + "," + uy;
+        };
+        D3ForceGraph.prototype.positionNode = function (d) {
+            return "translate(" + d.x + "," + d.y + ")";
+        };
+        D3ForceGraph.prototype.redrawGraph = function () {
+            if (!this.simulation) {
+                return;
+            }
+            this.g.selectAll('.node').attr('class', function (d) { return d._isRoot ? 'node root' : 'node'; });
+            this.applyConfig(this.graphConfig);
+        };
+        D3ForceGraph.computeImageData = function (d, config) {
+            var propValue = D3ForceGraph.getNodePropValue(d, config.nodeIconKey()) || '';
+            // Trim leading and trailing spaces to make comparison more forgiving.
+            var value = config.iconsMap()[propValue.trim()];
+            if (!value) {
+                return undefined;
+            }
+            return "data:image/" + value.format + ";base64," + value.data;
+        };
+        /**
+         * Update graph according to configuration or use default
+         */
+        D3ForceGraph.prototype.applyConfig = function (config) {
+            var _this = this;
+            if (config.nodeIconKey()) {
+                this.g.selectAll('.node .icon').attr("xlink:href", function (d) {
+                    return D3ForceGraph.computeImageData(d, config);
+                })
+                    .attr("x", -config.nodeSize())
+                    .attr("y", -config.nodeSize())
+                    .attr("height", config.nodeSize() * 2)
+                    .attr("width", config.nodeSize() * 2)
+                    .attr('class', 'icon');
+            }
+            else {
+                // clear icons
+                this.g.selectAll('.node .icon').attr('xlink:href', undefined);
+            }
+            this.g.selectAll('.node .icon-background').attr('fill-opacity', function (d) { return config.nodeIconKey() ? 1 : 0; });
+            this.g.selectAll('.node text.caption').text(function (d) { return _this.retrieveNodeCaption(d); });
+            this.g.selectAll('.node circle.main').attr('r', config.nodeSize());
+            this.g.selectAll('.node text.caption').attr('dx', config.nodeSize() + 2);
+            this.g.selectAll('.node circle').attr('fill', this.getNodeColor.bind(this));
+            // Can't color nodes individually if using defs
+            this.svg.selectAll('#loadMoreIcon ellipse').attr('fill', this.graphConfig.nodeColor());
+            this.g.selectAll('.link').attr("stroke-width", config.linkWidth());
+            this.g.selectAll('.link').attr("stroke", config.linkColor());
+            if (D3ForceGraph.useSvgMarkerEnd()) {
+                this.svg.select("#" + this.getArrowHeadSymbolId() + "-marker").attr('fill', config.linkColor()).attr('stroke', config.linkColor());
+            }
+            else {
+                this.svg.select("#" + this.getArrowHeadSymbolId() + "-nonMarker").attr('fill', config.linkColor());
+            }
+            // Reset highlight
+            this.g.selectAll('.node circle').attr('opacity', null);
+        };
+        /**
+         * On Edge browsers, there's a bug when using the marker-end attribute.
+         * It make the whole app reload when zooming and panning.
+         * So we draw the arrow heads manually and must also reposition manually.
+         * In this case, the UX is slightly degraded (no animation when removing arrow)
+         */
+        D3ForceGraph.useSvgMarkerEnd = function () {
+            // Use for all browsers except Edge
+            return window.navigator.userAgent.indexOf('Edge') === -1;
+        };
+        // Some constants
+        D3ForceGraph.DEFAULT_NODE_CAPTION = 'id';
+        D3ForceGraph.GRAPH_WIDTH_PX = 900;
+        D3ForceGraph.GRAPH_HEIGHT_PX = 700;
+        D3ForceGraph.LINK_COLOR = '#aaa';
+        D3ForceGraph.NODE_SIZE = 10;
+        D3ForceGraph.TEXT_DX = 12;
+        D3ForceGraph.MARKER_REFX = 8;
+        D3ForceGraph.FORCE_COLLIDE_RADIUS = 40;
+        D3ForceGraph.FORCE_COLLIDE_STRENGTH = 0.2;
+        D3ForceGraph.FORCE_COLLIDE_ITERATIONS = 1;
+        D3ForceGraph.NODE_COLOR = 'orange';
+        D3ForceGraph.LINK_WIDTH = 1;
+        D3ForceGraph.NODE_LABEL_MAX_CHAR_LENGTH = 16;
+        D3ForceGraph.FORCE_LINK_DISTANCE = 100;
+        D3ForceGraph.FORCE_LINK_STRENGTH = 0.005;
+        D3ForceGraph.INITIAL_POSITION_RADIUS = 150;
+        D3ForceGraph.TRANSITION_STEP1_MS = 1000;
+        D3ForceGraph.TRANSITION_STEP2_MS = 1000;
+        D3ForceGraph.TRANSITION_STEP3_MS = 700;
+        D3ForceGraph.PAGINATION_LINE1_Y_OFFSET_PX = 4;
+        D3ForceGraph.PAGINATION_LINE2_Y_OFFSET_PX = 14;
+        // We limit the number of different colors to 20
+        D3ForceGraph.COLOR_SCHEME_20 = d3.scaleOrdinal(d3.schemeCategory20);
+        D3ForceGraph.MAX_COLOR_NB = 20;
+        // Some state variables
+        D3ForceGraph.instanceCount = 1;
+        return D3ForceGraph;
+    }());
+    exports.D3ForceGraph = D3ForceGraph;
+});
+fûbÊH»      [Õ¾ç[Õ¾ø?§¶Æ[×k_   ]    :https://cosmos.azure.com/built/Explorer/Graph/GraphExplorerComponent/D3ForceGraph.js?v=1.0.1 necko:classified 1 strongly-framed 1 security-info FnhllAKWRHGAlo+ESXykKAAAAAAAAAAAwAAAAAAAAEaphjojH6pBabDSgSnsfLHeAAQAAgAAAAAAAAAAAAAAAAAAAAAB4vFIJp5wRkeyPxAQ9RJGKPqbqVvKO0mKuIl8ec8o/uhmCjImkVxP+7sgiYWmMt8FvcOXmlQiTNWFiWlrbpbqgwAAAAAAAAOMMIIDiDCCAnCgAwIBAgIERTJgUjANBgkqhkiG9w0BAQsFADCBijEUMBIGA1UEBhMLUG9ydFN3aWdnZXIxFDASBgNVBAgTC1BvcnRTd2lnZ2VyMRQwEgYDVQQHEwtQb3J0U3dpZ2dlcjEUMBIGA1UEChMLUG9ydFN3aWdnZXIxFzAVBgNVBAsTDlBvcnRTd2lnZ2VyIENBMRcwFQYDVQQDEw5Qb3J0U3dpZ2dlciBDQTAeFw0xNDEwMjgxMzEyMTBaFw0zODEwMjgxMzEyMTBaMGAxFDASBgNVBAYTC1BvcnRTd2lnZ2VyMRQwEgYDVQQKEwtQb3J0U3dpZ2dlcjEXMBUGA1UECxMOUG9ydFN3aWdnZXIgQ0ExGTAXBgNVBAMTEGNvc21vcy5henVyZS5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCKn7emKINsnWqPZ+C/VsqbQf/l4NsmIh34bXBR0xdNg9bfb+xcoghRlmbPjhZ/A26A2gJ6Rrg2d0GGMLpbqA8nTlRRGXEAD39321zk4ye09ElXClvqguGqdqOJpPQ05DPFD6wSOq+KVAEblE5bi+LMqBLipDERzgUe7xzeqVVk0i0ldh9yQOIk3YuzcBR9igSEuw5qladmMYvXKHYM9YZz0R7axMc8xAtadK7C9KfFPfEI5LS2nhmy4vBrTgFyYhfkEvKfmIj6HTX0ISFCAC2llcBLpEDcuiW76tAHp1pXDeWtSeaV36AeOctdleVgrbmsGs3fu6ppuRcWjEZUbjE3AgMBAAGjHzAdMBsGA1UdEQQUMBKCEGNvc21vcy5henVyZS5jb20wDQYJKoZIhvcNAQELBQADggEBABYikT6Y5YgJJ4IVJldlFDF5MKxp26YegXhvT8EmAbgr0yQBIlY2DtKEiHf7Q8wRoJ9y5Ajst1D7HmRba+XLjS6s3IHJ7gtuvc3fZj9MPKpbqSKRfHDB8bDOVIzmjBseg2BqckHTkcYak3b/pTWCTqKHM3LxKsDwN8F3HNQ2pY4d5ma2kR1EtWdTpRiIbir3QxJDcWVp8CgHONZcoMn33NNwnWWjAQMX6d8e1CPuBZi0t+myaYduCqPgKKox9qMXSubF6uifQkAJ5RdLZrZ2pghENA/4r1oz51wqEmpjPsStSUxRPwJ6wJrB4gwGtX7++ZHLjAaNrTSUCGwIOlAT4LnALwEDAAAAAAEBAAAAAA== request-method GET request-Accept-Encoding gzip, deflate, br response-head HTTP/1.1 200 OK
+Content-Length: 46094
+Content-Type: application/x-javascript
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:39:53 GMT
+ original-response-headers Content-Length: 46094
+Content-Type: application/x-javascript
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:39:53 GMT
+Connection: close
+ uncompressed-len 0 net-response-time-onstart 16999 net-response-time-onstop 16999   ´

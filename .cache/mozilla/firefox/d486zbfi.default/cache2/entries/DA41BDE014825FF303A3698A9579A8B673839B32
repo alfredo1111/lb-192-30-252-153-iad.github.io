@@ -1,0 +1,169 @@
+define(["require", "exports", "knockout", "../../Contracts/ViewModels", "../../Common/Constants", "../../Shared/Telemetry/TelemetryConstants", "../Tabs/StoredProcedureTab", "../Menus/ContextMenu", "../../Shared/Telemetry/TelemetryProcessor", "../ContextMenuButtonFactory"], function (require, exports, ko, ViewModels, Constants, TelemetryConstants_1, StoredProcedureTab, ContextMenu, TelemetryProcessor_1, ContextMenuButtonFactory_1) {
+    "use strict";
+    var sampleStoredProcedureBody = "// SAMPLE STORED PROCEDURE\nfunction\u00A0sample(prefix) {\n    var\u00A0collection = getContext().getCollection();\n\n    // Query documents and take 1st item.\n    var\u00A0isAccepted = collection.queryDocuments(\n        collection.getSelfLink(),\n        'SELECT * FROM root r',\n    function\u00A0(err, feed, options) {\n        if\u00A0(err)\u00A0throw\u00A0err;\n\n        // Check the feed and if empty, set the body to 'no docs found',\u00A0\n        // else take 1st element from feed\n        if\u00A0(!feed || !feed.length) {\n            var\u00A0response = getContext().getResponse();\n            response.setBody('no docs found');\n        }\n        else\u00A0{\n            var\u00A0response = getContext().getResponse();\n            var\u00A0body = { prefix: prefix, feed: feed[0] };\n            response.setBody(JSON.stringify(body));\n        }\n    });\n\n    if\u00A0(!isAccepted)\u00A0throw\u00A0new\u00A0Error('The query was not accepted by the server.');\n}";
+    var StoredProcedure = /** @class */ (function () {
+        function StoredProcedure(container, collection, data) {
+            var _this = this;
+            this.onKeyDown = function (source, event) {
+                if (event.key === "Delete") {
+                    _this.delete(source, event);
+                    return false;
+                }
+                return true;
+            };
+            this.onMenuKeyDown = function (source, event) {
+                if (event.key === "Escape") {
+                    _this.contextMenu.hide(source, event);
+                    return false;
+                }
+                return true;
+            };
+            this.onKeyPress = function (source, event) {
+                if (event.key === " " || event.key === "Enter") {
+                    _this.open();
+                    return false;
+                }
+                return true;
+            };
+            this.nodeKind = "StoredProcedure";
+            this.container = container;
+            this.collection = collection;
+            this.self = data._self;
+            this.rid = data._rid;
+            this.id = ko.observable(data.id);
+            this.body = ko.observable(data.body);
+            this.isExecuteEnabled = this.container.isFeatureEnabled(Constants.Features.executeSproc);
+            this.contextMenu = new ContextMenu(this.container, this.rid);
+            this.contextMenu.options(ContextMenuButtonFactory_1.ContextMenuButtonFactory.createStoreProcedureContextMenuButton(container));
+        }
+        StoredProcedure.create = function (source, event) {
+            var openedTabs = source.container.openedTabs();
+            var id = openedTabs.filter(function (tab) { return tab.tabKind === ViewModels.CollectionTabKind.StoredProcedures; }).length + 1;
+            var storedProcedure = {
+                id: "",
+                body: sampleStoredProcedureBody
+            };
+            var storedProcedureTab = new StoredProcedureTab({
+                resource: storedProcedure,
+                isNew: true,
+                tabKind: ViewModels.CollectionTabKind.StoredProcedures,
+                title: "New Stored Procedure " + id,
+                tabPath: source.database.id() + ">" + source.id() + ">New Stored Procedure " + id,
+                documentClientUtility: source.container.documentClientUtility,
+                collection: source,
+                node: source,
+                isRunningOnDaytona: false,
+                hashLocation: Constants.HashRoutePrefixes.collectionsWithIds(source.database.id(), source.id()) + "/sproc",
+                selfLink: "",
+                isActive: ko.observable(false)
+            });
+            source.container.openedTabs.push(storedProcedureTab);
+            // Activate
+            storedProcedureTab.onTabClick();
+            // Hide Context Menu (if necessary)
+            source.contextMenu.hide(source, event);
+        };
+        StoredProcedure.prototype.select = function () {
+            this.container.selectedNode(this);
+            TelemetryProcessor_1.default.trace(TelemetryConstants_1.Action.SelectItem, TelemetryConstants_1.ActionModifiers.Mark, {
+                description: "Stored procedure node",
+                databaseAccountName: this.container.databaseAccount().name,
+                defaultExperience: this.container.defaultExperience(),
+                dataExplorerArea: Constants.Areas.ResourceTree
+            });
+        };
+        StoredProcedure.prototype.open = function () {
+            var _this = this;
+            this.select();
+            var openedTabs = this.container.openedTabs();
+            var storedProcedureTabsOpen = openedTabs && openedTabs.filter(function (tab) { return (tab.node.rid === _this.rid) && (tab.tabKind === ViewModels.CollectionTabKind.StoredProcedures); });
+            var storedProcedureTab = storedProcedureTabsOpen && storedProcedureTabsOpen.length > 0 && storedProcedureTabsOpen[0];
+            if (!storedProcedureTab) {
+                var storedProcedureData = {
+                    _rid: this.rid,
+                    _self: this.self,
+                    id: this.id(),
+                    body: this.body()
+                };
+                storedProcedureTab = new StoredProcedureTab({
+                    resource: storedProcedureData,
+                    isNew: false,
+                    tabKind: ViewModels.CollectionTabKind.StoredProcedures,
+                    title: storedProcedureData.id,
+                    tabPath: this.collection.database.id() + ">" + this.collection.id() + ">" + storedProcedureData.id,
+                    documentClientUtility: this.container.documentClientUtility,
+                    collection: this.collection,
+                    node: this,
+                    isRunningOnDaytona: false,
+                    hashLocation: Constants.HashRoutePrefixes.collectionsWithIds(this.collection.database.id(), this.collection.id()) + "/sprocs/" + this.id(),
+                    selfLink: this.self,
+                    isActive: ko.observable(false)
+                });
+                this.container.openedTabs.push(storedProcedureTab);
+            }
+            // Activate
+            storedProcedureTab.onTabClick();
+        };
+        StoredProcedure.prototype.delete = function (source, event) {
+            var _this = this;
+            // Hide Context Menu (if necessary)
+            this.contextMenu.hide(source, event);
+            if (!window.confirm('Are you sure you want to delete the stored procedure?')) {
+                return;
+            }
+            var storedProcedureData = {
+                _rid: this.rid,
+                _self: this.self,
+                id: this.id(),
+                body: this.body()
+            };
+            this.container.documentClientUtility.deleteStoredProcedure(storedProcedureData, null /*options*/).then(function () {
+                _this.container.openedTabs.remove(function (tab) { return tab.node.rid === _this.rid; });
+                _this.collection.children.remove(_this);
+            }, function (reason) {
+            });
+        };
+        StoredProcedure.prototype.execute = function (params, partitionKeyValue) {
+            var options = {};
+            options.partitionKey = this.collection && !!this.collection.partitionKey ? this.container.documentClientUtility.getPartitionKeyHeader(this.collection.partitionKey, partitionKeyValue) : undefined;
+            options.initialHeaders = options.initialHeaders || {};
+            options.initialHeaders[Constants.HttpHeaders.enableScriptLogging] = true;
+            var sprocTab = this._getCurrentStoredProcedureTab();
+            sprocTab.isExecuting(true);
+            this.container && this.container.documentClientUtility.executeStoredProcedure(this, params, options).then(function (result) {
+                sprocTab.onExecuteSprocsResult(result, result.scriptLogs);
+            }, function (error) {
+                sprocTab.onExecuteSprocsError(JSON.stringify(error));
+            }).finally(function () { return sprocTab.isExecuting(false); });
+        };
+        StoredProcedure.prototype._getCurrentStoredProcedureTab = function () {
+            var _this = this;
+            var openedTabs = this.container.openedTabs();
+            var storedProcedureTabsOpen = openedTabs && openedTabs.filter(function (tab) { return (tab.node.rid === _this.rid) && (tab.tabKind === ViewModels.CollectionTabKind.StoredProcedures); });
+            return (storedProcedureTabsOpen && storedProcedureTabsOpen.length > 0 && storedProcedureTabsOpen[0]);
+        };
+        return StoredProcedure;
+    }());
+    return StoredProcedure;
+});
+Ù•mv      [Õ¾á[Õ¾ö?§¶Á[×kX   H    :https://cosmos.azure.com/built/Explorer/Tree/StoredProcedure.js?v=1.0.1 necko:classified 1 strongly-framed 1 security-info FnhllAKWRHGAlo+ESXykKAAAAAAAAAAAwAAAAAAAAEaphjojH6pBabDSgSnsfLHeAAQAAgAAAAAAAAAAAAAAAAAAAAAB4vFIJp5wRkeyPxAQ9RJGKPqbqVvKO0mKuIl8ec8o/uhmCjImkVxP+7sgiYWmMt8FvcOXmlQiTNWFiWlrbpbqgwAAAAAAAAOMMIIDiDCCAnCgAwIBAgIERTJgUjANBgkqhkiG9w0BAQsFADCBijEUMBIGA1UEBhMLUG9ydFN3aWdnZXIxFDASBgNVBAgTC1BvcnRTd2lnZ2VyMRQwEgYDVQQHEwtQb3J0U3dpZ2dlcjEUMBIGA1UEChMLUG9ydFN3aWdnZXIxFzAVBgNVBAsTDlBvcnRTd2lnZ2VyIENBMRcwFQYDVQQDEw5Qb3J0U3dpZ2dlciBDQTAeFw0xNDEwMjgxMzEyMTBaFw0zODEwMjgxMzEyMTBaMGAxFDASBgNVBAYTC1BvcnRTd2lnZ2VyMRQwEgYDVQQKEwtQb3J0U3dpZ2dlcjEXMBUGA1UECxMOUG9ydFN3aWdnZXIgQ0ExGTAXBgNVBAMTEGNvc21vcy5henVyZS5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCKn7emKINsnWqPZ+C/VsqbQf/l4NsmIh34bXBR0xdNg9bfb+xcoghRlmbPjhZ/A26A2gJ6Rrg2d0GGMLpbqA8nTlRRGXEAD39321zk4ye09ElXClvqguGqdqOJpPQ05DPFD6wSOq+KVAEblE5bi+LMqBLipDERzgUe7xzeqVVk0i0ldh9yQOIk3YuzcBR9igSEuw5qladmMYvXKHYM9YZz0R7axMc8xAtadK7C9KfFPfEI5LS2nhmy4vBrTgFyYhfkEvKfmIj6HTX0ISFCAC2llcBLpEDcuiW76tAHp1pXDeWtSeaV36AeOctdleVgrbmsGs3fu6ppuRcWjEZUbjE3AgMBAAGjHzAdMBsGA1UdEQQUMBKCEGNvc21vcy5henVyZS5jb20wDQYJKoZIhvcNAQELBQADggEBABYikT6Y5YgJJ4IVJldlFDF5MKxp26YegXhvT8EmAbgr0yQBIlY2DtKEiHf7Q8wRoJ9y5Ajst1D7HmRba+XLjS6s3IHJ7gtuvc3fZj9MPKpbqSKRfHDB8bDOVIzmjBseg2BqckHTkcYak3b/pTWCTqKHM3LxKsDwN8F3HNQ2pY4d5ma2kR1EtWdTpRiIbir3QxJDcWVp8CgHONZcoMn33NNwnWWjAQMX6d8e1CPuBZi0t+myaYduCqPgKKox9qMXSubF6uifQkAJ5RdLZrZ2pghENA/4r1oz51wqEmpjPsStSUxRPwJ6wJrB4gwGtX7++ZHLjAaNrTSUCGwIOlAT4LnALwEDAAAAAAEBAAAAAA== request-method GET request-Accept-Encoding gzip, deflate, br response-head HTTP/1.1 200 OK
+Content-Length: 9133
+Content-Type: application/x-javascript
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:39:49 GMT
+ original-response-headers Content-Length: 9133
+Content-Type: application/x-javascript
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:39:49 GMT
+Connection: close
+ uncompressed-len 0 net-response-time-onstart 20691 net-response-time-onstop 20691   #­

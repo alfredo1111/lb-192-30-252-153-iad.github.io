@@ -1,0 +1,464 @@
+/*jslint */
+/*global AdobeEdge: false, window: false, document: false, console:false, alert: false */
+(function (compId) {
+
+    "use strict";
+    var im='assets/images/CLA_sign/',
+        aud='media/',
+        vid='media/',
+        js='assetes/js/',
+        fonts = {
+        },
+        opts = {
+            'gAudioPreloadPreference': 'auto',
+            'gVideoPreloadPreference': 'auto'
+        },
+        resources = [
+        ],
+        scripts = [
+            // js+"EdgeCommons.js",
+            // "http://cdn.edgecommons.org/an/1.4.0/js/min/EdgeCommons.js"
+        ],
+        symbols = {
+            "stage": {
+                version: "5.0.1",
+                minimumCompatibleVersion: "5.0.0",
+                build: "5.0.1.386",
+                scaleToFit: "none",
+                centerStage: "none",
+                resizeInstances: false,
+                content: {
+                    dom: [
+                        {
+                            id: 'CLA_screen-32',
+                            type: 'image',
+                            rect: ['24px', '1px', '481px', '398px', 'auto', 'auto'],
+                            fill: ["rgba(0,0,0,0)",im+"CLA_screen-32.svg",'0px','0px']
+                        },
+                        {
+                            id: 'CLA_new_signature',
+                            display: 'block',
+                            type: 'image',
+                            rect: ['176px', '40px', '35.5%', '193px', 'auto', 'auto'],
+                            opacity: '1',
+                            fill: ["rgba(0,0,0,0)",im+"CLA_new_signature.svg",'0px','0px']
+                        },
+                        {
+                            id: 'Rectangle3',
+                            display: 'block',
+                            type: 'rect',
+                            rect: ['240px', '165px', '13px', '21px', 'auto', 'auto'],
+                            fill: ["rgba(230,230,230,1.00)"],
+                            stroke: [0,"rgb(0, 0, 0)","none"]
+                        },
+                        {
+                            id: 'Rectangle4',
+                            display: 'block',
+                            type: 'rect',
+                            rect: ['252px', '160px', '56px', '33px', 'auto', 'auto'],
+                            borderRadius: ["8.8%", "8.8%", "8.8%", "8.8% 8.8%"],
+                            fill: ["rgba(230,230,230,1)"],
+                            stroke: [0,"rgb(0, 0, 0)","solid"]
+                        },
+                        {
+                            id: 'CLA_new_pen',
+                            type: 'image',
+                            rect: ['128px', '44px', '193px', '193px', 'auto', 'auto'],
+                            fill: ["rgba(0,0,0,0)",im+"CLA_new_pen.svg",'0px','0px']
+                        }
+                    ],
+                    style: {
+                        '${Stage}': {
+                            isStage: true,
+                            rect: ['null', 'null', '550px', '400px', 'auto', 'auto'],
+                            overflow: 'hidden',
+                            fill: []
+                            // fill: ["rgba(255,255,255,1)"]
+                        }
+                    }
+                },
+                timeline: {
+                    duration: 1000,
+                    autoPlay: true,
+                    labels: {
+                        "Label 2": 0,
+                        "Label 1": 1000
+                    },
+                    data: [
+                        [
+                            "eid98",
+                            "border-bottom-right-radius",
+                            126,
+                            0,
+                            "linear",
+                            "${Rectangle4}",
+                            [8.8,8.8],
+                            [8.8,8.8],
+                            {valueTemplate: '@@0@@% @@1@@%'}
+                        ],
+                        [
+                            "eid216",
+                            "left",
+                            0,
+                            65,
+                            "linear",
+                            "${Rectangle3}",
+                            '240px',
+                            '242px'
+                        ],
+                        [
+                            "eid217",
+                            "left",
+                            65,
+                            19,
+                            "linear",
+                            "${Rectangle3}",
+                            '242px',
+                            '247px'
+                        ],
+                        [
+                            "eid275",
+                            "left",
+                            84,
+                            42,
+                            "linear",
+                            "${Rectangle3}",
+                            '247px',
+                            '261px'
+                        ],
+                        [
+                            "eid218",
+                            "left",
+                            126,
+                            94,
+                            "linear",
+                            "${Rectangle3}",
+                            '261px',
+                            '256px'
+                        ],
+                        [
+                            "eid255",
+                            "left",
+                            237,
+                            13,
+                            "linear",
+                            "${Rectangle3}",
+                            '256px',
+                            '269px'
+                        ],
+                        [
+                            "eid219",
+                            "left",
+                            250,
+                            78,
+                            "linear",
+                            "${Rectangle3}",
+                            '269px',
+                            '291px'
+                        ],
+                        [
+                            "eid220",
+                            "left",
+                            328,
+                            87,
+                            "linear",
+                            "${Rectangle3}",
+                            '291px',
+                            '296px'
+                        ],
+                        [
+                            "eid221",
+                            "left",
+                            415,
+                            123,
+                            "linear",
+                            "${Rectangle3}",
+                            '296px',
+                            '311px'
+                        ],
+                        [
+                            "eid222",
+                            "left",
+                            538,
+                            116,
+                            "linear",
+                            "${Rectangle3}",
+                            '311px',
+                            '319px'
+                        ],
+                        [
+                            "eid223",
+                            "left",
+                            654,
+                            346,
+                            "linear",
+                            "${Rectangle3}",
+                            '319px',
+                            '236px'
+                        ],
+                        [
+                            "eid99",
+                            "border-top-right-radius",
+                            126,
+                            0,
+                            "linear",
+                            "${Rectangle4}",
+                            [8.8,8.8],
+                            [8.8,8.8],
+                            {valueTemplate: '@@0@@% @@1@@%'}
+                        ],
+                        [
+                            "eid96",
+                            "background-color",
+                            0,
+                            65,
+                            "linear",
+                            "${Rectangle4}",
+                            'rgba(230,230,230,1)',
+                            'rgba(230,230,230,1.00)'
+                        ],
+                        [
+                            "eid224",
+                            "height",
+                            0,
+                            65,
+                            "linear",
+                            "${Rectangle3}",
+                            '21px',
+                            '25px'
+                        ],
+                        [
+                            "eid249",
+                            "height",
+                            65,
+                            19,
+                            "linear",
+                            "${Rectangle3}",
+                            '25px',
+                            '11px'
+                        ],
+                        [
+                            "eid276",
+                            "height",
+                            84,
+                            136,
+                            "linear",
+                            "${Rectangle3}",
+                            '11px',
+                            '4px'
+                        ],
+                        [
+                            "eid267",
+                            "height",
+                            639,
+                            0,
+                            "linear",
+                            "${CLA_screen-32}",
+                            '398px',
+                            '398px'
+                        ],
+                        [
+                            "eid226",
+                            "width",
+                            0,
+                            0,
+                            "linear",
+                            "${Rectangle3}",
+                            '13px',
+                            '13px'
+                        ],
+                        [
+                            "eid95",
+                            "top",
+                            0,
+                            0,
+                            "linear",
+                            "${CLA_new_pen}",
+                            '44px',
+                            '44px'
+                        ],
+                        [
+                            "eid80",
+                            "top",
+                            65,
+                            61,
+                            "linear",
+                            "${CLA_new_pen}",
+                            '44px',
+                            '19px'
+                        ],
+                        [
+                            "eid81",
+                            "top",
+                            126,
+                            38,
+                            "linear",
+                            "${CLA_new_pen}",
+                            '19px',
+                            '24px'
+                        ],
+                        [
+                            "eid231",
+                            "top",
+                            164,
+                            56,
+                            "linear",
+                            "${CLA_new_pen}",
+                            '24px',
+                            '37px'
+                        ],
+                        [
+                            "eid245",
+                            "top",
+                            220,
+                            30,
+                            "linear",
+                            "${CLA_new_pen}",
+                            '37px',
+                            '43px'
+                        ],
+                        [
+                            "eid82",
+                            "top",
+                            250,
+                            78,
+                            "linear",
+                            "${CLA_new_pen}",
+                            '43px',
+                            '35px'
+                        ],
+                        [
+                            "eid83",
+                            "top",
+                            328,
+                            87,
+                            "linear",
+                            "${CLA_new_pen}",
+                            '35px',
+                            '46px'
+                        ],
+                        [
+                            "eid84",
+                            "top",
+                            415,
+                            123,
+                            "linear",
+                            "${CLA_new_pen}",
+                            '46px',
+                            '44px'
+                        ],
+                        [
+                            "eid85",
+                            "top",
+                            538,
+                            116,
+                            "linear",
+                            "${CLA_new_pen}",
+                            '44px',
+                            '36px'
+                        ],
+                        [
+                            "eid86",
+                            "top",
+                            654,
+                            346,
+                            "linear",
+                            "${CLA_new_pen}",
+                            '36px',
+                            '45px'
+                        ],
+                        [
+                            "eid273",
+                            "top",
+                            639,
+                            0,
+                            "linear",
+                            "${CLA_screen-32}",
+                            '1px',
+                            '1px'
+                        ],
+                        [
+                            "eid117",
+                            "border-bottom-left-radius",
+                            126,
+                            0,
+                            "linear",
+                            "${Rectangle4}",
+                            [8.8,8.8],
+                            [8.8,8.8],
+                            {valueTemplate: '@@0@@% @@1@@%'}
+                        ],
+                        [
+                            "eid270",
+                            "width",
+                            639,
+                            0,
+                            "linear",
+                            "${CLA_screen-32}",
+                            '481px',
+                            '481px'
+                        ],
+                        [
+                            "eid97",
+                            "border-top-left-radius",
+                            126,
+                            0,
+                            "linear",
+                            "${Rectangle4}",
+                            [8.8,8.8],
+                            [8.8,8.8],
+                            {valueTemplate: '@@0@@% @@1@@%'}
+                        ],
+                        [
+                            "eid211",
+                            "display",
+                            92,
+                            0,
+                            "linear",
+                            "${Rectangle3}",
+                            'block',
+                            'none'
+                        ],
+                        [
+                            "eid212",
+                            "display",
+                            126,
+                            0,
+                            "linear",
+                            "${Rectangle3}",
+                            'none',
+                            'none'
+                        ],
+                        [
+                            "eid213",
+                            "display",
+                            208,
+                            0,
+                            "linear",
+                            "${Re?vŽ£åÃ      [Õ´ê[Õ´ì?§¯Ù       O    :https://cla.opensource.microsoft.com/assets/js/CLA_signature_MouseOver_edge.js necko:classified 1 strongly-framed 0 security-info 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 request-method GET response-head HTTP/1.1 200 OK
+Server: nginx/1.15.2
+Date: Sun, 28 Oct 2018 13:09:00 GMT
+Content-Type: application/javascript; charset=UTF-8
+Content-Length: 49124
+request-context: appId=cid-v1:4a14dc06-af47-4cd0-8634-f312252a1314
+X-Powered-By: Express
+X-Frame-Options: Deny
+X-Content-Type-Options: nosniff
+Accept-Ranges: bytes
+Cache-Control: public, max-age=0
+Last-Modified: Wed, 22 Aug 2018 20:28:16 GMT
+Etag: W/"bfe4-1656352cf00"
+ original-response-headers Server: nginx/1.15.2
+Date: Sun, 28 Oct 2018 13:09:00 GMT
+Content-Type: application/javascript; charset=UTF-8
+Content-Length: 49124
+Connection: keep-alive
+request-context: appId=cid-v1:4a14dc06-af47-4cd0-8634-f312252a1314
+X-Powered-By: Express
+X-Frame-Options: Deny
+X-Content-Type-Options: nosniff
+Accept-Ranges: bytes
+Cache-Control: public, max-age=0
+Last-Modified: Wed, 22 Aug 2018 20:28:16 GMT
+Etag: W/"bfe4-1656352cf00"
+ uncompressed-len 0 net-response-time-onstart 1611 net-response-time-onstop 1617   >9

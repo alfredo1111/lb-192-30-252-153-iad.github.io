@@ -1,0 +1,213 @@
+<!-- Loading data -->
+<div class="loading-indicator" ng-show="isLoading">
+    <img src="/assets/images/link_inactive.svg" class="center-div spin-img ">
+</div>
+<!-- ----------ACTIVATE a CLA---------- -->
+<div id="activated_cla" ng-show="user.value.admin" class="row content-block">
+
+	<div class="row" style="margin-bottom: 65px; margin-top: 15px; padding-left:0px" ng-hide="newLink">
+		<button class="btn btn-info" ng-click="newLink = !newLink" ng-init="newLink=false" style="font-size: 18px; font-weight: 200">Configure CLA</button>
+	</div>
+	<div class="row" ng-show="newLink">
+		<h4 class="col-xs-12" style="margin: 25px 0; padding-left: 0;">Configure CLA</h4>
+	</div>
+
+	<div class="well row" ng-show="newLink" style="max-width:400px; position:relative;">
+		<div ng-click="newLink = !newLink" class="fa fa-times close-button" style="position:absolute; right:20px"></div>
+		<h5 ng-if="!user.value.org_admin" class="col-xs-12 link-topic-2">
+			<span class="link-topic-number">1</span>&nbsp;Choose a repository
+      		<span class="clickable" ng-click="addScope()" style="font-size:12px; text-decoration:underline">(want to link an org?)</span>
+		</h5>
+		<h5 ng-if="user.value.org_admin" class="col-xs-12 link-topic-2">
+			<span class="link-topic-number">1</span>&nbsp;Choose an org or a repo
+		</h5>
+		<div class="col-xs-12">
+			<div></div>
+			<div class="form-group has-feedback">
+				<ui-select ng-model="selected.item" theme="selectize">
+					<ui-select-match placeholder="select">
+						<button class="fa fa-times clear-button" ng-click="clear($event, 'repo')" ng-show="$select.selected.name"></button> {{$select.selected.full_name || $select.selected.login}}</ui-select-match>
+					<ui-select-choices group-by="groupOrgs" repeat="item in reposAndOrgs | filter: $select.search | notIn:claRepos | notIn:claOrgs">
+						<span ng-if="item.full_name">
+                            <img ng-src="{{ item.fork ? '/octicons/lib/svg/repo.svg' : '/octicons/lib/svg/repo-forked.svg' }}">
+                        </span>
+						<span ng-if="item.full_name" ng-bind-html="item.full_name | highlight: $select.search"></span>
+						<span ng-if="!item.full_name">
+                            <img src="{{item.avatarUrl}}" alt="" style="width:20px">
+                        </span>
+						<span ng-if="!item.full_name" ng-bind-html="item.login | highlight: $select.search"></span>
+					</ui-select-choices>
+				</ui-select>
+				<span ng-if="selected.item && !isRepo(selected.item)">
+					<div style="margin-bottom: 5px; margin-top: 5px;">
+                        <i>Optional:</i> Exclude the following repos from the org</div>
+					<input class="form-control" ng-model="selected.item.excludePattern" placeholder="repo1,repo2,substring1"></input>
+				</span>
+			</div>
+		</div>
+		<h5 class="link-topic-1">
+			<span class="link-topic-number">2</span>&nbsp;Choose a CLA
+		</h5>
+		<div class="col-xs-12">
+			<div style="margin-bottom: 5px;">Select from Gist &nbsp;
+				<span class="clickable" ng-click="info()" style="font-size:12px; text-decoration:underline">(don't have one?)</span>
+			</div>
+			<div class="form-group has-feedback" style="margin-bottom: 10px;">
+				<ui-select ng-model="selected.gist" theme="selectize">
+					<ui-select-match placeholder="select" allow-clear="true">
+						<button class="fa fa-times clear-button" ng-click="clear($event, 'gist')" ng-show="$select.selected.name"></button> {{$select.selected.name}}
+
+					</ui-select-match>
+					<ui-select-choices group-by="groupDefaultCla" repeat="gist in gists | filter: $select.search" null-option="emptyGist">
+						<span ng-bind-html="gist.name | highlight: $select.search"></span>
+					</ui-select-choices>
+				</ui-select>
+			</div>
+			<div style="margin-bottom:10px">- or -</div>
+			<div style="margin-bottom: 5px;">Paste a URL from a Gist</div>
+			<input ng-disabled="selected.gist.name" class="form-control" ng-model="selected.gist.url" placeholder="https://gist.github.com/<your cla gist id>" required></input>
+			<div style="margin-bottom: 15px; margin-top: 15px;">
+				<input type="checkbox" ng-model="selected.sharedGist" ng-init="selected.sharedGist = false" ng-disabled="selected.gist && !selected.gist.url">&nbsp;Share the Gist &nbsp;</input>
+				<span class="clickable" ng-click="gistShareInfo()" style="font-size:12px; text-decoration:underline">(want to share?)</span>
+			</div>
+		</div>
+		<h5 class="link-topic-1">
+			<span class="link-topic-number">3</span>&nbsp;CLA Requirement Settings (Optional)
+		</h5>
+		<div class="col-xs-12">
+			<div class="form-group">
+				<div style="margin-bottom:5px">Minimum File Number Changes</div>
+				<input class="form-control" type="number" ng-model="selected.minFileChanges" ng-disabled="selected.gist && !selected.gist.url" placeholder="Number"></input>
+			</div>
+			<div style="margin-bottom:10px">- or -</div>
+			<div class="form-group">
+				<div style="margin-bottom:5px;">Minimum Line Number Changes</div>
+				<input class="form-control" type="number" ng-model="selected.minCodeChanges" ng-disabled="selected.gist && !selected.gist.url" placeholder="Number"></input>
+			</div>
+		</div>
+
+
+		<div ng-repeat="error in errorMsg" class="alert alert-danger col-xs-12" role="alert" ng-show="errorMsg.length > 0">
+			<span class="fa fa-warning" aria-hidden="true"></span>
+			<span class="sr-only">Error:</span> {{ error }}
+		</div>
+	</div>
+	<div class="row" style="max-width:400px; position:relative; margin-bottom: 65px;" ng-show="newLink">
+		<button class="btn btn-info col-xs-12" ng-click="linkCla()" ng-disabled="!isComplete()" style="height: 45px">
+			<img src="/assets/images/link_button.svg" style="height: 18px"> LINK
+		</button>
+
+    </div>
+
+    <!-- ----------ACTIVATED ORGS---------- -->
+    <div ng-if="claOrgs.length > 0" class="row">
+        <h4 class="col-xs-12" style="margin: 25px 0; padding-left: 0;">Linked Organisations</h4>
+    </div>
+    <div ng-if="claOrgs.length > 0" class="well row" style="padding-top:25px;">
+        <table class="table">
+            <tr>
+                <td>
+                    <div class="row">
+                        <div class="col-sm-3 col-lg-2" style="padding-left:0">
+                            Organisation
+                        </div>
+                        <div class="col-sm-3 col-lg-2">
+                            CLA
+                        </div>
+                        <div class="col-lg-2 hidden-xs hidden-sm hidden-md">
+                            Gist
+                        </div>
+                        <div class="col-sm-2 col-lg-2">
+                            Last updated
+                        </div>
+                        <div class="col-sm-1 col-lg-1">
+                            Shared Gist
+                        </div>
+                        <div class="col-sm-2 col-lg-1 text">
+                            Contributors
+                        </div>
+                        <div class="col-sm-1 col-lg-2">
+                            Status
+                        </div>
+                    </div>
+                </td>
+            </tr>
+            <tr ng-repeat="claOrg in claOrgs | orderBy:'org' ">
+                <td>
+                    <div class="row">
+                        <settings item="claOrg" repos="repos" user="user" class="settings"></settings>
+                    </div>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <!-- ----------ACTIVATED REPOS---------- -->
+    <div class="row">
+        <h4 class="col-xs-12" style="margin: 25px 0; padding-left: 0;">Linked Repositories</h4>
+    </div>
+    <div class="well row" style="padding-top:25px;">
+        <table class=" table">
+            <tr>
+                <td>
+                    <div class="row">
+                        <div class="col-sm-3 col-lg-2" style="padding-left:0">
+                            Repository
+                        </div>
+                        <div class="col-sm-3 col-lg-2">
+                            CLA
+                        </div>
+                        <div class="col-lg-2 hidden-xs hidden-sm hidden-md">
+                            Gist
+                        </div>
+                        <div class="col-sm-2 col-lg-2">
+                            Last updated
+                        </div>
+                        <div class="col-sm-1 col-lg-1">
+                            Shared Gist
+                        </div>
+                        <div class="col-sm-2 col-lg-1 text">
+                            Contributors
+                        </div>
+                        <div class="col-sm-1 col-lg-2">
+                            Status
+                        </div>
+                    </div>
+                </td>
+            </tr>
+            <tr ng-repeat="claRepo in claRepos | orderBy:'repo' ">
+                <td>
+                    <div class="row">
+                        <settings item="claRepo" user="user" class="settings"></settings>
+                    </div>
+                </td>
+            </tr>
+        </table>
+    </div>
+</div>≥hçv”N      [’¥Í[’¥Î?ßØ⁄       9    :https://cla.opensource.microsoft.com/templates/home.html necko:classified 1 strongly-framed 1 security-info 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 request-method GET response-head HTTP/1.1 200 OK
+Server: nginx/1.15.2
+Date: Sun, 28 Oct 2018 13:08:58 GMT
+Content-Type: text/html; charset=UTF-8
+Content-Length: 8998
+request-context: appId=cid-v1:4a14dc06-af47-4cd0-8634-f312252a1314
+X-Powered-By: Express
+X-Frame-Options: Deny
+X-Content-Type-Options: nosniff
+Accept-Ranges: bytes
+Cache-Control: public, max-age=0
+Last-Modified: Wed, 22 Aug 2018 20:28:16 GMT
+Etag: W/"2326-1656352cf00"
+ original-response-headers Server: nginx/1.15.2
+Date: Sun, 28 Oct 2018 13:08:58 GMT
+Content-Type: text/html; charset=UTF-8
+Content-Length: 8998
+Connection: keep-alive
+request-context: appId=cid-v1:4a14dc06-af47-4cd0-8634-f312252a1314
+X-Powered-By: Express
+X-Frame-Options: Deny
+X-Content-Type-Options: nosniff
+Accept-Ranges: bytes
+Cache-Control: public, max-age=0
+Last-Modified: Wed, 22 Aug 2018 20:28:16 GMT
+Etag: W/"2326-1656352cf00"
+ uncompressed-len 0 net-response-time-onstart 335 net-response-time-onstop 335   #&

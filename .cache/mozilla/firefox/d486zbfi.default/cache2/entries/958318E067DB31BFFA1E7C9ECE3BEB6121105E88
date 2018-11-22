@@ -1,0 +1,593 @@
+/******************************************************************************
+                                FONTS
+/******************************************************************************/
+@font-face {
+  font-family: wf_segoe-ui_normal;
+  src: url('../fonts/segoe-ui/west-european/normal/latest.woff');
+}
+/******************************************************************************
+                                COLORS
+/******************************************************************************/
+/******************************************************************************
+                                METRICS
+/******************************************************************************/
+/**********************************************************************************
+                              Common Flex Property
+/**********************************************************************************/
+/*************************************************************************************
+                                 High contrast mode active
+**************************************************************************************/
+@media all and (-ms-high-contrast: none), (-ms-high-contrast: active) {
+  .selectedRadio,
+  .selectedRadio:hover,
+  .selectedRadio:active,
+  .selectedRadio.dirty,
+  .tab [type=radio]:checked ~ label,
+  .tab [type=radio]:checked ~ label:hover {
+    -ms-high-contrast-adjust: none;
+    -webkit-text-fill-color: HighlightText;
+    color: HighlightText;
+    border-color: HighlightText;
+    background-color: Highlight;
+  }
+  .queryMetricsSummaryTuple th:nth-child(2),
+  .queryMetricsSummaryTuple td:nth-child(2) {
+    width: 650px;
+  }
+  .queryMetricsSummaryTuple th:nth-child(3),
+  .queryMetricsSummaryTuple td:nth-child(3) {
+    width: 50%;
+  }
+}
+/********************************************************************************************
+                            Common Hover and Active color
+*********************************************************************************************/
+/************************************************************************************************
+                               Common Toggle Switch
+*************************************************************************************************/
+/********************************************************************************************************
+                             Common Data Explorer Icons
+*********************************************************************************************************/
+/*********************************************************************************************************
+                            Info Tooltip
+**********************************************************************************************************/
+/*********************************************************************************************************
+                          Media Queries
+**********************************************************************************************************/
+@media only screen and (max-width: 1920px) {
+  .staticCommandExpand {
+    display: none;
+  }
+}
+@media only screen and (min-width: 1039px) and (max-width: 1112px) {
+  .visibleCommands command-button:nth-child(n+9) {
+    display: none;
+  }
+  .hiddenCommands command-button:not(:nth-child(n+3)) {
+    display: none;
+  }
+  .staticCommandExpand {
+    display: block;
+  }
+}
+@media only screen and (min-width: 874px) and (max-width: 1038px) {
+  .visibleCommands command-button:nth-child(n+8) {
+    display: none;
+  }
+  .hiddenCommands command-button:not(:nth-child(n+2)) {
+    display: none;
+  }
+  .staticCommandExpand {
+    display: block;
+  }
+}
+@media only screen and (min-width: 723px) and (max-width: 873px) {
+  .visibleCommands command-button:nth-child(n+7) {
+    display: none;
+  }
+  .hiddenCommands command-button:not(:nth-child(n+1)) {
+    display: none;
+  }
+  .staticCommandExpand {
+    display: block;
+  }
+}
+@media only screen and (max-width: 722px) {
+  .visibleCommands command-button:nth-child(n+7) {
+    display: none;
+  }
+  .hiddenCommands command-button:not(:nth-child(n+1)) {
+    display: none;
+  }
+  .staticCommandExpand {
+    display: block;
+  }
+}
+/* Styles for the graph explorer component */
+.graphExplorerContainer {
+  margin-left: 4px;
+  overflow: hidden;
+  height: 100%;
+  display: -webkit-flex;
+  display: -ms-flexbox;
+  display: -ms-flex;
+  display: flex;
+  -webkit-flex-direction: column;
+  -ms-flex-direction: column;
+  flex-direction: column;
+  /* Override bootstrap's nav pills */
+  /* ****************** Graph styles ************ */
+  /* scroll for leftpane, rightpane and newvertex pane*/
+}
+.graphExplorerContainer .filterLoadingProgress {
+  margin-top: 20px;
+  text-align: center;
+  width: 100%;
+}
+.graphExplorerContainer .filterLoadingProgress img {
+  position: absolute;
+  top: 50%;
+  width: 24px;
+  height: 6px;
+}
+.graphExplorerContainer .buttonContainer .disabled {
+  background-color: #FFFFFF;
+  pointer-events: none;
+  opacity: 0.5;
+}
+.graphExplorerContainer .queryContainer {
+  padding: 24px 12px 32px;
+}
+.graphExplorerContainer .queryContainer .queryTypeahead .input-typeahead-container {
+  width: 500px;
+}
+.graphExplorerContainer .queryContainer .queryButton {
+  width: auto;
+  vertical-align: middle;
+  margin-left: 16px;
+}
+.graphExplorerContainer .queryContainer .filterclose {
+  vertical-align: middle;
+}
+.graphExplorerContainer .loadGraphHelper {
+  margin: auto;
+  text-align: center;
+  height: 50%;
+}
+.graphExplorerContainer .loadGraphHelper img {
+  width: 130px;
+  height: 120px;
+  margin-left: 32px;
+}
+.graphExplorerContainer .loadGraphHelper p {
+  margin: 8px;
+}
+.graphExplorerContainer .loadGraphHelper .loadGraphBtn {
+  margin-top: 16px;
+}
+.graphExplorerContainer .graphJsonSwitch {
+  margin-left: 16px;
+}
+.graphExplorerContainer .graphJsonSwitch .tab {
+  margin-right: 12px;
+}
+.graphExplorerContainer .graphJsonSwitch .graphToggleSwitch {
+  max-width: 100%;
+  margin-bottom: 4px;
+  padding: 4px;
+  cursor: pointer;
+  color: #393939;
+  font-weight: 400;
+  font-size: 12px;
+  font-family: wf_segoe-ui_normal, "Segoe UI", "Segoe WP", Tahoma, Arial, sans-serif;
+}
+.graphExplorerContainer .graphJsonSwitch .graphSelectedToggle {
+  border-bottom: 2px solid #393939;
+}
+.graphExplorerContainer .graphJsonSwitch .graphUnselectedToggle {
+  color: #0058AD;
+}
+.graphExplorerContainer .graphJsonEditor {
+  flex-grow: 1;
+  margin: 20px;
+  border: 1px solid #CCCCCC;
+  overflow: hidden;
+  display: -webkit-flex;
+  display: -ms-flexbox;
+  display: -ms-flex;
+  display: flex;
+  -webkit-flex-direction: column;
+  -ms-flex-direction: column;
+  flex-direction: column;
+}
+.graphExplorerContainer .graphJsonEditor .jsonEditor {
+  flex-grow: 1;
+}
+.graphExplorerContainer .nav-pills > li.active > a,
+.graphExplorerContainer .nav-pills > li.active > a:focus,
+.graphExplorerContainer .nav-pills > li.active > a:hover {
+  background-color: #0058AD;
+}
+.graphExplorerContainer .nav-pills > li > a {
+  border-radius: 0px;
+}
+.graphExplorerContainer .nav > li > a {
+  padding: 5px 15px;
+}
+.graphExplorerContainer .typeahead__field input {
+  height: 25px !important;
+}
+.graphExplorerContainer .typeahead__cancel-button {
+  top: 5px !important;
+  right: .4em !important;
+}
+.graphExplorerContainer .graphContainer {
+  overflow: hidden;
+  height: 100%;
+  margin-top: 24px;
+  display: -webkit-flex;
+  display: -ms-flexbox;
+  display: -ms-flex;
+  display: flex;
+}
+.graphExplorerContainer .graphContainer .leftPane {
+  width: 200px;
+  padding: 0px 0px 0px 8px;
+  border-right: 1px solid #CCCCCC;
+  display: -webkit-flex;
+  display: -ms-flexbox;
+  display: -ms-flex;
+  display: flex;
+  -webkit-flex-direction: column;
+  -ms-flex-direction: column;
+  flex-direction: column;
+}
+.graphExplorerContainer .graphContainer .leftPane .leftPaneResults {
+  margin: 12px 0px 8px;
+}
+.graphExplorerContainer .graphContainer .leftPane .leftPaneContent {
+  flex: 1;
+}
+.graphExplorerContainer .graphContainer .leftPane .leftPaneContent .leftPaneContainer {
+  width: 172px;
+  padding-right: 4px;
+}
+.graphExplorerContainer .graphContainer .leftPane .leftPaneContent .leftPaneContainer table {
+  table-layout: fixed;
+}
+.graphExplorerContainer .graphContainer .leftPane .leftPaneContent .leftPaneContainer table .disabled {
+  pointer-events: none;
+  background-color: #FFFFFF;
+  opacity: 0.5;
+}
+.graphExplorerContainer .graphContainer .leftPane .leftPaneContent .leftPaneContainer table .resultItem {
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+.graphExplorerContainer .graphContainer .middlePane {
+  flex-grow: 1;
+  border-right: 1px solid #CCCCCC;
+  position: relative;
+  display: -webkit-flex;
+  display: -ms-flexbox;
+  display: -ms-flex;
+  display: flex;
+  -webkit-flex-direction: column;
+  -ms-flex-direction: column;
+  flex-direction: column;
+}
+.graphExplorerContainer .graphContainer .middlePane .graphTitle {
+  margin-top: 8px;
+}
+.graphExplorerContainer .graphContainer .middlePane .graphTitle .graphExpandCollapseBtn {
+  padding: 2px 6px 5px 6px;
+  margin-right: 4px;
+}
+.graphExplorerContainer .graphContainer .middlePane .graphTitle .graphExpandCollapseBtn:hover {
+  background-color: #EEF7FF;
+}
+.graphExplorerContainer .graphContainer .middlePane .graphTitle .graphExpandCollapseBtn:active {
+  background-color: #DDF0FF;
+}
+.graphExplorerContainer .graphContainer .middlePane .graphTitle .graphExpandCollapseBtn img {
+  cursor: pointer;
+  width: 14px;
+  height: 14px;
+}
+.graphExplorerContainer .graphContainer .middlePane .maingraphContainer {
+  position: relative;
+  display: -webkit-flex;
+  display: -ms-flexbox;
+  display: -ms-flex;
+  display: flex;
+  -webkit-flex-direction: column;
+  -ms-flex-direction: column;
+  flex-direction: column;
+  height: 100%;
+}
+.graphExplorerContainer .graphContainer .middlePane .maingraphContainer .graphModal {
+  background-color: rgba(255, 255, 255, 0.7);
+  position: absolute;
+  top: 0px;
+  left: 0px;
+  height: 100%;
+  width: 100%;
+}
+.graphExplorerContainer .graphContainer .middlePane .maingraphContainer .graphModal img {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 24px;
+  height: 6px;
+}
+.graphExplorerContainer .graphContainer .rightPane .collapsiblePanel {
+  right: 0px;
+  float: right;
+  width: 440px;
+  display: -webkit-flex;
+  display: -ms-flexbox;
+  display: -ms-flex;
+  display: flex;
+  -webkit-flex-direction: column;
+  -ms-flex-direction: column;
+  flex-direction: column;
+  padding-top: 6px;
+}
+.graphExplorerContainer .graphContainer .rightPane .collapsiblePanel .panelContent {
+  height: 100%;
+  /* Override default (auto which grows as big as content) to make it grow to fill parent instead */
+  min-height: 0px;
+  margin-top: 0px;
+}
+.graphExplorerContainer .graphContainer .rightPane .collapsiblePanel .panelContent .rightPaneHeader {
+  /* TODO: Hack to align the trashbox with the header for now. */
+  margin-top: -28px;
+  white-space: nowrap;
+  margin-bottom: 32px;
+}
+.graphExplorerContainer .graphContainer .rightPane .collapsiblePanel .panelContent .rightPaneHeader .rightPaneHeaderTrashIcon {
+  margin-right: 32px;
+  padding: 1px 5px 6px 5px;
+}
+.graphExplorerContainer .graphContainer .rightPane .collapsiblePanel .panelContent .rightPaneHeader .rightPaneHeaderTrashIcon img {
+  cursor: pointer;
+  width: 14px;
+  height: 14px;
+}
+.graphExplorerContainer .graphContainer .rightPane .collapsiblePanel .panelContent .rightPaneHeader .deleteConfirm {
+  background-color: #FFFFFF;
+  padding: 4px;
+}
+.graphExplorerContainer .graphContainer .rightPane .collapsiblePanel .panelContent .rightPaneContent {
+  height: 100%;
+}
+.graphExplorerContainer .graphContainer .rightPane .collapsiblePanel .panelContent .rightPaneContent .rightPaneContainer {
+  width: 410px;
+  padding-left: 4px;
+  /* Override autocomplete stuff */
+}
+.graphExplorerContainer .graphContainer .rightPane .collapsiblePanel .panelContent .rightPaneContent .rightPaneContainer .sectionHeader {
+  padding: 2px;
+}
+.graphExplorerContainer .graphContainer .rightPane .collapsiblePanel .panelContent .rightPaneContent .rightPaneContainer .sectionContent {
+  padding: 8px 8px 16px 24px;
+}
+.graphExplorerContainer .graphContainer .rightPane .collapsiblePanel .panelContent .rightPaneContent .rightPaneContainer .sectionTitle {
+  cursor: pointer;
+  margin-left: 6px;
+  font-weight: bold;
+}
+.graphExplorerContainer .graphContainer .rightPane .collapsiblePanel .panelContent .rightPaneContent .rightPaneContainer .edgesTable {
+  width: 100%;
+}
+.graphExplorerContainer .graphContainer .rightPane .collapsiblePanel .panelContent .rightPaneContent .rightPaneContainer .edgesTable td {
+  padding: 5px 2px 4px 2px;
+}
+.graphExplorerContainer .graphContainer .rightPane .collapsiblePanel .panelContent .rightPaneContent .rightPaneContainer .edgesTable td.valueCol {
+  width: 100%;
+  padding-right: 4px;
+}
+.graphExplorerContainer .graphContainer .rightPane .collapsiblePanel .panelContent .rightPaneContent .rightPaneContainer .edgesTable td.rightPaneAddPropertyBtnPadding {
+  padding-top: 16px;
+}
+.graphExplorerContainer .graphContainer .rightPane .collapsiblePanel .panelContent .rightPaneContent .rightPaneContainer .edgesTable td.edgeLabel {
+  padding-right: 41px;
+}
+.graphExplorerContainer .graphContainer .rightPane .collapsiblePanel .panelContent .rightPaneContent .rightPaneContainer .roPropertyTable tr {
+  height: 27px;
+}
+.graphExplorerContainer .graphContainer .rightPane .collapsiblePanel .panelContent .rightPaneContent .rightPaneContainer .actionCol {
+  width: 30px;
+}
+.graphExplorerContainer .graphContainer .rightPane .collapsiblePanel .panelContent .rightPaneContent .rightPaneContainer .labelCol {
+  width: 72px;
+  min-width: 72px;
+}
+.graphExplorerContainer .graphContainer .rightPane .collapsiblePanel .panelContent .rightPaneContent .rightPaneContainer .labelCol input {
+  max-width: 65px;
+  padding-left: 4px;
+}
+.graphExplorerContainer .graphContainer .rightPane .collapsiblePanel .panelContent .rightPaneContent .rightPaneContainer .edgeInput {
+  width: 100%;
+  padding-left: 4px;
+}
+.graphExplorerContainer .graphContainer .rightPane .collapsiblePanel .panelContent .rightPaneContent .rightPaneContainer .typeSelect {
+  height: 23px;
+  width: 70px;
+}
+.graphExplorerContainer .graphContainer .rightPane .collapsiblePanel .panelContent .rightPaneContent .rightPaneContainer .propertyTableHeader {
+  font-weight: bold;
+  color: #393939;
+  border-bottom: 1px solid #767676;
+}
+.graphExplorerContainer .graphContainer .rightPane .collapsiblePanel .panelContent .rightPaneContent .rightPaneContainer .typeahead__container {
+  font: 12px 'Segoe UI' !important;
+}
+.graphExplorerContainer .graphContainer .rightPane .collapsiblePanel .panelContent .rightPaneContent .rightPaneContainer .typeahead__container input {
+  font: 12px 'Segoe UI' !important;
+  padding: 0px 4px !important;
+}
+.graphExplorerContainer .graphContainer .rightPane .collapsiblePanel .panelContent .rightPaneContent .rightPaneContainer .typeahead__field input {
+  height: 25px !important;
+}
+.graphExplorerContainer .graphContainer .rightPane .collapsiblePanel .panelContent .rightPaneContent .rightPaneContainer .typeahead__cancel-button {
+  top: 5px !important;
+  right: .4em !important;
+}
+.graphExplorerContainer .graphContainer .rightPane .collapsiblePanel .panelContent .rightPaneContent .rightPaneContainer .rightPaneAddPropertyBtn {
+  padding: 8px;
+  margin-left: -8px;
+  /* TODO: Hack to align the addproperty button with the section content for now. */
+}
+.graphExplorerContainer .graphContainer .rightPane .collapsiblePanel .panelContent .rightPaneContent .rightPaneContainer .rightPaneAddPropertyBtn img {
+  margin: 0px 4px 4px 0px;
+  cursor: pointer;
+  width: 14px;
+  height: 14px;
+}
+.graphExplorerContainer .paneTitle {
+  padding-left: 8px;
+  color: #000;
+  font-weight: bold;
+  margin-left: 4px;
+}
+.graphExplorerContainer .filterQueryResultError {
+  padding: 0px 25px;
+  line-height: 25px;
+  margin-bottom: 10px;
+  color: #B91F26;
+}
+.graphExplorerContainer .rightPaneEditIcon {
+  padding: 1px 5px 5px 5px;
+}
+.graphExplorerContainer .rightPaneEditIcon img {
+  cursor: pointer;
+  width: 14px;
+  height: 14px;
+}
+.graphExplorerContainer .rightPaneCheckMark {
+  padding: 1px 1px 5px 5px;
+}
+.graphExplorerContainer .rightPaneCheckMark img {
+  cursor: pointer;
+  width: 14px;
+  height: 14px;
+}
+.graphExplorerContainer .rightPaneDiscardBtn {
+  padding: 1px 4px 5px 2px;
+  margin-right: 12px;
+}
+.graphExplorerContainer .rightPaneDiscardBtn .discardBtn {
+  margin: 0px 2px 0px 4px;
+  width: 10px;
+  height: 10px;
+}
+.graphExplorerContainer .rightPaneDiscardBtn img {
+  cursor: pointer;
+  width: 14px;
+  height: 14px;
+}
+.graphExplorerContainer .rightPaneTrashIcon {
+  padding: 4px;
+}
+.graphExplorerContainer .rightPaneTrashIcon img {
+  vertical-align: top;
+  cursor: pointer;
+  width: 14px;
+  height: 14px;
+}
+.graphExplorerContainer .rightPaneBtns {
+  cursor: pointer;
+}
+.graphExplorerContainer .rightPaneBtns:hover {
+  background-color: #EEF7FF;
+}
+.graphExplorerContainer .rightPaneBtns:active {
+  background-color: #DDF0FF;
+}
+.graphExplorerContainer .link.inactive {
+  opacity: 0.1;
+  transition: opacity 500ms;
+}
+.graphExplorerContainer .nodes circle.main {
+  stroke: #FFFFFF;
+  stroke-width: 2px;
+}
+.graphExplorerContainer .nodes text {
+  pointer-events: none;
+  font: 12px arial;
+}
+.graphExplorerContainer .nodes .inactive {
+  stroke-opacity: 0.2;
+  fill-opacity: 0.2;
+  transition: stroke-opacity 500ms;
+  transition: fill-opacity 500ms;
+}
+.graphExplorerContainer .node .icon-background {
+  display: none;
+  fill: #B91F26;
+}
+.graphExplorerContainer .node.root circle.main {
+  stroke: #B91F26;
+}
+.graphExplorerContainer .node.selected circle.main {
+  stroke: #0058AD;
+}
+.graphExplorerContainer .node.selected .icon-background {
+  display: block;
+}
+.graphExplorerContainer #triangleRight svg polygon {
+  fill: inherit;
+}
+.graphExplorerContainer use.pageButton {
+  fill: #F2F2F2;
+}
+.graphExplorerContainer use.pageButton.active {
+  fill: #0058AD;
+}
+.graphExplorerContainer #loadMoreIcon svg ellipse {
+  fill: inherit;
+}
+.graphExplorerContainer .loadmore use.loadMoreIcon {
+  fill: orange;
+}
+.graphExplorerContainer .loadmore use.loadMoreIcon.active {
+  fill: #0058AD;
+}
+.graphExplorerContainer .markerEnd polygon {
+  fill: inherit;
+}
+.graphExplorerContainer .markerEndContainer use.markerEnd.inactive {
+  opacity: 0.1;
+  transition: opacity 500ms;
+}
+.graphExplorerContainer .markerEndContainer use.markerEnd.hidden {
+  opacity: 0;
+}
+.graphExplorerContainer .contentScroll {
+  overflow-y: auto;
+  overflow-x: hidden;
+  white-space: nowrap;
+}
+–²JÌõ½      [Õ¾±[Õ¾¶?§¶ [×k"   7    :https://cosmos.azure.com/css/graphExplorer.css?v=1.0.1 necko:classified 1 strongly-framed 1 security-info FnhllAKWRHGAlo+ESXykKAAAAAAAAAAAwAAAAAAAAEaphjojH6pBabDSgSnsfLHeAAQAAgAAAAAAAAAAAAAAAAAAAAAB4vFIJp5wRkeyPxAQ9RJGKPqbqVvKO0mKuIl8ec8o/uhmCjImkVxP+7sgiYWmMt8FvcOXmlQiTNWFiWlrbpbqgwAAAAAAAAOMMIIDiDCCAnCgAwIBAgIERTJgUjANBgkqhkiG9w0BAQsFADCBijEUMBIGA1UEBhMLUG9ydFN3aWdnZXIxFDASBgNVBAgTC1BvcnRTd2lnZ2VyMRQwEgYDVQQHEwtQb3J0U3dpZ2dlcjEUMBIGA1UEChMLUG9ydFN3aWdnZXIxFzAVBgNVBAsTDlBvcnRTd2lnZ2VyIENBMRcwFQYDVQQDEw5Qb3J0U3dpZ2dlciBDQTAeFw0xNDEwMjgxMzEyMTBaFw0zODEwMjgxMzEyMTBaMGAxFDASBgNVBAYTC1BvcnRTd2lnZ2VyMRQwEgYDVQQKEwtQb3J0U3dpZ2dlcjEXMBUGA1UECxMOUG9ydFN3aWdnZXIgQ0ExGTAXBgNVBAMTEGNvc21vcy5henVyZS5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCKn7emKINsnWqPZ+C/VsqbQf/l4NsmIh34bXBR0xdNg9bfb+xcoghRlmbPjhZ/A26A2gJ6Rrg2d0GGMLpbqA8nTlRRGXEAD39321zk4ye09ElXClvqguGqdqOJpPQ05DPFD6wSOq+KVAEblE5bi+LMqBLipDERzgUe7xzeqVVk0i0ldh9yQOIk3YuzcBR9igSEuw5qladmMYvXKHYM9YZz0R7axMc8xAtadK7C9KfFPfEI5LS2nhmy4vBrTgFyYhfkEvKfmIj6HTX0ISFCAC2llcBLpEDcuiW76tAHp1pXDeWtSeaV36AeOctdleVgrbmsGs3fu6ppuRcWjEZUbjE3AgMBAAGjHzAdMBsGA1UdEQQUMBKCEGNvc21vcy5henVyZS5jb20wDQYJKoZIhvcNAQELBQADggEBABYikT6Y5YgJJ4IVJldlFDF5MKxp26YegXhvT8EmAbgr0yQBIlY2DtKEiHf7Q8wRoJ9y5Ajst1D7HmRba+XLjS6s3IHJ7gtuvc3fZj9MPKpbqSKRfHDB8bDOVIzmjBseg2BqckHTkcYak3b/pTWCTqKHM3LxKsDwN8F3HNQ2pY4d5ma2kR1EtWdTpRiIbir3QxJDcWVp8CgHONZcoMn33NNwnWWjAQMX6d8e1CPuBZi0t+myaYduCqPgKKox9qMXSubF6uifQkAJ5RdLZrZ2pghENA/4r1oz51wqEmpjPsStSUxRPwJ6wJrB4gwGtX7++ZHLjAaNrTSUCGwIOlAT4LnALwEDAAAAAAEBAAAAAA== request-method GET request-Accept-Encoding gzip, deflate, br response-head HTTP/1.1 200 OK
+Content-Length: 18551
+Content-Type: text/css
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:38:45 GMT
+ original-response-headers Content-Length: 18551
+Content-Type: text/css
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:38:45 GMT
+Connection: close
+ uncompressed-len 0 net-response-time-onstart 5329 net-response-time-onstop 5329   Hw

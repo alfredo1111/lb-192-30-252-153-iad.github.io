@@ -1,0 +1,196 @@
+var __extends = (this && this.__extends) || (function () {
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    }
+    return function (d, b) {
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
+define(["require", "exports", "q", "../../Common/Constants", "../../Contracts/ViewModels", "../../Shared/Telemetry/TelemetryConstants", "./ScriptTabBase", "../../Shared/Telemetry/TelemetryProcessor"], function (require, exports, Q, Constants, ViewModels, TelemetryConstants_1, ScriptTabBase, TelemetryProcessor_1) {
+    "use strict";
+    var UserDefinedFunctionTab = /** @class */ (function (_super) {
+        __extends(UserDefinedFunctionTab, _super);
+        function UserDefinedFunctionTab(options) {
+            var _this = _super.call(this, options) || this;
+            _this.onSaveClick = function () {
+                // When create in Store Explorer, the script has already created before open the tab.
+                if (_this.isRunningOnDaytona) {
+                    return _this.onUpdateClick();
+                }
+                var data = _this._getResource();
+                return _this._createUserDefinedFunction(data);
+            };
+            _this.onUpdateClick = function () {
+                var data = _this._getResource();
+                _this.isExecutionError(false);
+                _this.isExecuting(true);
+                var startKey = TelemetryProcessor_1.default.traceStart(TelemetryConstants_1.Action.UpdateUDF, {
+                    databaseAccountName: _this.collection && _this.collection.container.databaseAccount().name,
+                    defaultExperience: _this.collection && _this.collection.container.defaultExperience(),
+                    dataExplorerArea: Constants.Areas.Tab,
+                    tabTitle: _this.tabTitle()
+                }, _this.isRunningOnDaytona);
+                return _this.documentClientUtility.updateUserDefinedFunction(data, null /*options*/).then(function (createdResource) {
+                    _this.resource(createdResource);
+                    _this.tabTitle(createdResource.id);
+                    if (!_this.isRunningOnDaytona) {
+                        _this.node.id(createdResource.id);
+                        _this.node.body(createdResource.body);
+                        TelemetryProcessor_1.default.traceSuccess(TelemetryConstants_1.Action.UpdateUDF, {
+                            databaseAccountName: _this.collection && _this.collection.container.databaseAccount().name,
+                            defaultExperience: _this.collection && _this.collection.container.defaultExperience(),
+                            dataExplorerArea: Constants.Areas.Tab,
+                            tabTitle: _this.tabTitle()
+                        }, startKey, _this.isRunningOnDaytona);
+                    }
+                    else {
+                        _this.daytonaContext && _this.daytonaContext.telemetry.sendEvent("StorageExplorer.UserDefinedFunctions.Update");
+                        _this.daytonaContext && _this.daytonaContext.hostProxy.executeProviderOperation("Azure.Actions.DocumentDB.updateNode", {
+                            selfLink: _this.resource()._self,
+                            nodeType: "Azure.DocumentDB.UserDefinedFunction",
+                            attributes: [{
+                                    name: "body",
+                                    value: createdResource.body
+                                }]
+                        });
+                    }
+                    _this.setBaselines();
+                    var editorModel = _this.editor().getModel();
+                    editorModel.setValue(createdResource.body);
+                    _this.editorContent.setBaseline(createdResource.body);
+                }, function (createError) {
+                    if (!_this.isRunningOnDaytona) {
+                        _this.isExecutionError(true);
+                        TelemetryProcessor_1.default.traceFailure(TelemetryConstants_1.Action.UpdateUDF, {
+                            databaseAccountName: _this.collection && _this.collection.container.databaseAccount().name,
+                            defaultExperience: _this.collection && _this.collection.container.defaultExperience(),
+                            dataExplorerArea: Constants.Areas.Tab,
+                            tabTitle: _this.tabTitle()
+                        }, startKey, _this.isRunningOnDaytona);
+                    }
+                    else {
+                        var message = JSON.parse(createError.body).message;
+                        _this.daytonaContext && _this.daytonaContext.hostProxy.executeProviderOperation("CloudExplorer.Actions.Dialog.promptOK", {
+                            title: "Error",
+                            message: message,
+                            messageBoxType: "error"
+                        });
+                    }
+                }).finally(function () { return _this.isExecuting(false); });
+            };
+            _this.ariaLabel("User Defined Function Body");
+            _super.prototype.onActivate.bind(_this);
+            _super.prototype.buildCommandBarOptions.bind(_this);
+            _super.prototype.buildCommandBarOptions.call(_this);
+            _this._buildToolbar();
+            return _this;
+        }
+        UserDefinedFunctionTab.prototype.onRefresh = function () {
+            var _this = this;
+            return this.documentClientUtility.readUserDefinedFunction(this.resource(), null).then(function (script) {
+                _this.editorContent(script.body);
+                _this.resource().body = script.body;
+                _this._createBodyEditor();
+            });
+        };
+        UserDefinedFunctionTab.prototype.updateSelectedNode = function () {
+            if (this.collection == null) {
+                return;
+            }
+            else if (!this.collection.database.isDatabaseExpanded()) {
+                this.collection.container.selectedNode(this.collection.database);
+            }
+            else if (!this.collection.isCollectionExpanded() || !this.collection.isUserDefinedFunctionsExpanded()) {
+                this.collection.container.selectedNode(this.collection);
+            }
+            else {
+                this.collection.container.selectedNode(this.node);
+            }
+        };
+        UserDefinedFunctionTab.prototype._createUserDefinedFunction = function (resource) {
+            var _this = this;
+            this.isExecutionError(false);
+            this.isExecuting(true);
+            var startKey = TelemetryProcessor_1.default.traceStart(TelemetryConstants_1.Action.CreateUDF, {
+                databaseAccountName: this.collection && this.collection.container.databaseAccount().name,
+                defaultExperience: this.collection && this.collection.container.defaultExperience(),
+                dataExplorerArea: Constants.Areas.Tab,
+                tabTitle: this.tabTitle()
+            }, this.isRunningOnDaytona);
+            return this.documentClientUtility.createUserDefinedFunction({ self: this.collection.self, resourceName: this.collection.id(), rid: this.collection.rid }, resource, null /*options*/).then(function (createdResource) {
+                _this.tabTitle(createdResource.id);
+                _this.isNew(false);
+                _this.resource(createdResource);
+                _this.hashLocation(Constants.HashRoutePrefixes.collectionsWithIds(_this.collection.database.id(), _this.collection.id()) + "/udfs/" + createdResource.id);
+                _this.setBaselines();
+                var editorModel = _this.editor().getModel();
+                editorModel.setValue(createdResource.body);
+                _this.editorContent.setBaseline(createdResource.body);
+                if (!_this.isRunningOnDaytona) {
+                    _this.node = _this.collection.createUserDefinedFunctionNode(createdResource);
+                    TelemetryProcessor_1.default.traceSuccess(TelemetryConstants_1.Action.CreateUDF, {
+                        databaseAccountName: _this.collection && _this.collection.container.databaseAccount().name,
+                        dataExplorerArea: Constants.Areas.Tab,
+                        defaultExperience: _this.collection && _this.collection.container.defaultExperience(),
+                        tabTitle: _this.tabTitle()
+                    }, startKey, _this.isRunningOnDaytona);
+                }
+                else {
+                    _this.daytonaContext && _this.daytonaContext.telemetry.sendEvent("StorageExplorer.UserDefinedFunctions.Create");
+                    _this.daytonaContext && _this.daytonaContext.hostProxy.executeProviderOperation("Azure.Actions.DocumentDB.refreshNode", {
+                        selfLink: _this.collection.self,
+                        nodeType: "Azure.DocumentDB.UserDefinedFunctionGroup"
+                    });
+                }
+                _this.editorState(ViewModels.ScriptEditorState.exisitingNoEdits);
+                return createdResource;
+            }, function (createError) {
+                _this.isExecutionError(true);
+                TelemetryProcessor_1.default.traceFailure(TelemetryConstants_1.Action.CreateUDF, {
+                    databaseAccountName: _this.collection && _this.collection.container.databaseAccount().name,
+                    defaultExperience: _this.collection && _this.collection.container.defaultExperience(),
+                    dataExplorerArea: Constants.Areas.Tab,
+                    tabTitle: _this.tabTitle()
+                }, startKey, _this.isRunningOnDaytona);
+                return Q.reject(createError);
+            }).finally(function () { return _this.isExecuting(false); });
+        };
+        UserDefinedFunctionTab.prototype._getResource = function () {
+            var resource = {
+                _rid: this.resource()._rid,
+                _self: this.resource()._self,
+                id: this.id(),
+                body: this.editorContent()
+            };
+            return resource;
+        };
+        return UserDefinedFunctionTab;
+    }(ScriptTabBase));
+    return UserDefinedFunctionTab;
+});
+_‘Óô›      [Õ¾ö[Õ¾ý?§¶Ð[×kn   O    :https://cosmos.azure.com/built/Explorer/Tabs/UserDefinedFunctionTab.js?v=1.0.1 necko:classified 1 strongly-framed 1 security-info FnhllAKWRHGAlo+ESXykKAAAAAAAAAAAwAAAAAAAAEaphjojH6pBabDSgSnsfLHeAAQAAgAAAAAAAAAAAAAAAAAAAAAB4vFIJp5wRkeyPxAQ9RJGKPqbqVvKO0mKuIl8ec8o/uhmCjImkVxP+7sgiYWmMt8FvcOXmlQiTNWFiWlrbpbqgwAAAAAAAAOMMIIDiDCCAnCgAwIBAgIERTJgUjANBgkqhkiG9w0BAQsFADCBijEUMBIGA1UEBhMLUG9ydFN3aWdnZXIxFDASBgNVBAgTC1BvcnRTd2lnZ2VyMRQwEgYDVQQHEwtQb3J0U3dpZ2dlcjEUMBIGA1UEChMLUG9ydFN3aWdnZXIxFzAVBgNVBAsTDlBvcnRTd2lnZ2VyIENBMRcwFQYDVQQDEw5Qb3J0U3dpZ2dlciBDQTAeFw0xNDEwMjgxMzEyMTBaFw0zODEwMjgxMzEyMTBaMGAxFDASBgNVBAYTC1BvcnRTd2lnZ2VyMRQwEgYDVQQKEwtQb3J0U3dpZ2dlcjEXMBUGA1UECxMOUG9ydFN3aWdnZXIgQ0ExGTAXBgNVBAMTEGNvc21vcy5henVyZS5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCKn7emKINsnWqPZ+C/VsqbQf/l4NsmIh34bXBR0xdNg9bfb+xcoghRlmbPjhZ/A26A2gJ6Rrg2d0GGMLpbqA8nTlRRGXEAD39321zk4ye09ElXClvqguGqdqOJpPQ05DPFD6wSOq+KVAEblE5bi+LMqBLipDERzgUe7xzeqVVk0i0ldh9yQOIk3YuzcBR9igSEuw5qladmMYvXKHYM9YZz0R7axMc8xAtadK7C9KfFPfEI5LS2nhmy4vBrTgFyYhfkEvKfmIj6HTX0ISFCAC2llcBLpEDcuiW76tAHp1pXDeWtSeaV36AeOctdleVgrbmsGs3fu6ppuRcWjEZUbjE3AgMBAAGjHzAdMBsGA1UdEQQUMBKCEGNvc21vcy5henVyZS5jb20wDQYJKoZIhvcNAQELBQADggEBABYikT6Y5YgJJ4IVJldlFDF5MKxp26YegXhvT8EmAbgr0yQBIlY2DtKEiHf7Q8wRoJ9y5Ajst1D7HmRba+XLjS6s3IHJ7gtuvc3fZj9MPKpbqSKRfHDB8bDOVIzmjBseg2BqckHTkcYak3b/pTWCTqKHM3LxKsDwN8F3HNQ2pY4d5ma2kR1EtWdTpRiIbir3QxJDcWVp8CgHONZcoMn33NNwnWWjAQMX6d8e1CPuBZi0t+myaYduCqPgKKox9qMXSubF6uifQkAJ5RdLZrZ2pghENA/4r1oz51wqEmpjPsStSUxRPwJ6wJrB4gwGtX7++ZHLjAaNrTSUCGwIOlAT4LnALwEDAAAAAAEBAAAAAA== request-method GET request-Accept-Encoding gzip, deflate, br response-head HTTP/1.1 200 OK
+Content-Length: 10491
+Content-Type: application/x-javascript
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:39:56 GMT
+ original-response-headers Content-Length: 10491
+Content-Type: application/x-javascript
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:39:56 GMT
+Connection: close
+ uncompressed-len 0 net-response-time-onstart 6953 net-response-time-onstop 6953   (û

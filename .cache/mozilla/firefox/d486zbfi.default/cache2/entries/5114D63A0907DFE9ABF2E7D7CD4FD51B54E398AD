@@ -1,0 +1,172 @@
+<div data-bind="visible: visible, event: { keydown: onPaneKeyDown }">
+    <div class="contextual-pane-out" data-bind="
+                click: cancel,
+                clickBubble: false">
+    </div>
+    <div class="contextual-pane" id="settingspane">
+        <!-- Settings Confirmation form - Start -->
+        <div class="contextual-pane-in">
+            <form class="paneContentContainer" data-bind="submit: submit">
+                <!-- Settings Confirmation header - Start -->
+                <div class="firstdivbg headerline">
+                    <span data-bind="text: title"></span>
+                    <div class="closeImg" data-bind="
+                                click: cancel">
+                    </div>
+                </div>
+                <!-- Settings Confirmation header - End -->
+
+                <!-- Settings Confirmation errors - Start -->
+                <div class="warningErrorContainer" aria-live="assertive" data-bind="visible: formErrors() && formErrors() !== ''">
+                    <div class="warningErrorContent">
+                        <span><img class="paneErrorIcon" src="images/error_red.svg" alt="Error"></span>
+                        <span class="warningErrorDetailsLinkContainer">
+                            <span class="formErrors" data-bind="text: formErrors, attr: { title: formErrors }"></span>
+                        <a class="errorLink" role="link" data-bind="
+                            visible: formErrorsDetails() && formErrorsDetails() !== '',
+                            click: showErrorDetails">More details</a>
+                        </span>
+                    </div>
+                </div>
+                <!-- Settings Confirmation errors - End -->
+
+                <!-- Settings Confirmation inputs - Start -->
+                <div class="paneMainContent">
+                    <div>
+                        <div class="settingsSection" data-bind="visible: shouldShowQueryPageOptions">
+                            <div class="settingsSectionPart pageOptionsPart">
+                                <div class="settingsSectionLabel">
+                                    Page options
+                                    <span class="infoTooltip">
+                                        <img class="infoImg" src="images/info-bubble.svg" alt="More information">
+                                        <span class="tooltiptext pageOptionTooltipWidth">
+                                            Choose Custom to specify a fixed amount of query results to show,
+                                            or choose Unlimited to show as many query results per page.
+                                        </span>
+                                    </span>
+                                </div>
+                                <div class="tabs" tab-index="0" data-bind="event: { keydown: onPageOptionsKeyDown }" aria-label="Page settings">
+                                    <!-- Fixed option button - Start -->
+                                    <div class="tab">
+                                        <input type="radio" id="customItemPerPage" name="pageOption" value="custom" data-bind="checked: pageOption">
+                                        <label for="customItemPerPage">Custom</label>
+                                    </div>
+                                    <!-- Fixed option button - End -->
+
+                                    <!-- Unlimited option button - Start -->
+                                    <div class="tab">
+                                        <input type="radio" id="unlimitedItemPerPage" name="pageOption" value="unlimited" data-bind="checked: pageOption">
+                                        <label for="unlimitedItemPerPage">Unlimited</label>
+                                    </div>
+                                    <!-- Unlimited option button - End -->
+                                </div>
+                            </div>
+                            <div class="tabs settingsSectionPart">
+                                <div class="tabcontent" data-bind="visible: isCustomPageOptionSelected()">
+                                    <div class="settingsSectionLabel">
+                                        Query results per page
+                                        <span class="infoTooltip">
+                                            <img class="infoImg" src="images/info-bubble.svg" alt="More information">
+                                            <span class="tooltiptext pageOptionTooltipWidth">
+                                                Enter the number of query results that should be shown per page.
+                                            </span>
+                                        </span>
+                                    </div>
+                                    <input type="number" required min=1 step="1" class="textfontclr collid" aria-label="Custom query items per page" data-bind="textInput: customItemPerPage, enable: isCustomPageOptionSelected()"></input>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="settingsSection" data-bind="visible: shouldShowCrossPartitionOption">
+                            <div class="settingsSectionPart">
+                                <div class="settingsSectionLabel">
+                                    Enable cross-partition query
+                                    <span class="infoTooltip">
+                                        <img class="infoImg" src="images/info-bubble.svg" alt="More information">
+                                        <span class="tooltiptext pageOptionTooltipWidth">
+                                            Send more than one request while executing a query. More than one request is necessary if the query is not scoped to single partition key value.
+                                        </span>
+                                    </span>
+                                </div>
+                                <input type="checkbox" data-bind="checked: crossPartitionQueryEnabled">
+                            </div>
+                        </div>
+                        <div class="settingsSection" data-bind="visible: shouldShowParallelismOption">
+                            <div class="settingsSectionPart">
+                                <div class="settingsSectionLabel">
+                                    Max degree of parallelism
+                                    <span class="infoTooltip">
+                                        <img class="infoImg" src="images/info-bubble.svg" alt="More information">
+                                        <span class="tooltiptext pageOptionTooltipWidth">
+                                            Gets or sets the number of concurrent operations run client side during parallel query execution. A positive property value limits the number of concurrent operations to the set value. If it is set to less than 0, the system automatically decides the number of concurrent operations to run.
+                                        </span>
+                                    </span>
+                                </div>
+                                <input type="number" required min=-1 step="1" class="textfontclr collid" aria-label="Max degree of parrellism" data-bind="value: maxDegreeOfParallelism">
+                            </div>
+                        </div>
+                        <div class="settingsSection" data-bind="visible: shouldShowGraphAutoVizOption">
+                            <div class="settingsSectionPart">
+                                <div class="settingsSectionLabel">
+                                    Display Gremlin query results as:&nbsp;
+                                    <span class="infoTooltip">
+                                        <img class="infoImg" src="images/info-bubble.svg" alt="More information">
+                                        <span class="tooltiptext pageOptionTooltipWidth">
+                                            Select Graph to automatically visualize the query results as a Graph or JSON to display the results as JSON.
+                                        </span>
+                                    </span>
+                                </div>
+                                <div class="tabs" tab-index="0" aria-label="Graph Auto-visualization">
+                                    <!-- Fixed option button - Start -->
+                                    <div class="tab">
+                                        <input type="radio" id="graphAutoVizOn" name="graphAutoVizOption" value="false" data-bind="checked: graphAutoVizDisabled">
+                                        <label for="graphAutoVizOn">Graph</label>
+                                    </div>
+                                    <!-- Fixed option button - End -->
+
+                                    <!-- Unlimited option button - Start -->
+                                    <div class="tab">
+                                        <input type="radio" id="graphAutoVizOff" name="graphAutoVizOption" value="true" data-bind="checked: graphAutoVizDisabled">
+                                        <label for="graphAutoVizOff">JSON</label>
+                                    </div>
+                                    <!-- Unlimited option button - End -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="paneFooter">
+                    <div class="leftpanel-okbut">
+                        <input type="submit" value="Apply" class="btncreatecoll1">
+                    </div>
+                </div>
+                <!-- Settings Confirmation inputs - End -->
+            </form>
+        </div>
+        <!-- Settings Confirmation form  - Start -->
+        <!-- Loader - Start -->
+        <div class="dataExplorerLoaderContainer dataExplorerPaneLoaderContainer" data-bind="visible: isExecuting">
+            <img class="dataExplorerLoader" src="images/LoadingIndicator_3Squares.gif" />
+        </div>
+        <!-- Loader - End -->
+    </div>
+</div>VÅúSW      [÷Ö[÷ä?ßÂ§[◊Æ˝   3    :https://cosmos.azure.com/SettingsPane.html?v=1.0.1 necko:classified 1 strongly-framed 1 security-info FnhllAKWRHGAlo+ESXykKAAAAAAAAAAAwAAAAAAAAEaphjojH6pBabDSgSnsfLHeAAQAAgAAAAAAAAAAAAAAAAAAAAAB4vFIJp5wRkeyPxAQ9RJGKPqbqVvKO0mKuIl8ec8o/uhmCjImkVxP+7sgiYWmMt8FvcOXmlQiTNWFiWlrbpbqgwAAAAAAAAOMMIIDiDCCAnCgAwIBAgIERTJgUjANBgkqhkiG9w0BAQsFADCBijEUMBIGA1UEBhMLUG9ydFN3aWdnZXIxFDASBgNVBAgTC1BvcnRTd2lnZ2VyMRQwEgYDVQQHEwtQb3J0U3dpZ2dlcjEUMBIGA1UEChMLUG9ydFN3aWdnZXIxFzAVBgNVBAsTDlBvcnRTd2lnZ2VyIENBMRcwFQYDVQQDEw5Qb3J0U3dpZ2dlciBDQTAeFw0xNDEwMjgxMzEyMTBaFw0zODEwMjgxMzEyMTBaMGAxFDASBgNVBAYTC1BvcnRTd2lnZ2VyMRQwEgYDVQQKEwtQb3J0U3dpZ2dlcjEXMBUGA1UECxMOUG9ydFN3aWdnZXIgQ0ExGTAXBgNVBAMTEGNvc21vcy5henVyZS5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCKn7emKINsnWqPZ+C/VsqbQf/l4NsmIh34bXBR0xdNg9bfb+xcoghRlmbPjhZ/A26A2gJ6Rrg2d0GGMLpbqA8nTlRRGXEAD39321zk4ye09ElXClvqguGqdqOJpPQ05DPFD6wSOq+KVAEblE5bi+LMqBLipDERzgUe7xzeqVVk0i0ldh9yQOIk3YuzcBR9igSEuw5qladmMYvXKHYM9YZz0R7axMc8xAtadK7C9KfFPfEI5LS2nhmy4vBrTgFyYhfkEvKfmIj6HTX0ISFCAC2llcBLpEDcuiW76tAHp1pXDeWtSeaV36AeOctdleVgrbmsGs3fu6ppuRcWjEZUbjE3AgMBAAGjHzAdMBsGA1UdEQQUMBKCEGNvc21vcy5henVyZS5jb20wDQYJKoZIhvcNAQELBQADggEBABYikT6Y5YgJJ4IVJldlFDF5MKxp26YegXhvT8EmAbgr0yQBIlY2DtKEiHf7Q8wRoJ9y5Ajst1D7HmRba+XLjS6s3IHJ7gtuvc3fZj9MPKpbqSKRfHDB8bDOVIzmjBseg2BqckHTkcYak3b/pTWCTqKHM3LxKsDwN8F3HNQ2pY4d5ma2kR1EtWdTpRiIbir3QxJDcWVp8CgHONZcoMn33NNwnWWjAQMX6d8e1CPuBZi0t+myaYduCqPgKKox9qMXSubF6uifQkAJ5RdLZrZ2pghENA/4r1oz51wqEmpjPsStSUxRPwJ6wJrB4gwGtX7++ZHLjAaNrTSUCGwIOlAT4LnALwEDAAAAAAEBAAAAAA== request-method GET request-Accept-Encoding gzip, deflate, br response-head HTTP/1.1 200 OK
+Content-Length: 10391
+Content-Type: text/html
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:40:09 GMT
+ original-response-headers Content-Length: 10391
+Content-Type: text/html
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:40:09 GMT
+Connection: close
+ uncompressed-len 0 net-response-time-onstart 4312 net-response-time-onstop 4312   (ó

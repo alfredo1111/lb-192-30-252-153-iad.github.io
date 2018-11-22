@@ -1,0 +1,275 @@
+define(["require", "exports", "./Contracts/Activity", "../../AppContext", "./Contracts/ActivityWindow", "./Contracts/BaseEncodable", "./Contracts/LinkedService", "../Util/Log", "./Contracts/Pipeline", "../Util/Datetime", "./Helpers/ActivityWindowHelper", "../Util/Util", "../UI/StatusCalendar", "./Contracts/DataArtifact"], function (require, exports, ActivityModel, AppContext, ActivityWindow_1, BaseEncodable, LinkedServiceModel, Log, PipelineModel, DateTime, ActivityWindowHelper, Util, StatusCalendar, TableModel) {
+    "use strict";
+    var logger = Log.getLogger({
+        loggerName: "ActivityWindowCache"
+    });
+    function processRuntimeDetails(activityWindow) {
+        var runStart;
+        var runEnd;
+        var duration;
+        switch (activityWindow.windowState) {
+            case ActivityWindow_1.States.InProgress.name:
+                runEnd = ClientResources.emptyFieldPlaceholder;
+                runStart = ActivityWindowHelper.getFormattedDate(activityWindow.runStart, false);
+                duration = DateTime.durationToExactString(new Date().getTime() - new Date(activityWindow.runStart).getTime());
+                break;
+            case ActivityWindow_1.States.Waiting.name:
+                runEnd = ClientResources.emptyFieldPlaceholder;
+                runStart = ClientResources.emptyFieldPlaceholder;
+                duration = ClientResources.emptyFieldPlaceholder;
+                break;
+            default:
+                runEnd = ActivityWindowHelper.getFormattedDate(activityWindow.runEnd, false);
+                runStart = ActivityWindowHelper.getFormattedDate(activityWindow.runStart, false);
+                duration = DateTime.durationToExactString(new Date(activityWindow.runEnd).getTime() - new Date(activityWindow.runStart).getTime());
+                break;
+        }
+        return {
+            runStart: runStart,
+            runEnd: runEnd,
+            duration: duration
+        };
+    }
+    function getReservedId(activityWindow) {
+        return [activityWindow.dataFactoryName, activityWindow.pipelineName,
+            activityWindow.activityName, activityWindow.windowStart, activityWindow.windowEnd].join("-").toLowerCase();
+    }
+    exports.getReservedId = getReservedId;
+    function getStateId(activityWindow) {
+        var _a = processRuntimeDetails(activityWindow), runStart = _a.runStart, runEnd = _a.runEnd, duration = _a.duration;
+        return duration + activityWindow.percentComplete + activityWindow.runAttempts +
+            runEnd + runStart + activityWindow.windowState + activityWindow.windowSubstate;
+    }
+    exports.getStateId = getStateId;
+    var ActivityWindowCache = (function () {
+        function ActivityWindowCache(globalFilter) {
+            this._activityWindowCache = {};
+            this._pageContext = {};
+            this._appContext = AppContext.AppContext.getInstance();
+            this._globalFilter = globalFilter;
+        }
+        ActivityWindowCache.prototype.clearPageContext = function (viewName) {
+            if (viewName in this._pageContext) {
+                delete this._pageContext[viewName];
+            }
+        };
+        ActivityWindowCache.prototype.hasNextPage = function (viewName) {
+            return Util.propertyHasValue(this._pageContext[viewName]);
+        };
+        ActivityWindowCache.prototype.fetchPage = function (viewName, filter, orderBy) {
+            var deferred = Q.defer();
+            filter = this.applyGlobalFilter(filter);
+            var queryParameters = {
+                filter: filter,
+                orderby: orderBy
+            };
+            if (viewName in this._pageContext) {
+                var nextLink = this._pageContext[viewName];
+                if (nextLink === null) {
+                    deferred.resolve([]);
+                    return deferred.promise;
+                }
+                this.fetch(deferred, false, nextLink, queryParameters, viewName);
+            }
+            else {
+                this.fetch(deferred, false, null, queryParameters, viewName);
+            }
+            return deferred.promise;
+        };
+        ActivityWindowCache.prototype.fetchTop = function (filter, orderBy, top) {
+            var deferred = Q.defer();
+            filter = this.applyGlobalFilter(filter);
+            var queryParameters = {
+                filter: filter,
+                orderby: orderBy,
+                top: top ? top : ActivityWindowCache._defaultTop
+            };
+            this.fetch(deferred, true, null, queryParameters, null);
+            return deferred.promise;
+        };
+        ActivityWindowCache.prototype.fetchAll = function (filter, orderBy, cancelToken) {
+            var deferred = Q.defer();
+            filter = this.applyGlobalFilter(filter);
+            var queryParameters = {
+                filter: filter,
+                orderby: orderBy
+            };
+            this.fetch(deferred, true, null, queryParameters, null, cancelToken);
+            return deferred.promise;
+        };
+        ActivityWindowCache.prototype.waitForUpdate = function (activityWindowObservable) {
+            var activityWindow = activityWindowObservable();
+            activityWindow.waiting = true;
+            activityWindow.windowState = ClientResources.statusWaiting;
+            activityWindow.statusCalendarStatus = StatusCalendar.StatusBoxState.inprogress;
+            activityWindow.displayStateHtml = ActivityWindowHelper.updateStateHtml(activityWindow.windowState, activityWindow.displayState);
+            activityWindow.copyPairs = new ActivityWindowHelper.ActivityWindowCopyPairs(activityWindow);
+            activityWindowObservable(activityWindow);
+        };
+        ActivityWindowCache.prototype.processData = function (activityWindows) {
+            var _this = this;
+            var resultActivityWindowParameters = [], numNew = 0, numCached = 0, numNoChange = 0;
+            activityWindows.forEach(function (activityWindow) {
+                var reservedId = getReservedId(activityWindow);
+                var stateId = getStateId(activityWindow);
+                var activityWindowObservable = _this._activityWindowCache[reservedId];
+                if (Util.koPropertyHasValue(activityWindowObservable)) {
+                    if (stateId === activityWindowObservable().stateId) {
+                        resultActivityWindowParameters.push(activityWindowObservable);
+                        numNoChange++;
+                        return;
+                    }
+                    numCached++;
+                }
+                else {
+                    activityWindowObservable = ko.observable(null);
+                    _this._activityWindowCache[reservedId] = activityWindowObservable;
+                    numNew++;
+                }
+                var pipeline = new PipelineModel.Encodable(activityWindow.pipelineName);
+                var entities = new BaseEncodable.EncodableSet();
+                var activityEncodable = new ActivityModel.Encodable(activityWindow.pipelineName, activityWindow.activityName);
+                entities.add(pipeline);
+                entities.add(activityEncodable);
+                activityWindow.outputDatasets.forEach(function (outputDataset) {
+                    entities.add(new TableModel.Encodable(outputDataset));
+                });
+                if (activityWindow.linkedServiceName) {
+                    entities.add(new LinkedServiceModel.Encodable(activityWindow.linkedServiceName));
+                }
+                var windowState;
+                var windowSubstate;
+                var windowStateModel = ActivityWindow_1.States[activityWindow.windowState];
+                var windowSubstateModel;
+                if (windowStateModel) {
+                    windowState = windowStateModel.displayName;
+                    if (windowStateModel.substates) {
+                        windowSubstateModel = windowStateModel.substates[activityWindow.windowSubstate];
+                        windowSubstate = windowSubstateModel ? windowSubstateModel.displayName : activityWindow.windowSubstate;
+                    }
+                }
+                else {
+                    windowState = activityWindow.windowState;
+                    windowSubstate = activityWindow.windowSubstate;
+                }
+                var displayState = !windowSubstate ? windowState : "{0}: {1}".format(windowState, windowSubstate);
+                var stateDescription = ActivityWindowHelper.getStateDescription(windowStateModel, windowSubstateModel, displayState);
+                var statusCalendarStatus = ActivityWindowHelper.createStatusCalendarStatus(activityWindow);
+                var _a = processRuntimeDetails(activityWindow), runStart = _a.runStart, runEnd = _a.runEnd, duration = _a.duration;
+                var windowStart = ActivityWindowHelper.getFormattedDate(activityWindow.windowStart, false);
+                var windowEnd = ActivityWindowHelper.getFormattedDate(activityWindow.windowEnd, false);
+                var emptyPlaceHolder = ClientResources.emptyFieldPlaceholder;
+                var runEndPair = runEnd !== emptyPlaceHolder ?
+                    DateTime.getTimePair(activityWindow.runEnd) : { local: emptyPlaceHolder, UTC: emptyPlaceHolder };
+                var runStartPair = runStart !== emptyPlaceHolder ?
+                    DateTime.getTimePair(activityWindow.runStart) : { local: emptyPlaceHolder, UTC: emptyPlaceHolder };
+                var windowStartPair = DateTime.getTimePair(activityWindow.windowStart);
+                var windowEndPair = DateTime.getTimePair(activityWindow.windowEnd);
+                var windowPair = {
+                    local: "{0} - {1}".format(windowStartPair.local, windowEndPair.local),
+                    UTC: "{0} - {1}".format(windowStartPair.UTC, windowEndPair.UTC)
+                };
+                var activityWindowParameters = {
+                    activityName: activityWindow.activityName,
+                    activityType: activityWindow.activityType,
+                    copyPairs: null,
+                    dataFactoryName: activityWindow.dataFactoryName,
+                    displayState: displayState,
+                    displayStateHtml: ActivityWindowHelper.updateStateHtml(activityWindow.windowState, displayState),
+                    duration: duration,
+                    entities: entities,
+                    inputDatasetIds: activityWindow.inputDatasetIds,
+                    inputDatasets: activityWindow.inputDatasets,
+                    linkedServiceName: activityWindow.linkedServiceName,
+                    outputDatasetIds: activityWindow.outputDatasetIds,
+                    outputDatasets: activityWindow.outputDatasets,
+                    percentComplete: activityWindow.percentComplete,
+                    pipelineName: activityWindow.pipelineName,
+                    reservedId: reservedId,
+                    resourceGroupName: activityWindow.resourceGroupName,
+                    runAttempts: activityWindow.runAttempts,
+                    runEnd: runEnd,
+                    runEndPair: runEndPair,
+                    runStart: runStart,
+                    runStartPair: runStartPair,
+                    stateDescription: stateDescription,
+                    stateId: stateId,
+                    statusCalendarStatus: statusCalendarStatus,
+                    waiting: false,
+                    windowEnd: windowEnd,
+                    windowEndPair: windowEndPair,
+                    windowPair: windowPair,
+                    windowStart: windowStart,
+                    windowStartPair: windowStartPair,
+                    windowState: windowState,
+                    windowSubstate: windowSubstate,
+                    originalWindowState: activityWindow.windowState
+                };
+                activityWindowParameters.copyPairs = new ActivityWindowHelper.ActivityWindowCopyPairs(activityWindowParameters);
+                activityWindowObservable(activityWindowParameters);
+                resultActivityWindowParameters.push(activityWindowObservable);
+            });
+            logger.logDebug("Returning {0} activity windows ({1} new, {2} cached with new info, {3} completely cached)."
+                .format(resultActivityWindowParameters.length, numNew, numCached, numNoChange));
+            return resultActivityWindowParameters;
+        };
+        ActivityWindowCache.prototype.fetch = function (deferred, fetchAllPages, nextLink, queryParameters, viewName, cancelToken) {
+            var _this = this;
+            var splitFactoryId = this._appContext.splitFactoryId();
+            this._appContext.armService.listActivityWindows({
+                subscriptionId: splitFactoryId.subscriptionId,
+                resourceGroupName: splitFactoryId.resourceGroupName,
+                factoryName: splitFactoryId.dataFactoryName
+            }, queryParameters, nextLink, fetchAllPages, cancelToken).then(function (response) {
+                if (viewName !== null && viewName !== "") {
+                    _this._pageContext[viewName] = response.nextLink ? response.nextLink : null;
+                }
+                deferred.resolve(_this.processData(response.value));
+            }, function (reason) {
+                logger.logError("Failed to fetch activity windows for factory {0} with args {1}. Reason: {2}.".format(_this._appContext.factoryId(), JSON.stringify(queryParameters), JSON.stringify(reason)));
+                _this._appContext.errorHandler.makeResourceFailedHandler("Activity Windows")(reason);
+            });
+        };
+        ActivityWindowCache.prototype.applyGlobalFilter = function (filter) {
+            if (filter === null || filter === "") {
+                return this._globalFilter();
+            }
+            else {
+                return "({0}) and ({1})".format(filter, this._globalFilter());
+            }
+        };
+        ActivityWindowCache._defaultTop = 200;
+        return ActivityWindowCache;
+    }());
+    exports.ActivityWindowCache = ActivityWindowCache;
+});
+//# sourceMappingURL=ActivityWindowCache.js.map¥©’É
+£      [Öþ[Ö ?§ç[[ØåW   œ    :https://datafactory-endpoint.azureedge.net/node_modules/@ms-atlas-module/datastudio-datafactory/scripts/Framework/Model/ActivityWindowCache.js?v=1.0.4164.1 necko:classified 1 strongly-framed 1 security-info FnhllAKWRHGAlo+ESXykKAAAAAAAAAAAwAAAAAAAAEaphjojH6pBabDSgSnsfLHeAAQAAgAAAAAAAAAAAAAAAAAAAAAB4vFIJp5wRkeyPxAQ9RJGKPqbqVvKO0mKuIl8ec8o/uhmCjImkVxP+7sgiYWmMt8FvcOXmlQiTNWFiWlrbpbqgwAAAAAAAAOwMIIDrDCCApSgAwIBAgIERTJgTjANBgkqhkiG9w0BAQsFADCBijEUMBIGA1UEBhMLUG9ydFN3aWdnZXIxFDASBgNVBAgTC1BvcnRTd2lnZ2VyMRQwEgYDVQQHEwtQb3J0U3dpZ2dlcjEUMBIGA1UEChMLUG9ydFN3aWdnZXIxFzAVBgNVBAsTDlBvcnRTd2lnZ2VyIENBMRcwFQYDVQQDEw5Qb3J0U3dpZ2dlciBDQTAeFw0xNDEwMjgxMzEyMTBaFw0zODEwMjgxMzEyMTBaMHIxFDASBgNVBAYTC1BvcnRTd2lnZ2VyMRQwEgYDVQQKEwtQb3J0U3dpZ2dlcjEXMBUGA1UECxMOUG9ydFN3aWdnZXIgQ0ExKzApBgNVBAMTImRhdGFmYWN0b3J5LWVuZHBvaW50LmF6dXJlZWRnZS5uZXQwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCKn7emKINsnWqPZ+C/VsqbQf/l4NsmIh34bXBR0xdNg9bfb+xcoghRlmbPjhZ/A26A2gJ6Rrg2d0GGMLpbqA8nTlRRGXEAD39321zk4ye09ElXClvqguGqdqOJpPQ05DPFD6wSOq+KVAEblE5bi+LMqBLipDERzgUe7xzeqVVk0i0ldh9yQOIk3YuzcBR9igSEuw5qladmMYvXKHYM9YZz0R7axMc8xAtadK7C9KfFPfEI5LS2nhmy4vBrTgFyYhfkEvKfmIj6HTX0ISFCAC2llcBLpEDcuiW76tAHp1pXDeWtSeaV36AeOctdleVgrbmsGs3fu6ppuRcWjEZUbjE3AgMBAAGjMTAvMC0GA1UdEQQmMCSCImRhdGFmYWN0b3J5LWVuZHBvaW50LmF6dXJlZWRnZS5uZXQwDQYJKoZIhvcNAQELBQADggEBAD5nTga0zudMitI/u0TfDiXUvU9MHWtnM1QsCR52LG8/P3zHlMPdW01WDRZUWTzCGka9MJHNjppqHPNsxY69i49nAksLYLzG7nK57bfwfvJQH/v27QUFGFMmKZNtpz+523V8pi+RJR9/DcmY0SQslyt1+Cj1SViKKOJYr8DiCwrYSUxWRp0XCM6ACnyoVhILHxIff7DQUE7Qq8eLX2UMcsrHHrlmbWpSCkEMtikIahIK4D2jjHj/CFWVzmKApRGZHRCenGUCvwPc6+mdefq6dna4yuo/9sC8unizedWeSL+sIj+Qxy7egEU4w3ZyvM8xUIozSNHY/VVwXW5ypPYqSlDALwEDAAAAAAEBAAAAAA== request-method GET request-Accept-Encoding gzip, deflate, br response-head HTTP/1.1 200 OK
+Content-Type: application/javascript
+Last-Modified: Sat, 06 Oct 2018 23:13:01 GMT
+Accept-Ranges: bytes
+Etag: "6652f320ca5dd41:0"
+Server: Microsoft-IIS/8.5
+X-Frame-Options: AllowAll
+X-XSS-Protection: 1; mode=block
+X-Content-Type-Options: nosniff
+Strict-Transport-Security: max-age=15724800; includeSubDomains
+Access-Control-Allow-Origin: *
+Vary: Accept-Encoding
+Content-Length: 14319
+Date: Sun, 28 Oct 2018 18:50:39 GMT
+ original-response-headers Content-Type: application/javascript
+Last-Modified: Sat, 06 Oct 2018 23:13:01 GMT
+Accept-Ranges: bytes
+Etag: "6652f320ca5dd41:0"
+Server: Microsoft-IIS/8.5
+X-Frame-Options: AllowAll
+X-XSS-Protection: 1; mode=block
+X-Content-Type-Options: nosniff
+Strict-Transport-Security: max-age=15724800; includeSubDomains
+Access-Control-Allow-Origin: *
+Vary: Accept-Encoding
+Content-Length: 14319
+Date: Sun, 28 Oct 2018 18:50:39 GMT
+Connection: close
+ uncompressed-len 0 net-response-time-onstart 1829 net-response-time-onstop 1829   7ï

@@ -1,0 +1,734 @@
+var __extends = (this && this.__extends) || (function () {
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    }
+    return function (d, b) {
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
+define(["require", "exports", "underscore", "knockout", "q", "../../Contracts/ViewModels", "../../Contracts/DataModels", "../../Shared/Telemetry/TelemetryConstants", "../../Common/Constants", "../../Common/EditableUtility", "../../Utils/PricingUtils", "../../Shared/Constants", "./TabsBase", "../Menus/CommandBar/CommandBarOptions", "../../PlatformType", "../../Shared/Telemetry/TelemetryProcessor", "jquery"], function (require, exports, _, ko, Q, ViewModels, DataModels, TelemetryConstants_1, Constants, editable, PricingUtils, SharedConstants, TabsBase, CommandBarOptions_1, PlatformType_1, TelemetryProcessor_1) {
+    "use strict";
+    var DocumentDB = window.DocumentDB;
+    var indexingPolicyTTLWarningMessage = 'Changing the TTL or Indexing Policy impacts query results while the index transformation occurs. When a change is made and the indexing mode is set to consistent or lazy, queries return eventual results until the operation completes. For more information see, <a target="_blank" href="https://aka.ms/cosmos-db-ttl-indexing">TTL and index interaction</a>.';
+    var updateThroughputBeyondLimitWarningMessage = 'You are about to request an increase in throughput beyond the pre-allocated capacity. The service will scale out and increase throughput for the selected collection. This operation will take 1-3 business days to complete. You can track the status of this request in Notifications.';
+    var updateThroughputDelayedApplyWarningMessage = 'You are about to request an increase in throughput beyond the pre-allocated capacity. This operation will take some time to complete.';
+    var throughputApplyDelayedMessage = function (throughput, throughputUnit, databaseName, collectionName) { return "The request to increase the throughput has successfully been submitted. This operation will take 1-3 business days to complete. View the latest status in Notifications.<br />Database: " + databaseName + ", Collection: " + collectionName + ", Throughput: " + throughput + " " + throughputUnit; };
+    var throughputApplyShortDelayMessage = function (throughput, throughputUnit, databaseName, collectionName) { return "A request to increase the throughput is currently in progress. This operation will take some time to complete.<br />Database: " + databaseName + ", Collection: " + collectionName + ", Throughput: " + throughput + " " + throughputUnit; };
+    var throughputApplyLongDelayMessage = function (throughput, throughputUnit, databaseName, collectionName) { return "A request to increase the throughput is currently in progress. This operation will take 1-3 business days to complete. View the latest status in Notifications.<br />Database: " + databaseName + ", Collection: " + collectionName + ", Throughput: " + throughput + " " + throughputUnit; };
+    var SettingsTab = /** @class */ (function (_super) {
+        __extends(SettingsTab, _super);
+        function SettingsTab(options) {
+            var _this = _super.call(this, options) || this;
+            _this.commandBarOptions = {};
+            _this.onSaveClick = function () {
+                var promises = [];
+                _this.isExecutionError(false);
+                _this.isExecuting(true);
+                var startKey = TelemetryProcessor_1.default.traceStart(TelemetryConstants_1.Action.UpdateSettings, {
+                    databaseAccountName: _this.container.databaseAccount().name,
+                    defaultExperience: _this.container.defaultExperience(),
+                    dataExplorerArea: Constants.Areas.Tab,
+                    tabTitle: _this.tabTitle()
+                });
+                if (_this.shouldUpdateCollection()) {
+                    var defaultTtl = void 0;
+                    switch (_this.timeToLive()) {
+                        case "on":
+                            defaultTtl = Number(_this.timeToLiveSeconds());
+                            break;
+                        case "on-nodefault":
+                            defaultTtl = -1;
+                            break;
+                        case "off":
+                        default:
+                            defaultTtl = undefined;
+                            break;
+                    }
+                    var newCollectionAttributes = {
+                        defaultTtl: defaultTtl,
+                        indexingPolicy: _this.indexingPolicyContent()
+                    };
+                    var conflictResolutionChanges = _this.getUpdatedConflictResolutionPolicy();
+                    if (!!conflictResolutionChanges) {
+                        newCollectionAttributes.conflictResolutionPolicy = conflictResolutionChanges;
+                    }
+                    var newCollection = _.extend({}, _this.collection.rawDataModel, newCollectionAttributes);
+                    var updateCollectionPromise = _this.container.documentClientUtility.updateCollection({ self: _this.collection.self, resourceName: _this.collection.id(), rid: _this.collection.rid }, newCollection, null /*options*/).then(function (updatedCollection) {
+                        _this.collection.rawDataModel = updatedCollection;
+                        _this.collection.defaultTtl(updatedCollection.defaultTtl);
+                        _this.collection.id(updatedCollection.id);
+                        _this.collection.indexingPolicy(updatedCollection.indexingPolicy);
+                        _this.collection.conflictResolutionPolicy(updatedCollection.conflictResolutionPolicy);
+                    });
+                    promises.push(updateCollectionPromise);
+                }
+                if (_this.throughput.editableIsDirty() || _this.rupm.editableIsDirty()) {
+                    var newThroughput_1 = _this.throughput();
+                    var isRUPerMinuteThroughputEnabled = _this.rupm() === Constants.RUPMStates.on;
+                    var newOffer = _.extend({}, _this.collection.offer());
+                    var originalThroughputValue_1 = _this.throughput.getEditableOriginalValue();
+                    if (newOffer.content) {
+                        newOffer.content.offerThroughput = newThroughput_1;
+                        newOffer.content.offerIsRUPerMinuteThroughputEnabled = isRUPerMinuteThroughputEnabled;
+                    }
+                    else {
+                        newOffer = _.extend({}, newOffer, { content: { offerThroughput: newThroughput_1, offerIsRUPerMinuteThroughputEnabled: isRUPerMinuteThroughputEnabled } });
+                    }
+                    if ((_this.maxRUs() <= Constants.BackendDefaults.multiplePartitionMaxThroughputElastic) && (newThroughput_1 > Constants.BackendDefaults.multiplePartitionMaxThroughputElastic) && _this.container != null) {
+                        var requestPayload = {
+                            subscriptionId: DocumentDB.RequestHandler._subscriptionId(),
+                            databaseAccountName: DocumentDB.RequestHandler._databaseAccount().name,
+                            resourceGroup: DocumentDB.RequestHandler._resourceGroup(),
+                            databaseName: _this.collection.database.id(),
+                            collectionName: _this.collection.id(),
+                            throughput: newThroughput_1,
+                            offerIsRUPerMinuteThroughputEnabled: isRUPerMinuteThroughputEnabled
+                        };
+                        var updateOfferBeyondLimitPromise = _this.documentClientUtility.updateOfferThroughputBeyondLimit(requestPayload, null /** options **/).then(function () {
+                            _this.collection.offer().content.offerThroughput = originalThroughputValue_1;
+                            _this.throughput(originalThroughputValue_1);
+                            _this.notificationStatusInfo(throughputApplyDelayedMessage(newThroughput_1, _this._getThroughputUnit(), _this.collection.database.id(), _this.collection.id()));
+                            _this.throughput.valueHasMutated(); // force component re-render
+                        }, function (error) {
+                            TelemetryProcessor_1.default.traceFailure(TelemetryConstants_1.Action.UpdateSettings, {
+                                databaseAccountName: _this.container.databaseAccount().name,
+                                databaseName: _this.collection && _this.collection.database.id(),
+                                collectionName: _this.collection && _this.collection.id(),
+                                defaultExperience: _this.container.defaultExperience(),
+                                dataExplorerArea: Constants.Areas.Tab,
+                                tabTitle: _this.tabTitle(),
+                                error: error
+                            }, startKey);
+                        });
+                        promises.push(updateOfferBeyondLimitPromise);
+                    }
+                    else {
+                        var updateOfferPromise = _this.documentClientUtility.updateOffer(_this.collection.offer(), newOffer).then(function (updatedOffer) {
+                            _this.collection.offer(updatedOffer);
+                            _this.collection.offer.valueHasMutated();
+                        });
+                        promises.push(updateOfferPromise);
+                    }
+                }
+                if (promises.length === 0) {
+                    _this.isExecuting(false);
+                }
+                return Q.all(promises).then(function () {
+                    _this.container.isRefreshingExplorer(false);
+                    _this._setBaseline();
+                    _this.collection.readSettings();
+                    TelemetryProcessor_1.default.traceSuccess(TelemetryConstants_1.Action.UpdateSettings, {
+                        databaseAccountName: _this.container.databaseAccount().name,
+                        defaultExperience: _this.container.defaultExperience(),
+                        dataExplorerArea: Constants.Areas.Tab,
+                        tabTitle: _this.tabTitle()
+                    }, startKey);
+                }, function (reason) {
+                    _this.container.isRefreshingExplorer(false);
+                    _this.isExecutionError(true);
+                    console.error(reason);
+                    TelemetryProcessor_1.default.traceFailure(TelemetryConstants_1.Action.UpdateSettings, {
+                        databaseAccountName: _this.container.databaseAccount().name,
+                        defaultExperience: _this.container.defaultExperience(),
+                        dataExplorerArea: Constants.Areas.Tab,
+                        tabTitle: _this.tabTitle()
+                    }, startKey);
+                }).finally(function () { return _this.isExecuting(false); });
+            };
+            _this.onRevertClick = function () {
+                _this.throughput.setBaseline(_this.throughput.getEditableOriginalValue());
+                _this.timeToLive.setBaseline(_this.timeToLive.getEditableOriginalValue());
+                _this.timeToLiveSeconds.setBaseline(_this.timeToLiveSeconds.getEditableOriginalValue());
+                _this.rupm.setBaseline(_this.rupm.getEditableOriginalValue());
+                _this.conflictResolutionPolicyMode.setBaseline(_this.conflictResolutionPolicyMode.getEditableOriginalValue());
+                _this.conflictResolutionPolicyPath.setBaseline(_this.conflictResolutionPolicyPath.getEditableOriginalValue());
+                _this.conflictResolutionPolicyProcedure.setBaseline(_this.conflictResolutionPolicyProcedure.getEditableOriginalValue());
+                var indexingPolicyContent = _this.indexingPolicyContent.getEditableOriginalValue();
+                var value = JSON.stringify(indexingPolicyContent, null, 4);
+                _this.indexingPolicyContent.setBaseline(indexingPolicyContent);
+                var indexingPolicyEditor = _this.indexingPolicyEditor();
+                if (indexingPolicyEditor) {
+                    var indexingPolicyEditorModel = indexingPolicyEditor.getModel();
+                    indexingPolicyEditorModel.setValue(value);
+                }
+                return Q();
+            };
+            _this.container = options.collection && options.collection.container;
+            _this.isIndexingPolicyEditorInitializing = ko.observable(false);
+            // html element ids
+            _this.indexingPolicyEditorId = "indexingpolicyeditor" + _this.tabId;
+            _this.ttlOffId = "ttlOffId" + _this.tabId;
+            _this.ttlOnNoDefaultId = "ttlOnNoDefault" + _this.tabId;
+            _this.ttlOnId = "ttlOn" + _this.tabId;
+            _this.rupmOnId = "rupmOn" + _this.tabId;
+            _this.rupmOffId = "rupmOff" + _this.tabId;
+            _this.conflictResolutionPolicyModeCustom = "conflictResolutionPolicyModeCustom" + _this.tabId;
+            _this.conflictResolutionPolicyModeLWW = "conflictResolutionPolicyModeLWW" + _this.tabId;
+            _this.conflictResolutionPolicyModeCRDT = "conflictResolutionPolicyModeCRDT" + _this.tabId;
+            _this.scaleExpanded = ko.observable(true);
+            _this.settingsExpanded = ko.observable(true);
+            _this.conflictResolutionExpanded = ko.observable(true);
+            _this.throughput = editable.observable();
+            _this.conflictResolutionPolicyMode = editable.observable();
+            _this.conflictResolutionPolicyPath = editable.observable();
+            _this.conflictResolutionPolicyProcedure = editable.observable();
+            _this.timeToLive = editable.observable();
+            _this.timeToLiveSeconds = editable.observable();
+            _this.indexingPolicyContent = editable.observable();
+            _this.rupm = editable.observable();
+            _this.requestUnitsUsageCost = ko.pureComputed(function () {
+                var offerThroughput = _this.throughput();
+                var hourlyPrice = PricingUtils.computeRUUsagePriceHourly(_this.container.serverId(), _this.rupm() === Constants.RUPMStates.on, offerThroughput);
+                var dailyPrice = hourlyPrice * 24;
+                var currency = PricingUtils.getPriceCurrency(_this.container.serverId());
+                return "Estimated spend (" + currency + "): <b>$" + PricingUtils.calculateEstimateNumber(hourlyPrice) + " hourly / $" + PricingUtils.calculateEstimateNumber(dailyPrice) + " daily.</b>";
+            });
+            _this.hasDatabaseSharedThroughput = ko.pureComputed(function () {
+                return _this.collection.database.isDatabaseShared() && !_this.collection.offer();
+            });
+            _this.hasConflictResolution = ko.pureComputed(function () {
+                return _this.collection.conflictResolutionPolicy && !!_this.collection.conflictResolutionPolicy();
+            });
+            _this.rupmVisible = ko.computed(function () {
+                if (_this.container.isEmulator) {
+                    return false;
+                }
+                if (_this.container.isFeatureEnabled(Constants.Features.enableRupm)) {
+                    return true;
+                }
+                for (var i = 0, len = _this.container.databases().length; i < len; i++) {
+                    for (var j = 0, len2 = _this.container.databases()[i].collections().length; j < len2; j++) {
+                        var collectionOffer = _this.container.databases()[i].collections()[j].offer();
+                        if (collectionOffer && collectionOffer.content && collectionOffer.content.offerIsRUPerMinuteThroughputEnabled) {
+                            return true;
+                        }
+                    }
+                }
+                return false;
+            });
+            _this.ttlVisible = ko.computed(function () {
+                return true;
+            });
+            _this.costsVisible = ko.computed(function () {
+                return !_this.container.isEmulator;
+            });
+            _this.isTryCosmosDBSubscription = ko.computed(function () {
+                return _this.container && _this.container.isTryCosmosDBSubscription() || false;
+            });
+            _this.canThroughputExceedMaximumValue = ko.pureComputed(function () { return _this.container.getPlatformType() === PlatformType_1.PlatformType.Portal && !_this.container.isRunningOnNationalCloud() && !!_this.collection.partitionKey; });
+            _this.canRequestSupport = ko.pureComputed(function () {
+                if (!!_this.container.isEmulator || !!_this.isTryCosmosDBSubscription() || _this.canThroughputExceedMaximumValue() || _this.container.getPlatformType() === PlatformType_1.PlatformType.Hosted) {
+                    return false;
+                }
+                var numPartitions = _this.collection.quotaInfo().numPartitions;
+                return !!_this.collection.partitionKeyProperty || numPartitions > 1;
+            });
+            _this.shouldDisplayPortalUsePrompt = ko.pureComputed(function () { return _this.container.getPlatformType() === PlatformType_1.PlatformType.Hosted && !!_this.collection.partitionKey; });
+            _this.minRUs = ko.computed(function () {
+                if (_this.isTryCosmosDBSubscription()) {
+                    return Constants.BackendDefaults.singlePartitionMinThroughput;
+                }
+                var collectionThroughputInfo = _this.collection && _this.collection.offer && _this.collection.offer() && _this.collection.offer().content && _this.collection.offer().content.collectionThroughputInfo;
+                if (collectionThroughputInfo && collectionThroughputInfo.minimumRUForCollection && collectionThroughputInfo.minimumRUForCollection > 0) {
+                    return collectionThroughputInfo.minimumRUForCollection;
+                }
+                var numPartitions = (collectionThroughputInfo && collectionThroughputInfo.numPhysicalPartitions) || _this.collection.quotaInfo().numPartitions;
+                if (!numPartitions || numPartitions === 1) {
+                    return Constants.BackendDefaults.singlePartitionMinThroughput;
+                }
+                var baseRU = Constants.BackendDefaults.multiplePartitionMinThroughputElastic;
+                var quotaInKb = _this.collection.quotaInfo().collectionSize;
+                var quotaInGb = PricingUtils.usageInGB(quotaInKb);
+                var perPartitionGBQuota = Math.max(10, quotaInGb / numPartitions);
+                var baseRUbyPartitions = (numPartitions * perPartitionGBQuota / 10) * 100;
+                return Math.max(baseRU, baseRUbyPartitions);
+            });
+            _this.maxRUs = ko.computed(function () {
+                if (_this.isTryCosmosDBSubscription()) {
+                    return Constants.TryCosmosExperience.maxRU;
+                }
+                var collectionThroughputInfo = _this.collection && _this.collection.offer && _this.collection.offer() && _this.collection.offer().content && _this.collection.offer().content.collectionThroughputInfo;
+                var numPartitions = (collectionThroughputInfo && collectionThroughputInfo.numPhysicalPartitions) || _this.collection.quotaInfo().numPartitions;
+                if (!!numPartitions) {
+                    return SharedConstants.CollectionCreation.MaxRUPerPartition * numPartitions;
+                }
+                return SharedConstants.CollectionCreation.MaxRUPerPartition;
+            });
+            _this.maxRUThroughputInputLimit = ko.pureComputed(function () {
+                if (_this.container && !!_this.collection.partitionKey && (_this.container.getPlatformType() === PlatformType_1.PlatformType.Hosted)) {
+                    return Constants.BackendDefaults.multiplePartitionMaxThroughputElastic;
+                }
+                return _this.maxRUs();
+            });
+            _this.maxRUsText = ko.pureComputed(function () {
+                return Constants.BackendDefaults.multiplePartitionMaxThroughputElastic.toLocaleString();
+            });
+            _this.throughputTitle = ko.pureComputed(function () {
+                var minThroughput = _this.minRUs().toLocaleString();
+                var maxThroughput = "unlimited";
+                if (!_this.canThroughputExceedMaximumValue()) {
+                    maxThroughput = _this.maxRUs().toLocaleString();
+                }
+                return "Throughput (" + minThroughput + " - " + maxThroughput + " RU/s)";
+            });
+            _this.storageCapacityTitle = ko.pureComputed(function () {
+                var capacity = "Unlimited";
+                var offerThroughput = _this.collection && _this.collection.offer && _this.collection.offer() && _this.collection.offer().content && _this.collection.offer().content.offerThroughput;
+                if (!_this.collection.partitionKeyProperty || !offerThroughput || offerThroughput < Constants.BackendDefaults.multiplePartitionMinThroughputElastic) {
+                    capacity = "Fixed";
+                }
+                return "Storage capacity <br /><b>" + capacity + "</b>";
+            });
+            _this.partitionKeyVisible = ko.computed(function () {
+                if (_this.container.isPreferredApiCassandra() || _this.container.isPreferredApiTable()) {
+                    return false;
+                }
+                return !!_this.collection.partitionKeyProperty;
+            });
+            _this.partitionKeyValue = ko.observable('/' + _this.collection.partitionKeyProperty);
+            _this.partitionKeyName = ko.computed(function () {
+                if (!!_this.container.isPreferredApiMongoDB()) {
+                    return "Shard key";
+                }
+                return "Partition key";
+            });
+            _this.indexingPolicyEditor = ko.observable();
+            _this._setBaseline();
+            _this.saveSettingsButton = {
+                enabled: ko.computed(function () {
+                    // TODO: move validations to editables and display validation errors
+                    if (_this._offerReplacePending && _this._offerReplacePending()) {
+                        return false;
+                    }
+                    if (!_this.hasDatabaseSharedThroughput()) {
+                        if (!_this.throughput()) {
+                            return false;
+                        }
+                        else if ((_this.throughput() < _this.minRUs())) {
+                            return false;
+                        }
+                        else if ((_this.throughput() > _this.maxRUs()) && (_this.container.isEmulator || !_this.collection.partitionKey)) {
+                            return false;
+                        }
+                        else if (!_this.canThroughputExceedMaximumValue() && (_this.throughput() > Constants.BackendDefaults.multiplePartitionMaxThroughputElastic)) {
+                            return false;
+                        }
+                        else if (_this.throughput.editableIsDirty() && !!_this.throughput()) {
+                            return true;
+                        }
+                    }
+                    if (_this.hasConflictResolution()) {
+                        if (_this.conflictResolutionPolicyMode.editableIsDirty()
+                            || _this.conflictResolutionPolicyPath.editableIsDirty()
+                            || _this.conflictResolutionPolicyProcedure.editableIsDirty()) {
+                            return true;
+                        }
+                    }
+                    if (_this.timeToLive() === "on" && !_this.timeToLiveSeconds()) {
+                        return false;
+                    }
+                    if (_this.rupm() === Constants.RUPMStates.on && _this.throughput() > (SharedConstants.CollectionCreation.MaxRUPMPerPartition * _this.collection.quotaInfo().numPartitions)) {
+                        return false;
+                    }
+                    if (_this.timeToLive.editableIsDirty()) {
+                        return true;
+                    }
+                    if (_this.timeToLive() === "on" && _this.timeToLiveSeconds.editableIsDirty()) {
+                        return true;
+                    }
+                    if (_this.indexingPolicyContent.editableIsDirty() && _this.indexingPolicyContent.editableIsValid()) {
+                        return true;
+                    }
+                    if (_this.rupm.editableIsDirty()) {
+                        return true;
+                    }
+                    return false;
+                }),
+                visible: ko.computed(function () {
+                    return true;
+                })
+            };
+            _this.discardSettingsChangesButton = {
+                enabled: ko.computed(function () {
+                    if (_this.throughput.editableIsDirty()) {
+                        return true;
+                    }
+                    if (_this.timeToLive.editableIsDirty()) {
+                        return true;
+                    }
+                    if (_this.timeToLive() === "on" && _this.timeToLiveSeconds.editableIsDirty()) {
+                        return true;
+                    }
+                    if (_this.indexingPolicyContent.editableIsDirty()) {
+                        return true;
+                    }
+                    if (_this.rupm.editableIsDirty()) {
+                        return true;
+                    }
+                    if (_this.conflictResolutionPolicyMode.editableIsDirty()
+                        || _this.conflictResolutionPolicyPath.editableIsDirty()
+                        || _this.conflictResolutionPolicyProcedure.editableIsDirty()) {
+                        return true;
+                    }
+                    return false;
+                }),
+                visible: ko.computed(function () {
+                    return true;
+                })
+            };
+            _this.ttlOffFocused = ko.observable(false);
+            _this.ttlOnDefaultFocused = ko.observable(false);
+            _this.ttlOnFocused = ko.observable(false);
+            _this.indexingPolicyElementFocused = ko.observable(false);
+            _this.pendingNotification = ko.observable(undefined);
+            _this._offerReplacePending = ko.pureComputed(function () {
+                var offer = _this.collection && _this.collection.offer && _this.collection.offer();
+                return offer && offer.hasOwnProperty("headers") && !!offer.headers[Constants.HttpHeaders.offerReplacePending];
+            });
+            _this.notificationStatusInfo = ko.observable("");
+            _this.shouldShowNotificationStatusPrompt = ko.computed(function () { return _this.notificationStatusInfo().length > 0; });
+            _this.warningMessage = ko.computed(function () {
+                var throughputExceedsBackendLimits = _this.canThroughputExceedMaximumValue() && (_this.maxRUs() <= Constants.BackendDefaults.multiplePartitionMaxThroughputElastic) && (_this.throughput() > Constants.BackendDefaults.multiplePartitionMaxThroughputElastic);
+                var throughputExceedsMaxValue = !_this.container.isEmulator && (_this.throughput() > _this.maxRUs());
+                var ttlOrIndexingPolicyFieldsDirty = _this.timeToLive.editableIsDirty() || _this.indexingPolicyContent.editableIsDirty() || _this.timeToLiveSeconds.editableIsDirty();
+                var ttlFieldFocused = _this.ttlOffFocused() || _this.ttlOnDefaultFocused() || _this.ttlOnFocused();
+                var offer = _this.collection && _this.collection.offer && _this.collection.offer();
+                if (offer && offer.hasOwnProperty("headers") && !!offer.headers[Constants.HttpHeaders.offerReplacePending]) {
+                    return throughputApplyShortDelayMessage(offer.content.offerThroughput, _this._getThroughputUnit(), _this.collection.database.id(), _this.collection.id());
+                }
+                if (throughputExceedsBackendLimits && !!_this.collection.partitionKey && !ttlFieldFocused && !_this.indexingPolicyElementFocused()) {
+                    return updateThroughputBeyondLimitWarningMessage;
+                }
+                if (throughputExceedsMaxValue && !!_this.collection.partitionKey && !ttlFieldFocused && !_this.indexingPolicyElementFocused()) {
+                    return updateThroughputDelayedApplyWarningMessage;
+                }
+                if (_this.pendingNotification()) {
+                    var throughputUnit = _this._getThroughputUnit();
+                    var matches = _this.pendingNotification().description.match("Throughput update for (.*) " + throughputUnit);
+                    var throughput = (matches.length > 1) && Number(matches[1]);
+                    if (throughput) {
+                        return throughputApplyLongDelayMessage(throughput, throughputUnit, _this.collection.database.id(), _this.collection.id());
+                    }
+                }
+                if (ttlOrIndexingPolicyFieldsDirty) {
+                    return indexingPolicyTTLWarningMessage;
+                }
+                return "";
+            });
+            _this.warningMessage.subscribe(function (warning) {
+                if (warning.length > 0) {
+                    _this.notificationStatusInfo("");
+                }
+            });
+            _this.shouldShowStatusBar = ko.computed(function () { return (_this.shouldShowNotificationStatusPrompt() || (_this.warningMessage && (_this.warningMessage().length > 0))); });
+            _this.isTemplateReady = ko.observable(false);
+            _this.isTemplateReady.subscribe(function (isTemplateReady) {
+                if (!_this.indexingPolicyEditor() && !_this.isIndexingPolicyEditorInitializing() && isTemplateReady) {
+                    _this._createIndexingPolicyEditor();
+                }
+            });
+            _this._buildCommandBarOptions();
+            return _this;
+        }
+        SettingsTab.prototype.shouldUpdateCollection = function () {
+            return this.timeToLive.editableIsDirty()
+                || (this.timeToLive() === "on" && this.timeToLiveSeconds.editableIsDirty())
+                || this.conflictResolutionPolicyMode.editableIsDirty()
+                || this.conflictResolutionPolicyPath.editableIsDirty()
+                || this.conflictResolutionPolicyProcedure.editableIsDirty()
+                || this.indexingPolicyContent.editableIsDirty();
+        };
+        SettingsTab.prototype.onValidIndexingPolicyEdit = function () {
+            this.indexingPolicyContent.editableIsValid(true);
+            return Q();
+        };
+        SettingsTab.prototype.onInvalidIndexingPolicyEdit = function () {
+            this.indexingPolicyContent.editableIsValid(false);
+            return Q();
+        };
+        SettingsTab.prototype.onActivate = function () {
+            var _this = this;
+            return _super.prototype.onActivate.call(this)
+                .then(function () {
+                _this.collection.selectedSubnodeKind(ViewModels.CollectionTabKind.Settings);
+            });
+        };
+        SettingsTab.prototype.toggleScale = function () {
+            this.scaleExpanded(!this.scaleExpanded());
+        };
+        SettingsTab.prototype.toggleSettings = function () {
+            if (this.hasDatabaseSharedThroughput()) {
+                return;
+            }
+            this.settingsExpanded(!this.settingsExpanded());
+        };
+        SettingsTab.prototype.toggleConflictResolution = function () {
+            this.conflictResolutionExpanded(!this.conflictResolutionExpanded());
+        };
+        SettingsTab.prototype.onScaleKeyPress = function (source, event) {
+            if (event.keyCode === Constants.KeyCodes.Space || event.keyCode === Constants.KeyCodes.Enter) {
+                this.toggleScale();
+                event.stopPropagation();
+                return false;
+            }
+            return true;
+        };
+        SettingsTab.prototype.onConflictResolutionKeyPress = function (source, event) {
+            if (event.keyCode === Constants.KeyCodes.Space || event.keyCode === Constants.KeyCodes.Enter) {
+                this.toggleConflictResolution();
+                event.stopPropagation();
+                return false;
+            }
+            return true;
+        };
+        SettingsTab.prototype.onSettingsKeyPress = function (source, event) {
+            if (event.keyCode === Constants.KeyCodes.Space || event.keyCode === Constants.KeyCodes.Enter) {
+                this.toggleSettings();
+                event.stopPropagation();
+                return false;
+            }
+            return true;
+        };
+        SettingsTab.prototype.onTtlOffKeyPress = function (source, event) {
+            if (event.keyCode === Constants.KeyCodes.Space || event.keyCode === Constants.KeyCodes.Enter) {
+                this.timeToLive("off");
+                event.stopPropagation();
+                return false;
+            }
+            return true;
+        };
+        SettingsTab.prototype.onTtlOnNoDefaultKeyPress = function (source, event) {
+            if (event.keyCode === Constants.KeyCodes.Space || event.keyCode === Constants.KeyCodes.Enter) {
+                this.timeToLive("on-nodefault");
+                event.stopPropagation();
+                return false;
+            }
+            return true;
+        };
+        SettingsTab.prototype.onTtlOnKeyPress = function (source, event) {
+            if (event.keyCode === Constants.KeyCodes.Space || event.keyCode === Constants.KeyCodes.Enter) {
+                this.timeToLive("on");
+                event.stopPropagation();
+                return false;
+            }
+            return true;
+        };
+        SettingsTab.prototype.onConflictResolutionCustomKeyPress = function (source, event) {
+            if (event.keyCode === Constants.KeyCodes.Space || event.keyCode === Constants.KeyCodes.Enter) {
+                this.conflictResolutionPolicyMode(DataModels.ConflictResolutionMode.Custom);
+                event.stopPropagation();
+                return false;
+            }
+            return true;
+        };
+        SettingsTab.prototype.onConflictResolutionLWWKeyPress = function (source, event) {
+            if (event.keyCode === Constants.KeyCodes.Space || event.keyCode === Constants.KeyCodes.Enter) {
+                this.conflictResolutionPolicyMode(DataModels.ConflictResolutionMode.LastWriterWins);
+                event.stopPropagation();
+                return false;
+            }
+            return true;
+        };
+        SettingsTab.prototype._getThroughputUnit = function () {
+            return this.rupm() === Constants.RUPMStates.on ? "RU/m" : "RU/s";
+        };
+        SettingsTab.prototype.getUpdatedConflictResolutionPolicy = function () {
+            if (!this.conflictResolutionPolicyMode.editableIsDirty()
+                && !this.conflictResolutionPolicyPath.editableIsDirty()
+                && !this.conflictResolutionPolicyProcedure.editableIsDirty()) {
+                return null;
+            }
+            var policy = {
+                mode: SettingsTab.parseConflictResolutionMode(this.conflictResolutionPolicyMode())
+            };
+            if (policy.mode === DataModels.ConflictResolutionMode.Custom && !!this.conflictResolutionPolicyProcedure() && this.conflictResolutionPolicyProcedure().length > 0) {
+                policy.conflictResolutionProcedure = Constants.HashRoutePrefixes.sprocWithIds(this.collection.database.id(), this.collection.id(), this.conflictResolutionPolicyProcedure(), false);
+            }
+            if (policy.mode === DataModels.ConflictResolutionMode.LastWriterWins) {
+                policy.conflictResolutionPath = this.conflictResolutionPolicyPath();
+                if (policy.conflictResolutionPath
+                    && policy.conflictResolutionPath.length > 0
+                    && policy.conflictResolutionPath[0] !== '/') {
+                    policy.conflictResolutionPath = '/' + policy.conflictResolutionPath;
+                }
+            }
+            return policy;
+        };
+        SettingsTab.parseConflictResolutionMode = function (modeFromBackend) {
+            // Backend can contain different casing as it does case-insensitive comparisson
+            if (!modeFromBackend) {
+                return null;
+            }
+            var modeAsLowerCase = modeFromBackend.toLowerCase();
+            if (modeAsLowerCase === DataModels.ConflictResolutionMode.Custom.toLowerCase()) {
+                return DataModels.ConflictResolutionMode.Custom;
+            }
+            // Default is LWW
+            return DataModels.ConflictResolutionMode.LastWriterWins;
+        };
+        SettingsTab.parseConflictResolutionProcedure = function (procedureFromBackEnd) {
+            // Backend data comes in /dbs/xxxx/colls/xxxx/sprocs/{name}, to make it easier for users, we just use the name
+            if (!procedureFromBackEnd) {
+                return null;
+            }
+            if (procedureFromBackEnd.indexOf('/') >= 0) {
+                var sprocsIndex = procedureFromBackEnd.indexOf(Constants.HashRoutePrefixes.sprocHash);
+                if (sprocsIndex === -1) {
+                    return null;
+                }
+                return procedureFromBackEnd.substr(sprocsIndex + Constants.HashRoutePrefixes.sprocHash.length);
+            }
+            // No path, just a name, in case backend returns just the name
+            return procedureFromBackEnd;
+        };
+        SettingsTab.prototype._setBaseline = function () {
+            var defaultTtl = this.collection.defaultTtl();
+            var timeToLive = this.timeToLive();
+            var timeToLiveSeconds = this.timeToLiveSeconds();
+            switch (defaultTtl) {
+                case null:
+                case undefined:
+                case 0:
+                    timeToLive = "off";
+                    timeToLiveSeconds = 1;
+                    break;
+                case -1:
+                    timeToLive = "on-nodefault";
+                    timeToLiveSeconds = 1;
+                    break;
+                default:
+                    timeToLive = "on";
+                    timeToLiveSeconds = defaultTtl;
+                    break;
+            }
+            var offerThroughput = this.collection && this.collection.offer && this.collection.offer() && this.collection.offer().content && this.collection.offer().content.offerThroughput;
+            var offerIsRUPerMinuteThroughputEnabled = this.collection && this.collection.offer && this.collection.offer() && this.collection.offer().content && this.collection.offer().content.offerIsRUPerMinuteThroughputEnabled;
+            this.throughput.setBaseline(offerThroughput);
+            this.timeToLive.setBaseline(timeToLive);
+            this.timeToLiveSeconds.setBaseline(timeToLiveSeconds);
+            this.indexingPolicyContent.setBaseline(this.collection.indexingPolicy());
+            var conflictResolutionPolicy = this.collection.conflictResolutionPolicy && this.collection.conflictResolutionPolicy();
+            this.conflictResolutionPolicyMode.setBaseline(SettingsTab.parseConflictResolutionMode(conflictResolutionPolicy && conflictResolutionPolicy.mode));
+            this.conflictResolutionPolicyPath.setBaseline(conflictResolutionPolicy && conflictResolutionPolicy.conflictResolutionPath);
+            this.conflictResolutionPolicyProcedure.setBaseline(SettingsTab.parseConflictResolutionProcedure(conflictResolutionPolicy && conflictResolutionPolicy.conflictResolutionProcedure));
+            this.rupm.setBaseline(offerIsRUPerMinuteThroughputEnabled ? Constants.RUPMStates.on : Constants.RUPMStates.off);
+            var indexingPolicyContent = this.collection.indexingPolicy();
+            var value = JSON.stringify(indexingPolicyContent, null, 4);
+            this.indexingPolicyContent.setBaseline(indexingPolicyContent);
+            if (!this.indexingPolicyEditor() && !this.isIndexingPolicyEditorInitializing()) {
+                this._createIndexingPolicyEditor();
+            }
+            else {
+                var indexingPolicyEditorModel = this.indexingPolicyEditor().getModel();
+                indexingPolicyEditorModel.setValue(value);
+            }
+        };
+        SettingsTab.prototype._createIndexingPolicyEditor = function () {
+            var _this = this;
+            this.isIndexingPolicyEditorInitializing(true);
+            // TODO: Remove this check once we unify Editor creation among all tabs
+            if (!this._getIndexingPolicyEditorContainer()) {
+                setTimeout(function () {
+                    _this._createIndexingPolicyEditor();
+                }, Constants.ClientDefaults.waitForDOMElementMs);
+                return;
+            }
+            var value = JSON.stringify(this.indexingPolicyContent(), null, 4);
+            require(['vs/editor/editor.main'], function () {
+                // TODO: Use consistent logic to create editor throughout DataExplorer avoiding any race conditions
+                $(document).ready(function () {
+                    var indexingPolicyEditor = monaco.editor.create(_this._getIndexingPolicyEditorContainer(), {
+                        value: value,
+                        language: 'json',
+                        readOnly: false,
+                        ariaLabel: "Indexing Policy"
+                    });
+                    indexingPolicyEditor.onDidFocusEditor(function () { return _this.indexingPolicyElementFocused(true); });
+                    indexingPolicyEditor.onDidBlurEditor(function () { return _this.indexingPolicyElementFocused(false); });
+                    var indexingPolicyEditorModel = indexingPolicyEditor.getModel();
+                    indexingPolicyEditorModel.onDidChangeContent(_this._onEditorContentChange.bind(_this));
+                    _this.indexingPolicyEditor(indexingPolicyEditor);
+                    _this.isIndexingPolicyEditorInitializing(false);
+                    if (_this.onLoadStartKey != null && _this.onLoadStartKey != undefined) {
+                        TelemetryProcessor_1.default.traceSuccess(TelemetryConstants_1.Action.Tab, {
+                            databaseAccountName: _this.container.databaseAccount().name,
+                            databaseName: _this.collection.database.id(),
+                            collectionName: _this.collection.id(),
+                            defaultExperience: _this.container.defaultExperience(),
+                            dataExplorerArea: Constants.Areas.Tab,
+                            tabTitle: _this.tabTitle(),
+                        }, _this.onLoadStartKey);
+                        _this.onLoadStartKey = null;
+                    }
+                });
+            });
+        };
+        SettingsTab.prototype._onEditorContentChange = function (e) {
+            var indexingPolicyEditorModel = this.indexingPolicyEditor().getModel();
+            try {
+                var parsed = JSON.parse(indexingPolicyEditorModel.getValue());
+                this.indexingPolicyContent(parsed);
+                this.onValidIndexingPolicyEdit();
+            }
+            catch (e) {
+                this.onInvalidIndexingPolicyEdit();
+            }
+        };
+        SettingsTab.prototype._getIndexingPolicyEditorContainer = function () {
+            return document.getElementById(this.indexingPolicyEditorId);
+        };
+        SettingsTab.prototype._buildCommandBarOptions = function () {
+            var _this = this;
+            var saveSettingsButton = {
+                iconSrc: 'images/save.svg',
+                onCommandClick: this.onSaveClick,
+                commandButtonLabel: 'Save',
+                hasPopup: false,
+                visible: ko.computed(function () { return _this.saveSettingsButton.visible(); }),
+                disabled: ko.computed(function () { return !_this.saveSettingsButton.enabled(); }),
+                tabIndex: ko.computed(function () { return _this.saveSettingsButton.enabled() ? 0 : -1; })
+            };
+            var discardSettingsChangesButton = {
+                iconSrc: 'images/discard.svg',
+                onCommandClick: this.onRevertClick,
+                commandButtonLabel: 'Discard',
+                hasPopup: false,
+                visible: ko.computed(function () { return _this.discardSettingsChangesButton.visible(); }),
+                disabled: ko.computed(function () { return !_this.discardSettingsChangesButton.enabled(); }),
+                tabIndex: ko.computed(function () { return _this.discardSettingsChangesButton.enabled() ? 0 : -1; })
+            };
+            this.commandBarOptions = new CommandBarOptions_1.CommandBarOptions([
+                saveSettingsButton,
+                discardSettingsChangesButton
+            ]);
+        };
+        return SettingsTab;
+    }(TabsBase));
+    return SettingsTab;
+});
+ñÓËm…•      [Õ¾á[Õ¾ô?§¶Á[×kX   D    :https://cosmos.azure.com/built/Explorer/Tabs/SettingsTab.js?v=1.0.1 necko:classified 1 strongly-framed 1 security-info FnhllAKWRHGAlo+ESXykKAAAAAAAAAAAwAAAAAAAAEaphjojH6pBabDSgSnsfLHeAAQAAgAAAAAAAAAAAAAAAAAAAAAB4vFIJp5wRkeyPxAQ9RJGKPqbqVvKO0mKuIl8ec8o/uhmCjImkVxP+7sgiYWmMt8FvcOXmlQiTNWFiWlrbpbqgwAAAAAAAAOMMIIDiDCCAnCgAwIBAgIERTJgUjANBgkqhkiG9w0BAQsFADCBijEUMBIGA1UEBhMLUG9ydFN3aWdnZXIxFDASBgNVBAgTC1BvcnRTd2lnZ2VyMRQwEgYDVQQHEwtQb3J0U3dpZ2dlcjEUMBIGA1UEChMLUG9ydFN3aWdnZXIxFzAVBgNVBAsTDlBvcnRTd2lnZ2VyIENBMRcwFQYDVQQDEw5Qb3J0U3dpZ2dlciBDQTAeFw0xNDEwMjgxMzEyMTBaFw0zODEwMjgxMzEyMTBaMGAxFDASBgNVBAYTC1BvcnRTd2lnZ2VyMRQwEgYDVQQKEwtQb3J0U3dpZ2dlcjEXMBUGA1UECxMOUG9ydFN3aWdnZXIgQ0ExGTAXBgNVBAMTEGNvc21vcy5henVyZS5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCKn7emKINsnWqPZ+C/VsqbQf/l4NsmIh34bXBR0xdNg9bfb+xcoghRlmbPjhZ/A26A2gJ6Rrg2d0GGMLpbqA8nTlRRGXEAD39321zk4ye09ElXClvqguGqdqOJpPQ05DPFD6wSOq+KVAEblE5bi+LMqBLipDERzgUe7xzeqVVk0i0ldh9yQOIk3YuzcBR9igSEuw5qladmMYvXKHYM9YZz0R7axMc8xAtadK7C9KfFPfEI5LS2nhmy4vBrTgFyYhfkEvKfmIj6HTX0ISFCAC2llcBLpEDcuiW76tAHp1pXDeWtSeaV36AeOctdleVgrbmsGs3fu6ppuRcWjEZUbjE3AgMBAAGjHzAdMBsGA1UdEQQUMBKCEGNvc21vcy5henVyZS5jb20wDQYJKoZIhvcNAQELBQADggEBABYikT6Y5YgJJ4IVJldlFDF5MKxp26YegXhvT8EmAbgr0yQBIlY2DtKEiHf7Q8wRoJ9y5Ajst1D7HmRba+XLjS6s3IHJ7gtuvc3fZj9MPKpbqSKRfHDB8bDOVIzmjBseg2BqckHTkcYak3b/pTWCTqKHM3LxKsDwN8F3HNQ2pY4d5ma2kR1EtWdTpRiIbir3QxJDcWVp8CgHONZcoMn33NNwnWWjAQMX6d8e1CPuBZi0t+myaYduCqPgKKox9qMXSubF6uifQkAJ5RdLZrZ2pghENA/4r1oz51wqEmpjPsStSUxRPwJ6wJrB4gwGtX7++ZHLjAaNrTSUCGwIOlAT4LnALwEDAAAAAAEBAAAAAA== request-method GET request-Accept-Encoding gzip, deflate, br response-head HTTP/1.1 200 OK
+Content-Length: 45221
+Content-Type: application/x-javascript
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:39:48 GMT
+ original-response-headers Content-Length: 45221
+Content-Type: application/x-javascript
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:39:48 GMT
+Connection: close
+ uncompressed-len 0 net-response-time-onstart 19083 net-response-time-onstop 19083   °¥

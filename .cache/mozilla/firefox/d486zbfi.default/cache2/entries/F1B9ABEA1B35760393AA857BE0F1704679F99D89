@@ -1,0 +1,202 @@
+define(["require", "exports", "./Constants", "./QueryBuilder/DateTimeUtilities"], function (require, exports, Constants, DateTimeUtilities) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    // For use exclusively with Tables API.
+    var DataTypes;
+    (function (DataTypes) {
+        DataTypes[DataTypes["Guid"] = 0] = "Guid";
+        DataTypes[DataTypes["Double"] = 1] = "Double";
+        DataTypes[DataTypes["String"] = 2] = "String";
+        DataTypes[DataTypes["Binary"] = 5] = "Binary";
+        DataTypes[DataTypes["Boolean"] = 8] = "Boolean";
+        DataTypes[DataTypes["DateTime"] = 9] = "DateTime";
+        DataTypes[DataTypes["Int32"] = 16] = "Int32";
+        DataTypes[DataTypes["Int64"] = 18] = "Int64";
+    })(DataTypes || (DataTypes = {}));
+    var tablesIndexers = {
+        Value: "$v",
+        Type: "$t"
+    };
+    exports.keyProperties = {
+        PartitionKey: "$pk",
+        Id: "id",
+        Id2: "$id",
+        Timestamp: "_ts",
+        resourceId: "_rid",
+        self: "_self",
+        etag: "_etag",
+        attachments: "_attachments"
+    };
+    function convertDocumentsToEntities(documents) {
+        var results = [];
+        documents.forEach(function (document) {
+            if (!document.hasOwnProperty(exports.keyProperties.PartitionKey) || !document.hasOwnProperty(exports.keyProperties.Id2)) { //Document does not match the current required format for Tables, so we ignore it
+                return; // The rest of the key properties should be guaranteed as DocumentDB properties
+            }
+            var entity = {
+                PartitionKey: {
+                    _: document[exports.keyProperties.PartitionKey],
+                    $: Constants.TableType.String
+                },
+                RowKey: {
+                    _: document[exports.keyProperties.Id],
+                    $: Constants.TableType.String
+                },
+                Timestamp: {
+                    _: DateTimeUtilities.convertUnixToJSDate(document[exports.keyProperties.Timestamp]).toUTCString(),
+                    $: Constants.TableType.DateTime
+                },
+                _rid: {
+                    _: document[exports.keyProperties.resourceId],
+                    $: Constants.TableType.String
+                },
+                _self: {
+                    _: document[exports.keyProperties.self],
+                    $: Constants.TableType.String
+                },
+                _etag: {
+                    _: document[exports.keyProperties.etag],
+                    $: Constants.TableType.String
+                },
+                _attachments: {
+                    _: document[exports.keyProperties.attachments],
+                    $: Constants.TableType.String
+                }
+            };
+            for (var property in document) {
+                if (document.hasOwnProperty(property)) {
+                    if (property !== exports.keyProperties.PartitionKey
+                        && property !== exports.keyProperties.Id
+                        && property !== exports.keyProperties.Timestamp
+                        && property !== exports.keyProperties.resourceId
+                        && property !== exports.keyProperties.self
+                        && property !== exports.keyProperties.etag
+                        && property !== exports.keyProperties.attachments
+                        && property !== exports.keyProperties.Id2) {
+                        if (!document[property].hasOwnProperty("$v") || !document[property].hasOwnProperty("$t")) {
+                            return; //Document property does not match the current required format for Tables, so we ignore it
+                        }
+                        if (DataTypes[document[property][tablesIndexers.Type]] === DataTypes[DataTypes.DateTime]) {
+                            // Convert Ticks datetime to javascript date for better visualization in table
+                            entity[property] = {
+                                _: DateTimeUtilities.convertTicksToJSDate(document[property][tablesIndexers.Value]).toUTCString(),
+                                $: DataTypes[document[property][tablesIndexers.Type]]
+                            };
+                        }
+                        else {
+                            entity[property] = {
+                                _: document[property][tablesIndexers.Value],
+                                $: DataTypes[document[property][tablesIndexers.Type]]
+                            };
+                        }
+                    }
+                }
+            }
+            results.push(entity);
+        });
+        return results;
+    }
+    exports.convertDocumentsToEntities = convertDocumentsToEntities;
+    // Do not use this to create a document to send to the server, only for delete and for giving rid/self/collection to the utility methods.
+    function convertEntitiesToDocuments(entities, collection) {
+        var results = [];
+        entities.forEach(function (entity) {
+            var document = {
+                "$id": entity.RowKey._,
+                id: entity.RowKey._,
+                ts: DateTimeUtilities.convertJSDateToUnix(entity.Timestamp._),
+                rid: entity._rid._,
+                self: entity._self._,
+                etag: entity._etag._,
+                attachments: entity._attachments._,
+                collection: collection
+            };
+            if (collection.partitionKey) {
+                document["partitionKey"] = collection.partitionKey;
+                document[collection.partitionKeyProperty] = entity.PartitionKey._;
+                document["partitionKeyValue"] = entity.PartitionKey._;
+            }
+            for (var property in entity) {
+                if (property !== Constants.EntityKeyNames.PartitionKey
+                    && property !== Constants.EntityKeyNames.RowKey
+                    && property !== Constants.EntityKeyNames.Timestamp
+                    && property !== exports.keyProperties.resourceId
+                    && property !== exports.keyProperties.self
+                    && property !== exports.keyProperties.etag
+                    && property !== exports.keyProperties.attachments
+                    && property !== exports.keyProperties.Id2) {
+                    if (entity[property].$ === Constants.TableType.DateTime) {
+                        // Convert javascript date back to ticks with 20 zeros padding
+                        document[property] = {
+                            "$t": DataTypes[entity[property].$],
+                            "$v": DateTimeUtilities.convertJSDateToTicksWithPadding(entity[property]._)
+                        };
+                    }
+                    else {
+                        document[property] = {
+                            "$t": DataTypes[entity[property].$],
+                            "$v": entity[property]._
+                        };
+                    }
+                }
+            }
+            results.push(document);
+        });
+        return results;
+    }
+    exports.convertEntitiesToDocuments = convertEntitiesToDocuments;
+    function convertEntityToNewDocument(entity) {
+        var document = {
+            "$pk": entity.PartitionKey._,
+            "$id": entity.RowKey._,
+            id: entity.RowKey._
+        };
+        for (var property in entity) {
+            if (property !== Constants.EntityKeyNames.PartitionKey
+                && property !== Constants.EntityKeyNames.RowKey
+                && property !== Constants.EntityKeyNames.Timestamp
+                && property !== exports.keyProperties.resourceId
+                && property !== exports.keyProperties.self
+                && property !== exports.keyProperties.etag
+                && property !== exports.keyProperties.attachments
+                && property !== exports.keyProperties.Id2) {
+                if (entity[property].$ === Constants.TableType.DateTime) {
+                    // Convert javascript date back to ticks with 20 zeros padding
+                    document[property] = {
+                        "$t": DataTypes[entity[property].$],
+                        "$v": DateTimeUtilities.convertJSDateToTicksWithPadding(entity[property]._)
+                    };
+                }
+                else {
+                    document[property] = {
+                        "$t": DataTypes[entity[property].$],
+                        "$v": entity[property]._
+                    };
+                }
+            }
+        }
+        return document;
+    }
+    exports.convertEntityToNewDocument = convertEntityToNewDocument;
+});
+~’-|žv      [Õ¾Ó[Õ¾ä?§¶¸[×kI   O    :https://cosmos.azure.com/built/Explorer/Tables/TableEntityProcessor.js?v=1.0.1 necko:classified 1 strongly-framed 1 security-info FnhllAKWRHGAlo+ESXykKAAAAAAAAAAAwAAAAAAAAEaphjojH6pBabDSgSnsfLHeAAQAAgAAAAAAAAAAAAAAAAAAAAAB4vFIJp5wRkeyPxAQ9RJGKPqbqVvKO0mKuIl8ec8o/uhmCjImkVxP+7sgiYWmMt8FvcOXmlQiTNWFiWlrbpbqgwAAAAAAAAOMMIIDiDCCAnCgAwIBAgIERTJgUjANBgkqhkiG9w0BAQsFADCBijEUMBIGA1UEBhMLUG9ydFN3aWdnZXIxFDASBgNVBAgTC1BvcnRTd2lnZ2VyMRQwEgYDVQQHEwtQb3J0U3dpZ2dlcjEUMBIGA1UEChMLUG9ydFN3aWdnZXIxFzAVBgNVBAsTDlBvcnRTd2lnZ2VyIENBMRcwFQYDVQQDEw5Qb3J0U3dpZ2dlciBDQTAeFw0xNDEwMjgxMzEyMTBaFw0zODEwMjgxMzEyMTBaMGAxFDASBgNVBAYTC1BvcnRTd2lnZ2VyMRQwEgYDVQQKEwtQb3J0U3dpZ2dlcjEXMBUGA1UECxMOUG9ydFN3aWdnZXIgQ0ExGTAXBgNVBAMTEGNvc21vcy5henVyZS5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCKn7emKINsnWqPZ+C/VsqbQf/l4NsmIh34bXBR0xdNg9bfb+xcoghRlmbPjhZ/A26A2gJ6Rrg2d0GGMLpbqA8nTlRRGXEAD39321zk4ye09ElXClvqguGqdqOJpPQ05DPFD6wSOq+KVAEblE5bi+LMqBLipDERzgUe7xzeqVVk0i0ldh9yQOIk3YuzcBR9igSEuw5qladmMYvXKHYM9YZz0R7axMc8xAtadK7C9KfFPfEI5LS2nhmy4vBrTgFyYhfkEvKfmIj6HTX0ISFCAC2llcBLpEDcuiW76tAHp1pXDeWtSeaV36AeOctdleVgrbmsGs3fu6ppuRcWjEZUbjE3AgMBAAGjHzAdMBsGA1UdEQQUMBKCEGNvc21vcy5henVyZS5jb20wDQYJKoZIhvcNAQELBQADggEBABYikT6Y5YgJJ4IVJldlFDF5MKxp26YegXhvT8EmAbgr0yQBIlY2DtKEiHf7Q8wRoJ9y5Ajst1D7HmRba+XLjS6s3IHJ7gtuvc3fZj9MPKpbqSKRfHDB8bDOVIzmjBseg2BqckHTkcYak3b/pTWCTqKHM3LxKsDwN8F3HNQ2pY4d5ma2kR1EtWdTpRiIbir3QxJDcWVp8CgHONZcoMn33NNwnWWjAQMX6d8e1CPuBZi0t+myaYduCqPgKKox9qMXSubF6uifQkAJ5RdLZrZ2pghENA/4r1oz51wqEmpjPsStSUxRPwJ6wJrB4gwGtX7++ZHLjAaNrTSUCGwIOlAT4LnALwEDAAAAAAEBAAAAAA== request-method GET request-Accept-Encoding gzip, deflate, br response-head HTTP/1.1 200 OK
+Content-Length: 8655
+Content-Type: application/x-javascript
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:39:32 GMT
+ original-response-headers Content-Length: 8655
+Content-Type: application/x-javascript
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:39:32 GMT
+Connection: close
+ uncompressed-len 0 net-response-time-onstart 17277 net-response-time-onstop 17277   !Ï

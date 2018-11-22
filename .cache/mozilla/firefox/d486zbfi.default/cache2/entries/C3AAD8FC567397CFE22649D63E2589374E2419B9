@@ -1,0 +1,350 @@
+/**
+ * Graph React component
+ * Display of properties
+ * The mode is controlled by the parent of this component
+ */
+var __extends = (this && this.__extends) || (function () {
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    }
+    return function (d, b) {
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
+define(["require", "exports", "react", "../../Controls/CollapsiblePanel/CollapsiblePanel", "./ReadOnlyNodeProperties", "./EditorNodeProperties", "./ReadOnlyNeighbors", "./EditorNeighbors"], function (require, exports, React, CollapsiblePanel_1, ReadOnlyNodeProperties_1, EditorNodeProperties_1, ReadOnlyNeighbors_1, EditorNeighbors) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    var NodeProperties = /** @class */ (function (_super) {
+        __extends(NodeProperties, _super);
+        function NodeProperties(props) {
+            var _this = _super.call(this, props) || this;
+            _this.state = {
+                editedProperties: {
+                    pkId: null,
+                    readOnlyProperties: [],
+                    existingProperties: [],
+                    addedProperties: [],
+                    droppedKeys: []
+                },
+                editedSources: {
+                    vertexId: undefined,
+                    currentNeighbors: [],
+                    droppedIds: [],
+                    addedEdges: []
+                },
+                editedTargets: {
+                    vertexId: undefined,
+                    currentNeighbors: [],
+                    droppedIds: [],
+                    addedEdges: []
+                },
+                possibleVertices: [],
+                isDeleteConfirm: false,
+                isPropertiesExpanded: true,
+                isSourcesExpanded: true,
+                isTargetsExpanded: true
+            };
+            return _this;
+        }
+        /**
+         * Get type option. Limit to string, number or boolean
+         * @param value
+         */
+        NodeProperties.getTypeOption = function (value) {
+            var type = typeof value;
+            switch (type) {
+                case 'number':
+                case 'boolean':
+                    return type;
+                default:
+                    return 'string';
+            }
+        };
+        NodeProperties.prototype.setMode = function (newMode) {
+            this.props.onModeChanged(newMode);
+        };
+        NodeProperties.prototype.saveProperties = function () {
+            var _this = this;
+            this.props.updateVertexProperties(this.state.editedProperties).then(function () { return _this.setMode(0 /* READONLY_PROP */); });
+        };
+        NodeProperties.getDerivedStateFromProps = function (props, state) {
+            if (props.viewMode === 0 /* READONLY_PROP */) {
+                return { isDeleteConfirm: false };
+            }
+            return null;
+        };
+        NodeProperties.prototype.showPropertyEditor = function () {
+            var partitionKeyProperty = this.props.collectionPartitionKeyProperty;
+            // deep copy highlighted node
+            var readOnlyProps = [{
+                    key: 'label',
+                    value: this.props.node.label,
+                    type: 'string'
+                }];
+            var existingProps = [];
+            if (this.props.node.hasOwnProperty('properties')) {
+                var hProps = this.props.node['properties'];
+                for (var p in hProps) {
+                    var value = hProps[p];
+                    (p === (partitionKeyProperty) ? readOnlyProps : existingProps).push({
+                        key: p,
+                        value: value,
+                        type: NodeProperties.getTypeOption(value)
+                    });
+                }
+            }
+            var newMode = 1 /* PROPERTY_EDITOR */;
+            this.setState({
+                editedProperties: {
+                    pkId: this.props.getPkIdFromNodeData(this.props.node),
+                    readOnlyProperties: readOnlyProps,
+                    existingProperties: existingProps,
+                    addedProperties: [],
+                    droppedKeys: []
+                }
+            });
+            this.props.onModeChanged(newMode);
+        };
+        NodeProperties.prototype.showSourcesEditor = function () {
+            var _this = this;
+            this.props.updatePossibleVertices().then(function (possibleVertices) {
+                _this.setState({
+                    possibleVertices: possibleVertices
+                });
+                var editedSources = {
+                    vertexId: _this.props.node.id,
+                    currentNeighbors: _this.props.node.sources.slice(),
+                    droppedIds: [],
+                    addedEdges: []
+                };
+                var newMode = 2 /* EDIT_SOURCES */;
+                _this.setState({
+                    editedProperties: _this.state.editedProperties,
+                    editedSources: editedSources
+                });
+                _this.props.onModeChanged(newMode);
+            });
+        };
+        NodeProperties.prototype.showTargetsEditor = function () {
+            var _this = this;
+            this.props.updatePossibleVertices().then(function (possibleVertices) {
+                _this.setState({
+                    possibleVertices: possibleVertices
+                });
+                var editedTargets = {
+                    vertexId: _this.props.node.id,
+                    currentNeighbors: _this.props.node.targets.slice(),
+                    droppedIds: [],
+                    addedEdges: []
+                };
+                var newMode = 3 /* EDIT_TARGETS */;
+                _this.setState({
+                    editedProperties: _this.state.editedProperties,
+                    editedTargets: editedTargets
+                });
+                _this.props.onModeChanged(newMode);
+            });
+        };
+        NodeProperties.prototype.updateVertexNeighbors = function (isSource) {
+            var _this = this;
+            this.props.editGraphEdges(this.state.editedSources).then(function () {
+                _this.setMode(0 /* READONLY_PROP */);
+            }, function () {
+                console.log('Error updating');
+                // TODO Wire this up
+                // GraphExplorerViewModel.reportToConsole(ConsoleDataType.Error, 'Failed to update Vertex sources.');
+            });
+        };
+        NodeProperties.prototype.onUpdateProperties = function (editedProperties) {
+            this.setState({
+                editedProperties: editedProperties
+            });
+        };
+        NodeProperties.prototype.onUpdateEdges = function (editedEdges, isSource) {
+            this.setState({
+                editedProperties: this.state.editedProperties,
+                editedSources: editedEdges
+            });
+        };
+        NodeProperties.prototype.setIsDeleteConfirm = function (state) {
+            this.setState({
+                isDeleteConfirm: state
+            });
+        };
+        NodeProperties.prototype.discardChanges = function () {
+            this.props.onModeChanged(0 /* READONLY_PROP */);
+        };
+        /**
+         * Right-pane expand collapse
+         */
+        NodeProperties.prototype.expandCollapseProperties = function () {
+            // Do not collapse while editing
+            if (this.props.viewMode === 1 /* PROPERTY_EDITOR */ && this.state.isPropertiesExpanded) {
+                return;
+            }
+            var isExpanded = this.state.isPropertiesExpanded;
+            this.setState({ isPropertiesExpanded: !isExpanded });
+            if (!isExpanded) {
+                $("#propertiesContent").slideDown("fast", function () { });
+            }
+            else {
+                $("#propertiesContent").slideUp("fast", function () { });
+            }
+        };
+        NodeProperties.prototype.expandCollapseSources = function () {
+            // Do not collapse while editing
+            if (this.props.viewMode === 2 /* EDIT_SOURCES */ && this.state.isSourcesExpanded) {
+                return;
+            }
+            var isExpanded = this.state.isSourcesExpanded;
+            this.setState({ isSourcesExpanded: !isExpanded });
+            if (!isExpanded) {
+                $("#sourcesContent").slideDown("fast", function () { });
+            }
+            else {
+                $("#sourcesContent").slideUp("fast", function () { });
+            }
+        };
+        NodeProperties.prototype.expandCollapseTargets = function () {
+            // Do not collapse while editing
+            if (this.props.viewMode === 3 /* EDIT_TARGETS */ && this.state.isTargetsExpanded) {
+                return;
+            }
+            var isExpanded = this.state.isTargetsExpanded;
+            this.setState({ isTargetsExpanded: !isExpanded });
+            if (!isExpanded) {
+                $("#targetsContent").slideDown("fast", function () { });
+            }
+            else {
+                $("#targetsContent").slideUp("fast", function () { });
+            }
+        };
+        NodeProperties.prototype.deleteHighlightedNode = function () {
+            this.setIsDeleteConfirm(false);
+            this.props.deleteHighlightedNode();
+        };
+        NodeProperties.prototype.getConfirmDeleteButtonsFragment = function () {
+            if (!this.state.isDeleteConfirm) {
+                return React.createElement("span", { className: "rightPaneHeaderTrashIcon rightPaneBtns", onClick: this.setIsDeleteConfirm.bind(this, true) },
+                    React.createElement("img", { src: "images/delete.svg" }));
+            }
+            else {
+                return React.createElement("span", { className: "deleteConfirm" },
+                    "Delete this vertex?",
+                    React.createElement("span", { className: "rightPaneCheckMark rightPaneBtns", onClick: this.deleteHighlightedNode.bind(this) },
+                        React.createElement("img", { src: "images/check.svg" })),
+                    React.createElement("span", { className: "rightPaneDiscardBtn rightPaneBtns", onClick: this.setIsDeleteConfirm.bind(this, false) },
+                        React.createElement("img", { className: "discardBtn", src: "images/cancel.svg" })));
+            }
+        };
+        NodeProperties.prototype.getHeaderFragment = function () {
+            return React.createElement("div", { className: "rightPaneHeader" }, this.props.viewMode === 0 /* READONLY_PROP */ && React.createElement("span", { className: "pull-right" }, this.getConfirmDeleteButtonsFragment()));
+        };
+        /**
+         * Section Header containing the edit/cancel buttons
+         */
+        NodeProperties.prototype.getSectionHeaderButtonFragment = function (isSectionExpanded, expandClickHandler, currentView, saveClickHandler) {
+            if (isSectionExpanded) {
+                return React.createElement("div", { className: "pull-right" },
+                    this.props.viewMode === 0 /* READONLY_PROP */ && !this.state.isDeleteConfirm &&
+                        React.createElement("span", { className: "rightPaneEditIcon rightPaneBtns editBtn", onClick: expandClickHandler },
+                            React.createElement("img", { src: "images/edit.svg" })),
+                    this.props.viewMode === currentView && React.createElement("span", { className: "rightPaneCheckMark rightPaneBtns", onClick: saveClickHandler },
+                        React.createElement("img", { src: "images/check.svg" })),
+                    this.props.viewMode === currentView && React.createElement("span", { className: "rightPaneDiscardBtn rightPaneBtns", onClick: this.discardChanges.bind(this) },
+                        React.createElement("img", { className: "discardBtn", src: "images/cancel.svg" })));
+            }
+            else {
+                return null;
+            }
+        };
+        NodeProperties.prototype.getPropertiesFragment = function () {
+            return React.createElement(React.Fragment, null,
+                this.getSectionHeaderButtonFragment(this.state.isPropertiesExpanded, this.showPropertyEditor.bind(this), 1 /* PROPERTY_EDITOR */, this.saveProperties.bind(this)),
+                React.createElement("div", { className: "sectionHeader", onClick: this.expandCollapseProperties.bind(this) },
+                    React.createElement("span", { className: (this.state.isPropertiesExpanded) ? 'expanded' : 'collapsed' }),
+                    React.createElement("span", { className: "sectionTitle" }, "Properties")),
+                React.createElement("div", { className: "sectionContent", id: "propertiesContent" },
+                    (this.props.viewMode === 0 /* READONLY_PROP */ ||
+                        this.props.viewMode === 2 /* EDIT_SOURCES */ ||
+                        this.props.viewMode === 3 /* EDIT_TARGETS */) && React.createElement(ReadOnlyNodeProperties_1.ReadOnlyNodeProperties, { node: this.props.node }),
+                    this.props.viewMode === 1 /* PROPERTY_EDITOR */ && React.createElement(EditorNodeProperties_1.EditorNodeProperties, { node: this.props.node, editedProperties: this.state.editedProperties, onUpdateProperties: this.onUpdateProperties.bind(this) })));
+        };
+        NodeProperties.prototype.getNeighborContentFragment = function (isSource) {
+            var editViewMode = (isSource) ? 2 /* EDIT_SOURCES */ : 3 /* EDIT_TARGETS */;
+            var editedNeighbors = (isSource) ? this.state.editedSources : this.state.editedTargets;
+            if (this.props.viewMode === editViewMode) {
+                return React.createElement(EditorNeighbors.EditorNeighbors, { editedNeighbors: editedNeighbors, isSource: isSource, possibleVertices: this.state.possibleVertices, possibleEdgeLabels: this.props.possibleEdgeLabels, onUpdateEdges: this.onUpdateEdges.bind(this) });
+            }
+            else {
+                return React.createElement(ReadOnlyNeighbors_1.ReadOnlyNeighbors, { node: this.props.node, isSource: isSource, selectNode: this.props.selectNode });
+            }
+        };
+        NodeProperties.prototype.getNeighborFragment = function (isSource) {
+            var isNeighborExpanded = (isSource) ? this.state.isSourcesExpanded : this.state.isTargetsExpanded;
+            var showNeighborEditor = (isSource) ? this.showSourcesEditor.bind(this) : this.showTargetsEditor.bind(this);
+            var currentNeighborView = (isSource) ? 2 /* EDIT_SOURCES */ : 3 /* EDIT_TARGETS */;
+            var expandCollapseNeighbor = (isSource) ? this.expandCollapseSources.bind(this) : this.expandCollapseTargets.bind(this);
+            var sectionLabel = (isSource) ? 'Sources' : 'Targets';
+            var sectionContentId = (isSource) ? 'sourcesContent' : 'targetsContent';
+            return React.createElement(React.Fragment, null,
+                this.getSectionHeaderButtonFragment(isNeighborExpanded, showNeighborEditor, currentNeighborView, this.updateVertexNeighbors.bind(this, true)),
+                React.createElement("div", { className: "sectionHeader", onClick: expandCollapseNeighbor },
+                    React.createElement("span", { className: (isNeighborExpanded) ? 'expanded' : 'collapsed' }),
+                    React.createElement("span", { className: "sectionTitle" }, sectionLabel)),
+                React.createElement("div", { className: "sectionContent", id: sectionContentId }, this.getNeighborContentFragment(isSource)));
+        };
+        NodeProperties.prototype.getNeighborsContainer = function () {
+            if (!this.props.node.areNeighborsUnknown) {
+                return React.createElement(React.Fragment, null,
+                    this.getNeighborFragment(true),
+                    this.getNeighborFragment(false));
+            }
+            else {
+                return React.createElement(React.Fragment, null);
+            }
+        };
+        NodeProperties.prototype.render = function () {
+            if (!this.props.node) {
+                return React.createElement("span", null);
+            }
+            else {
+                return React.createElement(CollapsiblePanel_1.CollapsiblePanel, { collapsedTitle: NodeProperties.PROPERTIES_COLLAPSED_TITLE, expandedTitle: this.props.expandedTitle, isCollapsed: this.props.isCollapsed, onCollapsedChanged: this.props.onCollapsedChanged.bind(this) },
+                    this.getHeaderFragment(),
+                    React.createElement("div", { className: "rightPaneContent contentScroll" },
+                        React.createElement("div", { className: "rightPaneContainer" },
+                            this.getPropertiesFragment(),
+                            this.getNeighborsContainer())));
+            }
+        };
+        NodeProperties.PROPERTIES_COLLAPSED_TITLE = 'Properties';
+        return NodeProperties;
+    }(React.Component));
+    exports.NodeProperties = NodeProperties;
+});
+7ÞÜ¨Zö      [Õ¾ù[Ö?§¶Ò[×kq   _    :https://cosmos.azure.com/built/Explorer/Graph/GraphExplorerComponent/NodeProperties.js?v=1.0.1 necko:classified 1 strongly-framed 1 security-info FnhllAKWRHGAlo+ESXykKAAAAAAAAAAAwAAAAAAAAEaphjojH6pBabDSgSnsfLHeAAQAAgAAAAAAAAAAAAAAAAAAAAAB4vFIJp5wRkeyPxAQ9RJGKPqbqVvKO0mKuIl8ec8o/uhmCjImkVxP+7sgiYWmMt8FvcOXmlQiTNWFiWlrbpbqgwAAAAAAAAOMMIIDiDCCAnCgAwIBAgIERTJgUjANBgkqhkiG9w0BAQsFADCBijEUMBIGA1UEBhMLUG9ydFN3aWdnZXIxFDASBgNVBAgTC1BvcnRTd2lnZ2VyMRQwEgYDVQQHEwtQb3J0U3dpZ2dlcjEUMBIGA1UEChMLUG9ydFN3aWdnZXIxFzAVBgNVBAsTDlBvcnRTd2lnZ2VyIENBMRcwFQYDVQQDEw5Qb3J0U3dpZ2dlciBDQTAeFw0xNDEwMjgxMzEyMTBaFw0zODEwMjgxMzEyMTBaMGAxFDASBgNVBAYTC1BvcnRTd2lnZ2VyMRQwEgYDVQQKEwtQb3J0U3dpZ2dlcjEXMBUGA1UECxMOUG9ydFN3aWdnZXIgQ0ExGTAXBgNVBAMTEGNvc21vcy5henVyZS5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCKn7emKINsnWqPZ+C/VsqbQf/l4NsmIh34bXBR0xdNg9bfb+xcoghRlmbPjhZ/A26A2gJ6Rrg2d0GGMLpbqA8nTlRRGXEAD39321zk4ye09ElXClvqguGqdqOJpPQ05DPFD6wSOq+KVAEblE5bi+LMqBLipDERzgUe7xzeqVVk0i0ldh9yQOIk3YuzcBR9igSEuw5qladmMYvXKHYM9YZz0R7axMc8xAtadK7C9KfFPfEI5LS2nhmy4vBrTgFyYhfkEvKfmIj6HTX0ISFCAC2llcBLpEDcuiW76tAHp1pXDeWtSeaV36AeOctdleVgrbmsGs3fu6ppuRcWjEZUbjE3AgMBAAGjHzAdMBsGA1UdEQQUMBKCEGNvc21vcy5henVyZS5jb20wDQYJKoZIhvcNAQELBQADggEBABYikT6Y5YgJJ4IVJldlFDF5MKxp26YegXhvT8EmAbgr0yQBIlY2DtKEiHf7Q8wRoJ9y5Ajst1D7HmRba+XLjS6s3IHJ7gtuvc3fZj9MPKpbqSKRfHDB8bDOVIzmjBseg2BqckHTkcYak3b/pTWCTqKHM3LxKsDwN8F3HNQ2pY4d5ma2kR1EtWdTpRiIbir3QxJDcWVp8CgHONZcoMn33NNwnWWjAQMX6d8e1CPuBZi0t+myaYduCqPgKKox9qMXSubF6uifQkAJ5RdLZrZ2pghENA/4r1oz51wqEmpjPsStSUxRPwJ6wJrB4gwGtX7++ZHLjAaNrTSUCGwIOlAT4LnALwEDAAAAAAEBAAAAAA== request-method GET request-Accept-Encoding gzip, deflate, br response-head HTTP/1.1 200 OK
+Content-Length: 17284
+Content-Type: application/x-javascript
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:39:59 GMT
+ original-response-headers Content-Length: 17284
+Content-Type: application/x-javascript
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:39:59 GMT
+Connection: close
+ uncompressed-len 0 net-response-time-onstart 5755 net-response-time-onstop 5756   C„

@@ -1,0 +1,377 @@
+var __extends = (this && this.__extends) || (function () {
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    }
+    return function (d, b) {
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
+define(["require", "exports", "knockout", "underscore", "q", "../../Common/Constants", "../../Contracts/ViewModels", "../../Shared/Telemetry/TelemetryConstants", "../../Common/EditableUtility", "./ScriptTabBase", "../../Shared/Telemetry/TelemetryProcessor", "../Controls/Toolbar/Toolbar"], function (require, exports, ko, _, Q, Constants, ViewModels, TelemetryConstants_1, editable, ScriptTabBase, TelemetryProcessor_1, Toolbar_1) {
+    "use strict";
+    var ToggleState;
+    (function (ToggleState) {
+        ToggleState["Result"] = "result";
+        ToggleState["Logs"] = "logs";
+    })(ToggleState || (ToggleState = {}));
+    var StoredProcedureTab = /** @class */ (function (_super) {
+        __extends(StoredProcedureTab, _super);
+        function StoredProcedureTab(options) {
+            var _this = _super.call(this, options) || this;
+            _this.onSaveClick = function () {
+                // When create in Store Explorer, the script has already created before open the tab.
+                if (_this.isRunningOnDaytona) {
+                    return _this.onUpdateClick();
+                }
+                var resource = {
+                    id: _this.id(),
+                    body: _this.editorContent()
+                };
+                return _this._createStoredProcedure(resource);
+            };
+            _this.onDiscard = function () {
+                _this.setBaselines();
+                _this.daytonaContext && _this.daytonaContext.telemetry.sendEvent("StorageExplorer." + ViewModels.CollectionTabKind[_this.tabKind] + ".Discard");
+                var original = _this.editorContent.getEditableOriginalValue();
+                _this.originalSprocBody(original);
+                _this.originalSprocBody.valueHasMutated(); // trigger a re-render of the editor
+                return Q();
+            };
+            _this.onUpdateClick = function () {
+                var data = _this._getResource();
+                _this.isExecutionError(false);
+                _this.isExecuting(true);
+                var startKey = TelemetryProcessor_1.default.traceStart(TelemetryConstants_1.Action.UpdateStoredProcedure, {
+                    databaseAccountName: _this.collection && _this.collection.container.databaseAccount().name,
+                    defaultExperience: _this.collection && _this.collection.container.defaultExperience(),
+                    dataExplorerArea: Constants.Areas.Tab,
+                    tabTitle: _this.tabTitle()
+                }, _this.isRunningOnDaytona);
+                return _this.documentClientUtility.updateStoredProcedure(data, null /*options*/).then(function (updatedResource) {
+                    _this.resource(updatedResource);
+                    _this.tabTitle(updatedResource.id);
+                    if (!_this.isRunningOnDaytona) {
+                        _this.node.id(updatedResource.id);
+                        _this.node.body(updatedResource.body);
+                    }
+                    else {
+                        _this.daytonaContext && _this.daytonaContext.telemetry.sendEvent("StorageExplorer.StoredProcedures.Update");
+                        _this.daytonaContext && _this.daytonaContext.hostProxy.executeProviderOperation("Azure.Actions.DocumentDB.updateNode", {
+                            selfLink: _this.resource()._self,
+                            nodeType: "Azure.DocumentDB.StoredProcedure",
+                            attributes: [{
+                                    name: "body",
+                                    value: updatedResource.body
+                                }]
+                        });
+                    }
+                    _this.setBaselines();
+                    var editorModel = _this.editor() && _this.editor().getModel();
+                    editorModel && editorModel.setValue(updatedResource.body);
+                    _this.editorContent.setBaseline(updatedResource.body);
+                    TelemetryProcessor_1.default.traceSuccess(TelemetryConstants_1.Action.UpdateStoredProcedure, {
+                        databaseAccountName: _this.collection && _this.collection.container.databaseAccount().name,
+                        defaultExperience: _this.collection && _this.collection.container.defaultExperience(),
+                        dataExplorerArea: Constants.Areas.Tab,
+                        tabTitle: _this.tabTitle()
+                    }, startKey, _this.isRunningOnDaytona);
+                }, function (updateError) {
+                    if (_this.isRunningOnDaytona) {
+                        var message = JSON.parse(updateError.body).message;
+                        _this.daytonaContext && _this.daytonaContext.hostProxy.executeProviderOperation("CloudExplorer.Actions.Dialog.promptOK", {
+                            title: "Error",
+                            message: message,
+                            messageBoxType: "error"
+                        });
+                    }
+                    else {
+                        _this.isExecutionError(true);
+                        TelemetryProcessor_1.default.traceFailure(TelemetryConstants_1.Action.UpdateStoredProcedure, {
+                            databaseAccountName: _this.collection && _this.collection.container.databaseAccount().name,
+                            defaultExperience: _this.collection && _this.collection.container.defaultExperience(),
+                            dataExplorerArea: Constants.Areas.Tab,
+                            tabTitle: _this.tabTitle()
+                        }, startKey, _this.isRunningOnDaytona);
+                    }
+                }).finally(function () { return _this.isExecuting(false); });
+            };
+            _this.onErrorDetailsClick = function (src, event) {
+                _this.collection && _this.collection.container.expandConsole();
+                return false;
+            };
+            _this.onErrorDetailsKeyPress = function (src, event) {
+                if (event.keyCode === Constants.KeyCodes.Space || event.keyCode === Constants.KeyCodes.Enter) {
+                    _this.onErrorDetailsClick(src, null);
+                    return false;
+                }
+                return true;
+            };
+            _this.onToggleKeyDown = function (source, event) {
+                if (event.keyCode === Constants.KeyCodes.LeftArrow) {
+                    _this.toggleResult();
+                    event.stopPropagation();
+                    return false;
+                }
+                else if (event.keyCode === Constants.KeyCodes.RightArrow) {
+                    _this.toggleLogs();
+                    event.stopPropagation();
+                    return false;
+                }
+                return true;
+            };
+            _super.prototype.onActivate.bind(_this);
+            _this.executeResultsEditorId = "executestoredprocedureresults" + _this.tabId;
+            _this.executeLogsEditorId = "executestoredprocedurelogs" + _this.tabId;
+            _this.toggleState = ko.observable(ToggleState.Result);
+            _this.originalSprocBody = editable.observable(_this.editorContent());
+            _this.resultsData = ko.observable();
+            _this.logsData = ko.observable();
+            _this.error = ko.observable();
+            _this.hasResults = ko.observable(false);
+            _this.hasErrors = ko.observable(false);
+            _this.error.subscribe(function (error) {
+                _this.hasErrors(error != null);
+                _this.hasResults(error == null);
+            });
+            _this.ariaLabel("Stored Procedure Body");
+            _this.buildCommandBarOptions();
+            _this._buildToolbar();
+            return _this;
+        }
+        StoredProcedureTab.prototype.onRefresh = function () {
+            var _this = this;
+            return this.documentClientUtility.readStoredProcedure(this.resource(), null).then(function (script) {
+                _this.editorContent(script.body);
+                _this.resource().body = script.body;
+                _this.originalSprocBody(script.body);
+                _this.originalSprocBody.valueHasMutated();
+            });
+        };
+        StoredProcedureTab.prototype.onExecuteSprocsResult = function (result, logsData) {
+            var resultData = this.renderObjectForEditor(_.omit(result, "scriptLogs").result, null, 4);
+            var scriptLogs = (result.scriptLogs && decodeURIComponent(result.scriptLogs)) || "";
+            var logs = this.renderObjectForEditor(scriptLogs, null, 4);
+            this.error(null);
+            this.resultsData(resultData);
+            this.logsData(logs);
+        };
+        StoredProcedureTab.prototype.onExecuteSprocsError = function (error) {
+            this.isExecutionError(true);
+            console.error(error);
+            this.error(error);
+        };
+        StoredProcedureTab.prototype.toggleResult = function () {
+            this.toggleState(ToggleState.Result);
+            this.resultsData.valueHasMutated(); // needed to refresh the json-editor component
+        };
+        StoredProcedureTab.prototype.toggleLogs = function () {
+            this.toggleState(ToggleState.Logs);
+            this.logsData.valueHasMutated(); // needed to refresh the json-editor component
+        };
+        StoredProcedureTab.prototype.isResultToggled = function () {
+            return this.toggleState() === ToggleState.Result;
+        };
+        StoredProcedureTab.prototype.isLogsToggled = function () {
+            return this.toggleState() === ToggleState.Logs;
+        };
+        StoredProcedureTab.prototype.updateSelectedNode = function () {
+            if (this.collection == null) {
+                return;
+            }
+            else if (!this.collection.database.isDatabaseExpanded()) {
+                this.collection.container.selectedNode(this.collection.database);
+            }
+            else if (!this.collection.isCollectionExpanded() || !this.collection.isStoredProceduresExpanded()) {
+                this.collection.container.selectedNode(this.collection);
+            }
+            else {
+                this.collection.container.selectedNode(this.node);
+            }
+        };
+        StoredProcedureTab.prototype.buildCommandBarOptions = function () {
+            var _this = this;
+            _super.prototype.buildCommandBarOptions.bind(this);
+            _super.prototype.buildCommandBarOptions.call(this);
+            var executeButtonOptions = {
+                iconSrc: 'images/ExecuteQuery.svg',
+                onCommandClick: function () {
+                    _this.collection && _this.collection.container.executeSprocParamsPane.open();
+                },
+                commandButtonLabel: 'Execute',
+                hasPopup: false,
+                disabled: ko.computed(function () { return _this.isNew() || _this.formIsDirty(); }),
+                visible: ko.computed(function () { return true; })
+            };
+            this.commandBarOptions.options.push(executeButtonOptions);
+        };
+        StoredProcedureTab.prototype._getResource = function () {
+            var resource = {
+                _rid: this.resource()._rid,
+                _self: this.resource()._self,
+                id: this.id(),
+                body: this.editorContent(),
+            };
+            return resource;
+        };
+        StoredProcedureTab.prototype._createStoredProcedure = function (resource) {
+            var _this = this;
+            this.isExecutionError(false);
+            this.isExecuting(true);
+            var startKey = TelemetryProcessor_1.default.traceStart(TelemetryConstants_1.Action.CreateStoredProcedure, {
+                databaseAccountName: this.collection && this.collection.container.databaseAccount().name,
+                defaultExperience: this.collection && this.collection.container.defaultExperience(),
+                dataExplorerArea: Constants.Areas.Tab,
+                tabTitle: this.tabTitle()
+            }, this.isRunningOnDaytona);
+            return this.documentClientUtility.createStoredProcedure({ self: this.collection.self, resourceName: this.collection.id(), rid: this.collection.rid }, resource, null /*options*/).then(function (createdResource) {
+                _this.tabTitle(createdResource.id);
+                _this.isNew(false);
+                _this.resource(createdResource);
+                _this.hashLocation(Constants.HashRoutePrefixes.collectionsWithIds(_this.collection.database.id(), _this.collection.id()) + "/sprocs/" + createdResource.id);
+                _this.setBaselines();
+                var editorModel = _this.editor() && _this.editor().getModel();
+                editorModel && editorModel.setValue(createdResource.body);
+                _this.editorContent.setBaseline(createdResource.body);
+                if (!_this.isRunningOnDaytona) {
+                    _this.node = _this.collection.createStoredProcedureNode(createdResource);
+                    TelemetryProcessor_1.default.traceSuccess(TelemetryConstants_1.Action.CreateStoredProcedure, {
+                        databaseAccountName: _this.collection && _this.collection.container.databaseAccount().name,
+                        defaultExperience: _this.collection && _this.collection.container.defaultExperience(),
+                        dataExplorerArea: Constants.Areas.Tab,
+                        tabTitle: _this.tabTitle()
+                    }, startKey, _this.isRunningOnDaytona);
+                }
+                else {
+                    _this.daytonaContext && _this.daytonaContext.telemetry.sendEvent("StorageExplorer.StoredProcedures.Create");
+                    _this.daytonaContext && _this.daytonaContext.hostProxy.executeProviderOperation("Azure.Actions.DocumentDB.refreshNode", {
+                        selfLink: _this.collection.self,
+                        nodeType: "Azure.DocumentDB.StoredProcedureGroup"
+                    });
+                }
+                _this.editorState(ViewModels.ScriptEditorState.exisitingNoEdits);
+                return createdResource;
+            }, function (createError) {
+                _this.isExecutionError(true);
+                TelemetryProcessor_1.default.traceFailure(TelemetryConstants_1.Action.CreateStoredProcedure, {
+                    databaseAccountName: _this.collection && _this.collection.container.databaseAccount().name,
+                    defaultExperience: _this.collection && _this.collection.container.defaultExperience(),
+                    dataExplorerArea: Constants.Areas.Tab,
+                    tabTitle: _this.tabTitle()
+                }, startKey, _this.isRunningOnDaytona);
+                return Q.reject(createError);
+            }).finally(function () { return _this.isExecuting(false); });
+        };
+        ;
+        StoredProcedureTab.prototype.onDelete = function () {
+            // TODO
+            return Q();
+        };
+        StoredProcedureTab.prototype.onExecuteClick = function () {
+            var _this = this;
+            return this.daytonaContext.hostProxy.executeProviderOperation("Environment.Dialogs.getDialogResult", {
+                id: "executeSprocParams",
+                parameters: { isPartition: !!this._partitionKey }
+            }).then(function (executeParameters) {
+                var options = {};
+                options.initialHeaders = options.initialHeaders || {};
+                options.initialHeaders[Constants.HttpHeaders.enableScriptLogging] = true;
+                options.partitionKey = !!_this._partitionKey ? _this.documentClientUtility.getPartitionKeyHeader(_this._partitionKey, executeParameters.partitionKeyValue) : undefined;
+                return _this.daytonaContext.hostProxy.executeProviderOperation("Azure.Actions.DocumentDB.ExecuteStoredProcedureAction", {
+                    masterKey: _this.daytonaContext.masterKey,
+                    endpoint: _this.daytonaContext.endpoint,
+                    selfLink: _this.resource()._self,
+                    parameters: executeParameters.parameters,
+                    options: options
+                }).then(function (result) {
+                    _this.onExecuteSprocsResult(result, result.scriptLogs);
+                }, function (error) {
+                    _this.onExecuteSprocsError(JSON.stringify(error));
+                });
+            });
+        };
+        StoredProcedureTab.prototype._buildToolbar = function () {
+            var _this = this;
+            var toolbarActionsConfig = [
+                {
+                    type: "action",
+                    action: function () { return _this.onSaveOrUpdateClick(); },
+                    id: "update",
+                    title: "Update the script",
+                    enabled: ko.computed(function () {
+                        return _this.updateButton.enabled() && _this.updateButton.visible() ||
+                            _this.saveButton.enabled() && _this.saveButton.visible();
+                    }),
+                    visible: ko.observable(true),
+                    icon: "images/save-bigicon.svg",
+                    displayName: "Update"
+                },
+                {
+                    type: "action",
+                    action: function () { return _this.onDiscard(); },
+                    id: "discard",
+                    title: "Discard current changes",
+                    enabled: ko.computed(function () { return _this.discardButton.enabled(); }),
+                    visible: ko.observable(true),
+                    icon: "images/discard-bigicon.svg",
+                    displayName: "Discard"
+                },
+                {
+                    type: "separator",
+                    visible: ko.observable(true)
+                },
+                {
+                    type: "action",
+                    action: function () { return _this.onRefreshClick(); },
+                    id: "refresh",
+                    title: "Refresh",
+                    enabled: ko.observable(true),
+                    visible: ko.observable(true),
+                    icon: "images/ASX_Refresh.svg",
+                    displayName: "Refresh"
+                },
+                {
+                    type: "separator",
+                    visible: ko.observable(true)
+                },
+                {
+                    type: "action",
+                    action: function () { return _this.onExecuteClick(); },
+                    id: "execute",
+                    title: "Execute",
+                    enabled: ko.observable(true),
+                    visible: ko.observable(true),
+                    icon: "images/ExecuteQuery-bigicon.svg",
+                    displayName: "Execute"
+                }
+            ];
+            this.toolbarViewModel(new Toolbar_1.default(toolbarActionsConfig, function (id) { }));
+        };
+        return StoredProcedureTab;
+    }(ScriptTabBase));
+    return StoredProcedureTab;
+});
+ñðaÉ      [Õ¾ö[Õ¾ý?§¶Ð[×kn   K    :https://cosmos.azure.com/built/Explorer/Tabs/StoredProcedureTab.js?v=1.0.1 necko:classified 1 strongly-framed 1 security-info FnhllAKWRHGAlo+ESXykKAAAAAAAAAAAwAAAAAAAAEaphjojH6pBabDSgSnsfLHeAAQAAgAAAAAAAAAAAAAAAAAAAAAB4vFIJp5wRkeyPxAQ9RJGKPqbqVvKO0mKuIl8ec8o/uhmCjImkVxP+7sgiYWmMt8FvcOXmlQiTNWFiWlrbpbqgwAAAAAAAAOMMIIDiDCCAnCgAwIBAgIERTJgUjANBgkqhkiG9w0BAQsFADCBijEUMBIGA1UEBhMLUG9ydFN3aWdnZXIxFDASBgNVBAgTC1BvcnRTd2lnZ2VyMRQwEgYDVQQHEwtQb3J0U3dpZ2dlcjEUMBIGA1UEChMLUG9ydFN3aWdnZXIxFzAVBgNVBAsTDlBvcnRTd2lnZ2VyIENBMRcwFQYDVQQDEw5Qb3J0U3dpZ2dlciBDQTAeFw0xNDEwMjgxMzEyMTBaFw0zODEwMjgxMzEyMTBaMGAxFDASBgNVBAYTC1BvcnRTd2lnZ2VyMRQwEgYDVQQKEwtQb3J0U3dpZ2dlcjEXMBUGA1UECxMOUG9ydFN3aWdnZXIgQ0ExGTAXBgNVBAMTEGNvc21vcy5henVyZS5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCKn7emKINsnWqPZ+C/VsqbQf/l4NsmIh34bXBR0xdNg9bfb+xcoghRlmbPjhZ/A26A2gJ6Rrg2d0GGMLpbqA8nTlRRGXEAD39321zk4ye09ElXClvqguGqdqOJpPQ05DPFD6wSOq+KVAEblE5bi+LMqBLipDERzgUe7xzeqVVk0i0ldh9yQOIk3YuzcBR9igSEuw5qladmMYvXKHYM9YZz0R7axMc8xAtadK7C9KfFPfEI5LS2nhmy4vBrTgFyYhfkEvKfmIj6HTX0ISFCAC2llcBLpEDcuiW76tAHp1pXDeWtSeaV36AeOctdleVgrbmsGs3fu6ppuRcWjEZUbjE3AgMBAAGjHzAdMBsGA1UdEQQUMBKCEGNvc21vcy5henVyZS5jb20wDQYJKoZIhvcNAQELBQADggEBABYikT6Y5YgJJ4IVJldlFDF5MKxp26YegXhvT8EmAbgr0yQBIlY2DtKEiHf7Q8wRoJ9y5Ajst1D7HmRba+XLjS6s3IHJ7gtuvc3fZj9MPKpbqSKRfHDB8bDOVIzmjBseg2BqckHTkcYak3b/pTWCTqKHM3LxKsDwN8F3HNQ2pY4d5ma2kR1EtWdTpRiIbir3QxJDcWVp8CgHONZcoMn33NNwnWWjAQMX6d8e1CPuBZi0t+myaYduCqPgKKox9qMXSubF6uifQkAJ5RdLZrZ2pghENA/4r1oz51wqEmpjPsStSUxRPwJ6wJrB4gwGtX7++ZHLjAaNrTSUCGwIOlAT4LnALwEDAAAAAAEBAAAAAA== request-method GET request-Accept-Encoding gzip, deflate, br response-head HTTP/1.1 200 OK
+Content-Length: 19454
+Content-Type: application/x-javascript
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:39:56 GMT
+ original-response-headers Content-Length: 19454
+Content-Type: application/x-javascript
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:39:56 GMT
+Connection: close
+ uncompressed-len 0 net-response-time-onstart 7066 net-response-time-onstop 7066   Kþ

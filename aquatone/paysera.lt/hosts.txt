@@ -1,0 +1,11 @@
+developers.paysera.lt,195.216.233.21
+mail.paysera.lt,195.216.233.13
+ns1.paysera.lt,195.216.233.13
+ns2.paysera.lt,88.198.106.11
+ns3.paysera.lt,107.191.99.111
+ns4.paysera.lt,213.183.56.98
+ns5.paysera.lt,103.6.87.125
+paysera.lt,195.216.233.21
+smtp.paysera.lt,195.216.233.11
+tickets.paysera.lt,195.216.233.78
+www.paysera.lt,195.216.233.21

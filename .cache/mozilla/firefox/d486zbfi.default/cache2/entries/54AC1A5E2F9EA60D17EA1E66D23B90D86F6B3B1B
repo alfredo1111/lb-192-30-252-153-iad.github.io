@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<html class="no-js azure-header-static hasSidebar hasPageActions hasBreadcrumb conceptual" lang="en-us" dir="ltr" data-authenticated="false" data-target="docs">
+
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<meta property="og:title" content="Azure Windows VM sizes - GPU" />
+	<meta property="og:image" content="https://docs.microsoft.com/_themes/docs.theme/master/en-us/_themes/images/microsoft-header.png" />
+
+	<meta name="twitter:card" content="summary" />
+	<meta name="twitter:site" content="@docsmsft" />
+	<meta name="twitter:title" content="Azure Windows VM sizes - GPU" />
+	<meta name="twitter:description" content="Lists the different GPU optimized sizes available for Windows virtual machines in Azure. Lists information about the number of vCPUs, data disks and NICs as well as storage throughput and network bandwidth for sizes in this series." />
+	<meta name="twitter:image" content="https://docs.microsoft.com/_themes/docs.theme/master/en-us/_themes/images/microsoft-header.png" />
+	<meta name="twitter:image:alt" content="Microsoft Logo" />
+
+		<meta name="breadcrumb_path" content="/azure/bread/toc.json" />
+<meta name="tags" content="azure-resource-manager,azure-service-management" />
+<meta name="ms.devlang" content="na" />
+<meta name="ms.tgt_pltfrm" content="vm-windows" />
+<meta name="author" content="jonbeck7" />
+<meta name="editor" content="" />
+<meta name="description" content="Lists the different GPU optimized sizes available for Windows virtual machines in Azure. Lists information about the number of vCPUs, data disks and NICs as well as storage throughput and network bandwidth for sizes in this series." />
+<meta name="ms.author" content="jonbeck" />
+<meta name="manager" content="jeconnoc" />
+<meta name="documentationcenter" content="" />
+<meta name="ms.topic" content="article" />
+<meta name="services" content="virtual-machines-windows" />
+<meta name="ms.service" content="virtual-machines-windows" />
+<meta name="ms.date" content="09/24/2018" />
+<meta name="ms.workload" content="infrastructure-services" />
+<meta name="search.ms_sitename" content="Docs" />
+<meta name="search.ms_docsetname" content="azure-documents" />
+<meta name="version" content="0" />
+<meta name="locale" content="en-us" />
+<meta name="site_name" content="Docs" />
+<meta name="search.ms_product" content="Azure" />
+<meta name="depot_name" content="Azure.azure-documents" />
+<meta name="updated_at" content="2018-09-24 04:41 PM" />
+<meta name="gitcommit" content="https://github.com/MicrosoftDocs/azure-docs-pr/blob/83a88572ef9a6b49fec0ac8e585c4f913378d0b5/articles/virtual-machines/windows/sizes-gpu.md" />
+<meta name="original_content_git_url" content="https://github.com/MicrosoftDocs/azure-docs-pr/blob/live/articles/virtual-machines/windows/sizes-gpu.md" />
+<meta name="document_id" content="472ed16f-83af-9c24-4a47-596e72a59ca7" />
+<meta name="document_version_independent_id" content="dc63914d-d1ce-8161-0d6c-b0c62f82b22d" />
+<meta name="page_type" content="conceptual" />
+<meta name="toc_rel" content="toc.json" />
+<meta name="pdf_url_template" content="https://docs.microsoft.com/pdfstore/en-us/Azure.azure-documents/{branchName}{pdfName}" />
+<meta name="word_count" content="1697" />
+
+	<meta name="scope" content="Azure" />
+<link href="https://docs.microsoft.com/en-us/azure/virtual-machines/windows/sizes-gpu" rel="canonical">
+	<title>Azure Windows VM sizes - GPU | Microsoft Docs</title>
+
+		<link rel="stylesheet" href="/_themes/docs.theme/master/en-us/_themes/css/b3687bf5.site-ltr.css ">
+
+	<link rel="stylesheet" href="/_themes/docs.theme/master/en-us/_themes/css/e562b38f.conceptual.css ">
+
+	<link rel="stylesheet" href="https://azurecomcdn.azureedge.net/en-us/asset/menucss/" />
+
+	<script>
+	var msDocs = {
+		data:{
+			azureHeaderLocale: 'en-us',
+			contentLocale: 'en-us',
+			contentDir: 'ltr',
+			userLocale: 'en-us',
+			userDir: 'ltr',
+			pageTemplate: 'Conceptual',
+			brand: 'azure',
+			context: {
+
+			},
+			hasComments: true,
+			feedbackSystem: 'GitHub',
+			feedbackGitHubRepo: 'MicrosoftDocs/azure-docs',
+			feedbackProductUrl: 'https://feedback.azure.com/forums/216843-virtual-machines',
+			contentGitUrl: 'https://github.com/Microsoft/azure-docs/blob/master/articles/virtual-machines/windows/sizes-gpu.md',
+			forceVersionPicker:false		},
+		functions:{},
+		settings:{
+			extendBreadcrumb: false,
+			enableUHFPPE: false
+		}
+	};
+	if (!('Promise' in window && 'resolve' in window.Promise && 'reject' in window.Promise && 'all' in window.Promise && 'race' in window.Promise)) {
+		document.write('<script src="/_themes/docs.theme/master/en-us/_themes/global/js/6ee34c01.bluebird.min.js"><\/script>');
+	}
+	if (typeof fetch !== 'function') {
+		document.write('<script src="/_themes/docs.theme/master/en-us/_themes/global/js/d9fc435c.fetch.min.js"><\/script>');
+	}
+	</script>
+
+	<script src="https://ajax.aspnetcdn.com/ajax/jQuery/jquery-3.3.1.min.js" integrity="sha384-tsQFqpEReu7ZLhBV2VZlAu7zcOV+rXbYlF2cqB8txI/8aZajjp4Bqd+V6D5IgvKT" crossorigin="anonymous"></script>
+	<script src="/_themes/docs.theme/master/en-us/_themes/global/js/de980046.localized-strings.js"></script>
+	<script src="/_themes/docs.theme/master/en-us/_themes/global/js/79987ada.global.min.js"></script>
+
+</head>
+
+<body lang="en-us" dir="ltr">
+<div class="header-holder">
+		<div id="azure-cookie-notification-holder">
+		</div>
+		<div id="headerAreaHolder" data-bi-name="header" lang="en-us" dir="ltr">
+			<div class="azure-header-placeholder"></div>
+		</div>
+	<div class="content-header uhf-container has-padding" data-bi-name="content-header">
+		<nav class="has-padding-none-mobile" data-bi-name="breadcrumb" itemscope itemtype="http://schema.org/BreadcrumbList" role="navigation" aria-label="Breadcrumb">
+		<ul class="breadcrumbs">
+		</ul>
+		</nav>
+		<div class="content-header-controls exit-focus">
+			<button type="button" class="ap-collapse-behavior ap-expanded button" data-bi-name="ap-collapse">
+				<span class="icon"><span class="docon docon-exit-mode"></span></span>
+				<span>Exit focus mode</span>
+			</button>
+			
+		</div>
+		<div class="content-header-controls">
+			<button type="button" class="contents-button button" data-bi-name="contents-expand">
+				<span class="icon"><span class="docon docon-menu"></span></span>
+				<span>Contents</span>
+			</button>
+		</div>
+		<div class="action-bar">
+			<ul class="action-list">
+						<li>
+							<a href="#feedback" class="button is-text is-size-7 is-icon-only-touch" data-bi-name="comments">
+								<span class="icon">
+									<span class="docon docon-comment-lines" aria-hidden="true"></span>
+								</span>
+								<span class="action-item-text">Feedback</span>
+							</a>
+						</li>
+							<li id="contenteditbtn">
+									<a href="https://github.com/Microsoft/azure-docs/blob/master/articles/virtual-machines/windows/sizes-gpu.md" class="button is-text is-icon-only-touch is-size-7" title="Edit This Document" data-bi-name="edit" data-original_content_git_url="https://github.com/MicrosoftDocs/azure-docs-pr/blob/live/articles/virtual-machines/windows/sizes-gpu.md">
+									<span class="icon"> 
+										<span class="docon docon-edit-outline" aria-hidden="true"></span>
+									</span>
+									<span class="action-item-text">Edit</span>
+								</a>
+							</li>
+				<li>
+					<div class="sharing dropdown has-caret" auto-align>
+						<a href="#" class="dropdown-trigger button is-text is-size-7 is-icon-only-touch" aria-haspopup="true" aria-controls="sharing-menu" aria-expanded="false" title="Share This Document" data-bi-name="share">
+							<span class="icon">
+								<span class="docon docon-sharing" aria-hidden="true"></span>
+							</span>
+							<span class="action-item-text">Share</span>
+						</a>
+						<div class="dropdown-menu" id="sharing-menu" role="menu">
+							<ul data-bi-name="share-links">
+								<li><a class="share-twitter" data-bi-name="twitter">
+									<span class="icon">
+										<span class="docon docon-brand-twitter" aria-hidden="true"></span>
+									</span>
+									<span>Twitter</span></a></li>
+								<li><a class="share-linkedin" data-bi-name="linkedin">
+									<span class="icon">
+										<span class="docon docon-brand-linkedin" aria-hidden="true"></span>
+									</span>
+									<span>LinkedIn</span></a></li>
+								<li><a class="share-facebook" data-bi-name="facebook">
+									<span class="icon">
+										<span class="docon docon-brand-facebook" aria-hidden="true"></span>
+									</span>
+									<span>Facebook</span></a></li>
+								<li><a class="share-email" data-bi-name="email">
+									<span class="icon">
+										<span class="docon docon-mail-message-fill" aria-hidden="true"></span>
+									</span>
+									<span>Email</span></a></li>
+							</ul>
+						</div>
+					</div>
+				</li>
+				<li>
+					<button class="toggle-theme button is-text is-size-7 is-icon-only-touch" aria-label="toggle-theme" data-bi-name="select-theme">
+						<span class="icon">
+							<span class="docon docon-sun"></span>
+						</span>
+						<span class="action-item-text">Theme</span>
+					</button>
+				</li>
+				<li class="is-unstyled-action-list-item">
+					<a class="docs-sign-in not-authenticated button is-text has-text-primary is-size-7" href="#">Sign in</a>
+					<div class="dropdown has-caret authenticated" auto-align>
+						<button class="dropdown-trigger button is-text is-radiusless" aria-label="Your Account" aria-haspopup="true" aria-controls="user-menu" aria-expanded="false">
+							<span class="image icon is-hidden-mobile" aria-hidden="true">
+								<img class="has-body-background-medium is-rounded" data-profile-property="avatarUrl">
+							</span>
+							<span class="is-size-7 is-truncated is-hidden-mobile" data-profile-property="userName"></span>
+							<span class="image icon is-hidden-tablet has-margin-none" aria-hidden="true">
+								<img class="has-body-background-medium is-rounded" data-profile-property="avatarUrl">
+							</span>
+						</button>
+						<div class="dropdown-menu box" id="user-menu" role="menu">
+							<div class="media is-user-dir">
+								<div class="media-left">
+									<span class="image is-64x64" aria-hidden="true">
+										<img class="has-body-background-medium is-rounded" data-profile-property="avatarUrl">
+									</span>
+								</div>
+								<div class="media-content">
+									<p class="title has-margin-top-small">
+										<span class="is-truncated" style="max-width: 200px" data-profile-property="userName"></span>
+									</p>
+									<p class="subtitle">
+										<span class="is-truncated" style="max-width: 200px" data-profile-property="upn"></span>
+									</p>
+								</div>
+							</div>
+							<ul class="is-unstyled has-margin-none">
+								<li><a href="/profile" data-profile-property="profileUrl">Profile</a></li>
+								<li><a class="docs-sign-out" href="#">Sign out</a></li>
+							</ul>
+						</div>
+					</div>
+				</li>
+			</ul>
+			<button type="button" class="contents-button" aria-label="Contents" data-bi-name="contents-expand-">
+				<span class="docon docon-editor-list-bullet"></span><span>Contents</span>
+			</button>
+		</div>
+	</div>
+	<div id="disclaimer-holder" class="disclaimer-holder"></div>
+	</div>
+
+	<div class="mainContainer uhf-container  has-top-padding " data-bi-name="body">
+		
+		<div class="columns ">
+
+			<section class="primary-holder column is-two-thirds-tablet is-three-quarters-desktop">
+				<div class="columns ">
+
+					<div id="page-actions" class="right-container column is-one-quarter is-one-fifth-desktop is-hidden-mobile is-hidden-tablet-only" data-bi-name="pageactions" role="complementary" aria-label="Page Actions">
+							<nav id="side-doc-outline" class="doc-outline" data-bi-name="intopic toc" role="navigation" aria-label="On page navigation">
+								<h3>In this article</h3>
+							</nav>
+					</div>
+
+
+				<div id="main-column" class="column  is-full is-four-fifths-desktop ">
+					
+					<main id="main" role="main" class="content" data-bi-name="content" lang="en-us" dir="ltr">
+
+
+
+						<h1 id="gpu-optimized-virtual-machine-sizes" sourcefile="articles/virtual-machines/windows/sizes-gpu.md" sourcestartlinenumber="22" sourceendlinenumber="22">GPU optimized virtual machine sizes</h1>
+
+						<ul class="metadata page-metadata" data-bi-name="page info" lang="en-us" dir="ltr">
+							<li class="displayDate loading">
+								<span aria-hidden="true" class="docon docon-calendar"></span>
+								<time role="presentation" datetime="2018-09-24T00:00:00.000Z" data-article-date-source="ms.date">09/24/2018</time>
+							</li>
+								<li class="readingTime">
+									<span aria-hidden="true" class="docon docon-clock"></span>
+									8 minutes to read
+								</li>
+							<li class="contributors-holder">
+								<span class="contributors-text">Contributors</span>
+								<ul class="contributors" data-bi-name="contributors">
+											<li><a href="https://github.com/jonbeck7" title="jonbeck7" data-bi-name="contributorprofile"><img src="https://docs.microsoft.com/_themes/docs.theme/master/en-us/_themes/images/contributor.svg" data-src="https://github.com/jonbeck7.png?size=32" alt="jonbeck7"></a></li>
+											<li><a href="https://github.com/dlepow" title="Dan Lepow" data-bi-name="contributorprofile"><img src="https://docs.microsoft.com/_themes/docs.theme/master/en-us/_themes/images/contributor.svg" data-src="https://github.com/dlepow.png?size=32" alt="Dan Lepow"></a></li>
+											<li><a href="https://github.com/cynthn" title="Cynthia Nottingham" data-bi-name="contributorprofile"><img src="https://docs.microsoft.com/_themes/docs.theme/master/en-us/_themes/images/contributor.svg" data-src="https://github.com/cynthn.png?size=32" alt="Cynthia Nottingham"></a></li>
+											<li><a href="https://github.com/jpconnock" title="Jean-Paul Connock" data-bi-name="contributorprofile"><img src="https://docs.microsoft.com/_themes/docs.theme/master/en-us/_themes/images/contributor.svg" data-src="https://github.com/jpconnock.png?size=32" alt="Jean-Paul Connock"></a></li>
+											<li><a href="https://github.com/squillace" title="Ralph Squillace" data-bi-name="contributorprofile"><img src="https://docs.microsoft.com/_themes/docs.theme/master/en-us/_themes/images/contributor.svg" data-src="https://github.com/squillace.png?size=32" alt="Ralph Squillace"></a></li>
+								</ul>
+							</li>
+
+						</ul>
+
+						<nav id="center-doc-outline" class="doc-outline is-hidden-desktop" data-bi-name="intopic toc" role="navigation" aria-label="On page navigation">
+							<h3>In this article</h3>
+						</nav>
+
+
+
+						<!-- <content> -->
+							
+<p>GPU optimized VM sizes are specialized virtual machines available with single or multiple NVIDIA GPUs. These sizes are designed for compute-intensive, graphics-intensive, and visualization workloads. This article provides information about the number and type of GPUs, vCPUs, data disks, and NICs. Storage throughput and network bandwidth are also included for each size in this grouping. </p>
+<ul>
+<li><strong>NC, NCv2, NCv3, and ND</strong> sizes are optimized for compute-intensive and network-intensive applications and algorithms. Some examples are CUDA- and OpenCL-based applications and simulations, AI, and Deep Learning. The NCv3-series is focused on high-performance computing workloads featuring NVIDIAâ€™s Tesla V100 GPU.  The ND-series is focused on training and inference scenarios for deep learning. It uses the NVIDIA Tesla P40 GPU.</li>
+<li><strong>NV and NVv2</strong> sizes are optimized and designed for remote visualization, streaming, gaming, encoding, and VDI scenarios using frameworks such as OpenGL and DirectX.  These VMs are backed by the NVIDIA Tesla M60 GPU.</li>
+</ul>
+<h2 id="nc-series">NC-series</h2>
+<p>Premium Storage:  Not Supported</p>
+<p>Premium Storage Caching:  Not Supported</p>
+<p>NC-series VMs are powered by the <a href="http://images.nvidia.com/content/pdf/kepler/Tesla-K80-BoardSpec-07317-001-v05.pdf" data-linktype="external">NVIDIA Tesla K80</a> card. Users can crunch through data faster by leveraging CUDA for energy exploration applications, crash simulations, ray traced rendering, deep learning and more. The NC24r configuration provides a low latency, high-throughput network interface optimized for tightly coupled parallel computing workloads.</p>
+<table>
+<thead>
+<tr>
+<th>Size</th>
+<th>vCPU</th>
+<th>Memory: GiB</th>
+<th>Temp storage (SSD) GiB</th>
+<th>GPU</th>
+<th>GPU memory: GiB</th>
+<th>Max data disks</th>
+<th>Max NICs</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Standard_NC6</td>
+<td>6</td>
+<td>56</td>
+<td>340</td>
+<td>1</td>
+<td>8</td>
+<td>24</td>
+<td>1</td>
+</tr>
+<tr>
+<td>Standard_NC12</td>
+<td>12</td>
+<td>112</td>
+<td>680</td>
+<td>2</td>
+<td>16</td>
+<td>48</td>
+<td>2</td>
+</tr>
+<tr>
+<td>Standard_NC24</td>
+<td>24</td>
+<td>224</td>
+<td>1440</td>
+<td>4</td>
+<td>32</td>
+<td>64</td>
+<td>4</td>
+</tr>
+<tr>
+<td>Standard_NC24r*</td>
+<td>24</td>
+<td>224</td>
+<td>1440</td>
+<td>4</td>
+<td>32</td>
+<td>64</td>
+<td>4</td>
+</tr>
+</tbody>
+</table>
+<p>1 GPU = one-half K80 card.</p>
+<p>*RDMA capable</p>
+<h2 id="ncv2-series">NCv2-series</h2>
+<p>Premium Storage:  Supported</p>
+<p>Premium Storage Caching:  Supported</p>
+<p>NCv2-series VMs are powered by <a href="http://images.nvidia.com/content/tesla/pdf/nvidia-tesla-p100-datasheet.pdf" data-linktype="external">NVIDIA Tesla P100</a> GPUs. These GPUs can provide more than 2x the computational performance of the NC-series. Customers can take advantage of these updated GPUs for traditional HPC workloads such as reservoir modeling, DNA sequencing, protein analysis, Monte Carlo simulations, and others. The NC24rs v2 configuration provides a low latency, high-throughput network interface optimized for tightly coupled parallel computing workloads.</p>
+<div class="IMPORTANT"><p>Important</p><p>For this size family, the vCPU (core) quota in your subscription is initially set to 0 in each region. <a href="../../azure-supportability/resource-manager-core-quotas-request" data-linktype="relative-path">Request a vCPU quota increase</a> for this family in an <a href="https://azure.microsoft.com/regions/services/" data-linktype="external">available region</a>.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Size</th>
+<th>vCPU</th>
+<th>Memory: GiB</th>
+<th>Temp storage (SSD) GiB</th>
+<th>GPU</th>
+<th>GPU memory: GiB</th>
+<th>Max data disks</th>
+<th>Max NICs</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Standard_NC6s_v2</td>
+<td>6</td>
+<td>112</td>
+<td>736</td>
+<td>1</td>
+<td>16</td>
+<td>12</td>
+<td>4</td>
+</tr>
+<tr>
+<td>Standard_NC12s_v2</td>
+<td>12</td>
+<td>224</td>
+<td>1474</td>
+<td>2</td>
+<td>32</td>
+<td>24</td>
+<td>8</td>
+</tr>
+<tr>
+<td>Standard_NC24s_v2</td>
+<td>24</td>
+<td>448</td>
+<td>2948</td>
+<td>4</td>
+<td>64</td>
+<td>32</td>
+<td>8</td>
+</tr>
+<tr>
+<td>Standard_NC24rs_v2*</td>
+<td>24</td>
+<td>448</td>
+<td>2948</td>
+<td>4</td>
+<td>64</td>
+<td>32</td>
+<td>8</td>
+</tr>
+</tbody>
+</table>
+<p>1 GPU = one P100 card.</p>
+<p>*RDMA capable</p>
+<h2 id="ncv3-series">NCv3-series</h2>
+<p>Premium Storage:  Supported</p>
+<p>Premium Storage Caching:  Supported</p>
+<p>NCv3-series VMs are powered by <a href="http://www.nvidia.com/content/PDF/Volta-Datasheet.pdf" data-linktype="external">NVIDIA Tesla V100</a> GPUs. These GPUs can provide 1.5x the computational performance of the NCv2-series. Customers can take advantage of these updated GPUs for traditional HPC workloads such as reservoir modeling, DNA sequencing, protein analysis, Monte Carlo simulations, and others. The NC24rs v3 configuration provides a low latency, high-throughput network interface optimized for tightly coupled parallel computing workloads.</p>
+<div class="IMPORTANT"><p>Important</p><p>For this size family, the vCPU (core) quota in your subscription is initially set to 0 in each region. <a href="../../azure-supportability/resource-manager-core-quotas-request" data-linktype="relative-path">Request a vCPU quota increase</a> for this family in an <a href="https://azure.microsoft.com/regions/services/" data-linktype="external">available region</a>.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Size</th>
+<th>vCPU</th>
+<th>Memory: GiB</th>
+<th>Temp storage (SSD) GiB</th>
+<th>GPU</th>
+<th>GPU memory: GiB</th>
+<th>Max data disks</th>
+<th>Max NICs</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Standard_NC6s_v3</td>
+<td>6</td>
+<td>112</td>
+<td>736</td>
+<td>1</td>
+<td>16</td>
+<td>12</td>
+<td>4</td>
+</tr>
+<tr>
+<td>Standard_NC12s_v3</td>
+<td>12</td>
+<td>224</td>
+<td>1474</td>
+<td>2</td>
+<td>32</td>
+<td>24</td>
+<td>8</td>
+</tr>
+<tr>
+<td>Standard_NC24s_v3</td>
+<td>24</td>
+<td>448</td>
+<td>2948</td>
+<td>4</td>
+<td>64</td>
+<td>32</td>
+<td>8</td>
+</tr>
+<tr>
+<td>Standard_NC24rs_v3*</td>
+<td>24</td>
+<td>448</td>
+<td>2948</td>
+<td>4</td>
+<td>64</td>
+<td>32</td>
+<td>8</td>
+</tr>
+</tbody>
+</table>
+<p>1 GPU = one V100 card.</p>
+<p>*RDMA capable</p>
+<h2 id="nd-series">ND-series</h2>
+<p>Premium Storage:  Supported</p>
+<p>Premium Storage Caching:  Supported</p>
+<p>The ND-series virtual machines are a new addition to the GPU family designed for AI and Deep Learning workloads. They offer excellent performance for training and inference. ND instances are powered by <a href="http://images.nvidia.com/content/pdf/tesla/184427-Tesla-P40-Datasheet-NV-Final-Letter-Web.pdf" data-linktype="external">NVIDIA Tesla P40</a> GPUs. These instances provide excellent performance for single-precision floating point operations, for AI workloads utilizing Microsoft Cognitive Toolkit, TensorFlow, Caffe, and other frameworks. The ND-series also offers a much larger GPU memory size (24 GB), enabling to fit much larger neural net models. Like the NC-series, the ND-series offers a configuration with a secondary low-latency, high-throughput network through RDMA, and InfiniBand connectivity so you can run large-scale training jobs spanning many GPUs.</p>
+<div class="IMPORTANT"><p>Important</p><p>For this size family, the vCPU (core) quota per region in your subscription is initially set to 0. <a href="../../azure-supportability/resource-manager-core-quotas-request" data-linktype="relative-path">Request a vCPU quota increase</a> for this family in an <a href="https://azure.microsoft.com/regions/services/" data-linktype="external">available region</a>.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Size</th>
+<th>vCPU</th>
+<th>Memory: GiB</th>
+<th>Temp storage (SSD) GiB</th>
+<th>GPU</th>
+<th>GPU memory: GiB</th>
+<th>Max data disks</th>
+<th>Max NICs</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Standard_ND6s</td>
+<td>6</td>
+<td>112</td>
+<td>736</td>
+<td>1</td>
+<td>24</td>
+<td>12</td>
+<td>4</td>
+</tr>
+<tr>
+<td>Standard_ND12s</td>
+<td>12</td>
+<td>224</td>
+<td>1474</td>
+<td>2</td>
+<td>48</td>
+<td>24</td>
+<td>8</td>
+</tr>
+<tr>
+<td>Standard_ND24s</td>
+<td>24</td>
+<td>448</td>
+<td>2948</td>
+<td>4</td>
+<td>96</td>
+<td>32</td>
+<td>8</td>
+</tr>
+<tr>
+<td>Standard_ND24rs*</td>
+<td>24</td>
+<td>448</td>
+<td>2948</td>
+<td>4</td>
+<td>96</td>
+<td>32</td>
+<td>8</td>
+</tr>
+</tbody>
+</table>
+<p>1 GPU = one P40 card.</p>
+<p>*RDMA capable</p>
+<h2 id="nv-series">NV-series</h2>
+<p>Premium Storage:  Not Supported</p>
+<p>Premium Storage Caching:  Not Supported</p>
+<p>The NV-series virtual machines are powered by <a href="http://images.nvidia.com/content/tesla/pdf/188417-Tesla-M60-DS-A4-fnl-Web.pdf" data-linktype="external">NVIDIA Tesla M60</a> GPUs and NVIDIA GRID technology for desktop accelerated applications and virtual desktops where customers are able to visualize their data or simulations. Users are able to visualize their graphics intensive workflows on the NV instances to get superior graphics capability and additionally run single precision workloads such as encoding and rendering. </p>
+<p>Each GPU in NV instances comes with a GRID license. This license gives you the flexibility to use an NV instance as a virtual workstation for a single user, or 25 concurrent users can connect to the VM for a virtual application scenario.</p>
+<table>
+<thead>
+<tr>
+<th>Size</th>
+<th>vCPU</th>
+<th>Memory: GiB</th>
+<th>Temp storage (SSD) GiB</th>
+<th>GPU</th>
+<th>GPU memory: GiB</th>
+<th>Max data disks</th>
+<th>Max NICs</th>
+<th>Virtual Workstations</th>
+<th>Virtual Applications</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Standard_NV6</td>
+<td>6</td>
+<td>56</td>
+<td>340</td>
+<td>1</td>
+<td>8</td>
+<td>24</td>
+<td>1</td>
+<td>1</td>
+<td>25</td>
+</tr>
+<tr>
+<td>Standard_NV12</td>
+<td>12</td>
+<td>112</td>
+<td>680</td>
+<td>2</td>
+<td>16</td>
+<td>48</td>
+<td>2</td>
+<td>2</td>
+<td>50</td>
+</tr>
+<tr>
+<td>Standard_NV24</td>
+<td>24</td>
+<td>224</td>
+<td>1440</td>
+<td>4</td>
+<td>32</td>
+<td>64</td>
+<td>4</td>
+<td>4</td>
+<td>100</td>
+</tr>
+</tbody>
+</table>
+<p>1 GPU = one-half M60 card.</p>
+<h2 id="nvv2-series-preview">NVv2-series (Preview)</h2>
+<p>Premium Storage:  Supported</p>
+<p>Premium Storage Caching:  Supported</p>
+<p>The NVv2-series virtual machines are powered by <a href="http://images.nvidia.com/content/tesla/pdf/188417-Tesla-M60-DS-A4-fnl-Web.pdf" data-linktype="external">NVIDIA Tesla M60</a> GPUs and NVIDIA GRID technology with Intel Broadwell CPUs. These virtual machines are targeted for GPU accelerated graphics applications and virtual desktops where customers want to visualize their data, simulate results to view, work on CAD, or render and stream content. Additionally, these virtual machines can run single precision workloads such as encoding and rendering. NVv2 virtual machines support Premium Storage and come with twice the system memory (RAM) when compared with its predecessor NV-series.  </p>
+<p>Each GPU in NVv2 instances comes with a GRID license. This license gives you the flexibility to use an NV instance as a virtual workstation for a single user, or 25 concurrent users can connect to the VM for a virtual application scenario.</p>
+<table>
+<thead>
+<tr>
+<th>Size</th>
+<th>vCPU</th>
+<th>Memory: GiB</th>
+<th>Temp storage (SSD) GiB</th>
+<th>GPU</th>
+<th>GPU memory: GiB</th>
+<th>Max data disks</th>
+<th>Max NICs</th>
+<th>Virtual Workstations</th>
+<th>Virtual Applications</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Standard_NV6s_v2</td>
+<td>6</td>
+<td>112</td>
+<td>320</td>
+<td>1</td>
+<td>8</td>
+<td>12</td>
+<td>4</td>
+<td>1</td>
+<td>25</td>
+</tr>
+<tr>
+<td>Standard_NV12s_v2</td>
+<td>12</td>
+<td>224</td>
+<td>640</td>
+<td>2</td>
+<td>16</td>
+<td>24</td>
+<td>8</td>
+<td>2</td>
+<td>50</td>
+</tr>
+<tr>
+<td>Standard_NV24s_v2</td>
+<td>24</td>
+<td>448</td>
+<td>1280</td>
+<td>4</td>
+<td>32</td>
+<td>32</td>
+<td>8</td>
+<td>4</td>
+<td>100</td>
+</tr>
+</tbody>
+</table>
+<p>1 GPU = one-half M60 card.</p>
+<!-- Not used for Ls-series -->
+<h2 id="size-table-definitions">Size table definitions</h2>
+<ul>
+<li>Storage capacity is shown in units of GiB or 1024^3 bytes. When comparing disks measured in GB (1000^3 bytes) to disks measured in GiB (1024^3) remember that capacity numbers given in GiB may appear smaller. For example, 1023 GiB = 1098.4 GB</li>
+<li>Disk throughput is measured in input/output operations per second (IOPS) and MBps where MBps = 10^6 bytes/sec.</li>
+<li>Data disks can operate in cached or uncached modes. For cached data disk operation, the host cache mode is set to <strong>ReadOnly</strong> or <strong>ReadWrite</strong>.  For uncached data disk operation, the host cache mode is set to <strong>None</strong>.</li>
+<li>If you want to get the best performance for your VMs, you should limit the number of data disks to 2 disks per vCPU.</li>
+<li><strong>Expected network bandwidth</strong> is the maximum aggregated <a href="../../virtual-network/virtual-machine-network-throughput" data-linktype="relative-path">bandwidth allocated per VM type</a> across all NICs, for all destinations. Upper limits are not guaranteed, but are intended to provide guidance for selecting the right VM type for the intended application. Actual network performance will depend on a variety of factors including network congestion, application loads, and network settings. For information on optimizing network throughput, see <a href="../../virtual-network/virtual-network-optimize-network-bandwidth" data-linktype="relative-path">Optimizing network throughput for Windows and Linux</a>. To achieve the expected network performance on Linux or Windows, it may be necessary to select a specific version or optimize your VM. For more information, see <a href="../../virtual-network/virtual-network-bandwidth-testing" data-linktype="relative-path">How to reliably test for virtual machine throughput</a>.</li>
+</ul>
+<h2 id="supported-operating-systems-and-drivers">Supported operating systems and drivers</h2>
+<p>To take advantage of the GPU capabilities of Azure N-series VMs running Windows, NVIDIA GPU drivers must be installed. The <a href="../extensions/hpccompute-gpu-windows" data-linktype="relative-path">NVIDIA GPU Driver Extension</a> installs appropriate NVIDIA CUDA or GRID drivers on an N-series VM. Install or manage the extension using the Azure portal or tools such as Azure PowerShell or Azure Resource Manager templates. See the <a href="../extensions/hpccompute-gpu-windows" data-linktype="relative-path">NVIDIA GPU Driver Extension documentation</a> for supported operating systems and deployment steps. For general information about VM extensions, see <a href="../extensions/overview" data-linktype="relative-path">Azure virtual machine extensions and features</a>.</p>
+<p>If you choose to install NVIDIA GPU drivers manually, see <a href="n-series-driver-setup" data-linktype="relative-path">N-series GPU driver setup for Windows</a> for supported operating systems, drivers, and installation and verification steps.</p>
+<h2 id="deployment-considerations">Deployment considerations</h2>
+<ul>
+<li><p>For availability of N-series VMs, see <a href="https://azure.microsoft.com/regions/services/" data-linktype="external">Products available by region</a>.</p>
+</li>
+<li><p>N-series VMs can only be deployed in the Resource Manager deployment model.</p>
+</li>
+<li><p>N-series VMs differ in the type of Azure Storage they support for their disks. NC and NV VMs only support VM disks that are backed by Standard Disk Storage (HDD). NCv2, NCv3, ND, and NVv2 VMs only support VM disks that are backed by Premium Disk Storage (SSD).</p>
+</li>
+<li><p>If you want to deploy more than a few N-series VMs, consider a pay-as-you-go subscription or other purchase options. If you&#39;re using an <a href="https://azure.microsoft.com/free/" data-linktype="external">Azure free account</a>, you can use only a limited number of Azure compute cores.</p>
+</li>
+<li><p>You might need to increase the cores quota (per region) in your Azure subscription, and increase the separate quota for NC, NCv2, NCv3, ND, NV, or NVv2 cores. To request a quota increase, <a href="../../azure-supportability/how-to-create-azure-support-request" data-linktype="relative-path">open an online customer support request</a> at no charge. Default limits may vary depending on your subscription category.</p>
+</li>
+</ul>
+<h2 id="other-sizes">Other sizes</h2>
+<ul>
+<li><a href="sizes-general" data-linktype="relative-path">General purpose</a></li>
+<li><a href="sizes-compute" data-linktype="relative-path">Compute optimized</a></li>
+<li><a href="sizes-hpc" data-linktype="relative-path">High performance compute</a></li>
+<li><a href="sizes-memory" data-linktype="relative-path">Memory optimized</a></li>
+<li><a href="sizes-storage" data-linktype="relative-path">Storage optimized</a></li>
+<li><a href="sizes-previous-gen" data-linktype="relative-path">Previous generations</a></li>
+</ul>
+<h2 id="next-steps">Next steps</h2>
+<p>Learn more about how <a href="acu" data-linktype="relative-path">Azure compute units (ACU)</a> can help you compare compute performance across Azure SKUs.</p>
+
+						<!-- </content> -->
+							
+						</main>
+
+						<!-- feedback section -->
+
+
+				
+<section class="feedback-section" data-bi-name="feedback-section">
+	<h2 id="feedback">Feedback</h2>
+
+	<div class="alert choose-feedback-type">
+		<p>
+We'd love to hear your thoughts. Choose the type you'd like to provide:		</p>
+
+		<div class="choose-feedback-buttons">
+			<a class="button feedback-type-product has-margin-bottom-small" href="https://feedback.azure.com/forums/216843-virtual-machines" data-bi-name="product-feedback">
+				<span>Product feedback</span>
+				<span class="icon docon docon-navigate-external" aria-hidden="true"></span>
+			</a>
+
+			<div class="field has-addons is-inline-flex has-margin-bottom-small">
+				<div class="control has-margin-top-none has-margin-bottom-none">
+					<button class="button feedback-sign-in-button has-text-wrap" data-bi-name="feedback-sign-in">
+						<span class="icon docon docon-brand-github" aria-hidden="true"></span>
+						<span>
+							Sign in to give documentation feedback						</span>
+					</button>
+				</div>
+				<div class="control dropdown has-caret has-margin-top-none has-margin-bottom-none" auto-align>
+					<button class="button dropdown-trigger has-text-wrap" aria-haspopup="true" aria-expanded="false" aria-controls="fbm0"
+						aria-label="Expand documentation feedback menu" data-bi-name="documentation-feedback-menu">
+						<span class="icon docon docon-chevron-down-light" aria-hidden="true"></span>
+					</button>
+					<div class="dropdown-menu documentation-feedback-menu" id="fbm0" role="menu">
+						You may also leave feedback <a data-bi-name="create-issue-on-github" href="{0}">directly on GitHub <span class="docon docon-navigate-external" aria-hidden="true"></span></a>.					</div>
+				</div>
+			</div>
+
+			<div class="field has-addons is-inline-flex has-margin-bottom-small" hidden>
+				<div class="control has-margin-top-none has-margin-bottom-none">
+					<button class="button feedback-form-toggle" aria-expanded="false" aria-controls="feedback-form"
+						data-bi-name="documentation-feedback">
+Content feedback					</button>
+				</div>
+				<div class="control dropdown has-caret has-margin-top-none has-margin-bottom-none" auto-align>
+					<button class="button dropdown-trigger" aria-haspopup="true" aria-expanded="false" aria-controls="fbm1"
+						aria-label="Expand documentation feedback menu" data-bi-name="documentation-feedback-menu">
+						<span class="icon docon docon-chevron-down-light" aria-hidden="true"></span>
+					</button>
+					<div class="dropdown-menu documentation-feedback-menu" id="fbm1" role="menu">
+						You may also leave feedback <a data-bi-name="create-issue-on-github" href="{0}">directly on GitHub <span class="docon docon-navigate-external" aria-hidden="true"></span></a>.					</div>
+				</div>
+			</div>
+		</div>
+		<p class="has-margin-top-none"><small>Our new feedback system is built on GitHub Issues. Read about this change in <a href="https://docs.microsoft.com/teamblog/a-new-feedback-system-is-coming-to-docs">our blog post</a>.</small></p>
+	</div>
+
+	<form class="feedback-form" id="feedback-form" accept-charset="UTF-8" autocomplete="off" action="javascript:" hidden>
+		<h3 class="feedback-form-heading current-user">
+			<img class="avatar" alt="Avatar" width="36" height="36" aria-hidden="true">
+			<span class="username" aria-hidden="true"></span>
+			<span class="visually-hidden">Liquid error: Can't find the localized string giveDocumentationFeedback for template Conceptual.</span>
+		</h3>
+
+		<label>
+			<span class="visually-hidden">Title</span>
+			<input name="title" type="text" placeholder="Title" required pattern=".*\w.*">
+		</label>
+		<label>
+			<span class="visually-hidden">Leave a comment</span>
+			<textarea name="body" placeholder="Leave a comment" required></textarea>
+		</label>
+
+		<div class="action-container">
+			<button class="button is-primary" type="submit" name="submit">Submit feedback</button>
+		</div>
+	</form>
+
+	<div class="feedback-status alert is-loading" role="alert">
+		<p>Loading feedback...</p>
+	</div>
+
+	<div class="feedback-tab-group tabGroup" data-tab-group-independent hidden>
+		<ul role="tablist">
+			<li role="presentation">
+				<a href="#tabpanel-issues-open" role="tab" aria-controls="tabpanel-issues-open" data-tab="issues-open" aria-label="Open Issues"></a>
+			</li>
+			<li role="presentation">
+				<a href="#tabpanel-issues-closed" role="tab" aria-controls="tabpanel-issues-closed" data-tab="issues-closed"
+				 aria-label="Closed Issues"></a>
+			</li>
+		</ul>
+		<section id="tabpanel-issues-open" role="tabpanel" data-tab="issues-open">
+			<div class="no-issues-placeholder">There are no open issues</div>
+			<ul class="github-issues-list" aria-label="Open Issues"></ul>
+		</section>
+		<section id="tabpanel-issues-closed" role="tabpanel" data-tab="issues-closed">
+			<div class="no-issues-placeholder">There are no closed issues</div>
+			<ul class="github-issues-list" aria-label="Closed Issues"></ul>
+		</section>
+	</div>
+	<div class="action-container">
+		<a class="view-on-github" href="https://github.com/MicrosoftDocs/azure-docs/issues" data-bi-name="view-on-github"
+		 hidden>
+			<span class="docon docon-brand-github" aria-hidden="true"></span>
+			<span>View on GitHub</span>
+			<span class="docon docon-navigate-external" aria-hidden="true"></span>
+		</a>
+	</div>
+</section>						<!-- end feedback section -->
+
+						<div class="footerContainer is-visible-interactive ">
+<footer id="footer-interactive" data-bi-name="footer" class="footer-layout">
+
+    <a data-mscc-ic="false" class="locale-selector-link" href="#" data-bi-name="select-locale"><span class="icon docon docon-world is-size-4 has-margin-right-small"></span><span class="local-selector-link-text"></span></a>
+
+    <ul class="links" data-bi-name="footerlinks">
+		<li><a data-mscc-ic="false" href="https://docs.microsoft.com/previous-versions/" data-bi-name="archivelink">Previous Version Docs</a></li>
+		<li><a data-mscc-ic="false" href="https://docs.microsoft.com/teamblog" data-bi-name="bloglink">Blog</a></li>
+		<li><a data-mscc-ic="false" href="https://docs.microsoft.com/contribute" data-bi-name="contributorGuide">Contribute</a></li>
+			<li><a data-mscc-ic="false" href="https://go.microsoft.com/fwlink/?LinkId=521839" data-bi-name="privacy">Privacy &amp; Cookies</a></li>
+		<li><a data-mscc-ic="false" href="/en-us/legal/termsofuse" data-bi-name="termsofuse">Terms of Use</a></li>
+		<li><a data-mscc-ic="false" href="https://aka.ms/sitefeedback" data-bi-name="feedback">Site Feedback</a></li>
+		<li><a data-mscc-ic="false" href="https://www.microsoft.com/en-us/legal/intellectualproperty/Trademarks/EN-US.aspx" data-bi-name="trademarks">Trademarks</a></li>
+    </ul>
+</footer>						</div>
+					</div>
+
+					<!--end of div.columns -->
+
+				</div>
+			
+			<!--end of .primary-holder -->
+			</section>
+
+				<div id="left-container" class="left-container column is-one-third-tablet is-one-quarter-desktop">
+					<nav class="sidebar" id="sidebar" data-bi-name="left toc" role="navigation" aria-label="Main Navigation">
+						<button class="sidebar-header" type="button" aria-label="Close" data-bi-name="contents-collapse">
+							<span>Contents</span>
+							<span class="docon docon-navigate-close" aria-hidden="true"></span>
+						</button>
+						<div id="sidebarContent">
+							<div class="filterHolder">
+							</div>
+							<nav class="toc"></nav>
+							<div class="pdfDownloadHolder"></div>
+						</div>
+					</nav>
+				</div>
+
+			<aside id="interactive-container" class="interactive-container is-visible-interactive column has-body-background-dark ">
+			</aside>
+		</div>
+
+		<!--end of .mainContainer -->
+	</div>
+
+	<div id="openFeedbackContainer" class="openfeedback-container"></div>
+
+	<div class="footerContainer is-hidden-interactive ">
+<footer id="footer" data-bi-name="footer" class="footer-layout uhf-container has-padding" role="contentinfo">
+
+    <a data-mscc-ic="false" class="locale-selector-link" href="#" data-bi-name="select-locale"><span class="icon docon docon-world is-size-4 has-margin-right-small"></span><span class="local-selector-link-text"></span></a>
+
+    <ul class="links" data-bi-name="footerlinks">
+		<li><a data-mscc-ic="false" href="https://docs.microsoft.com/previous-versions/" data-bi-name="archivelink">Previous Version Docs</a></li>
+		<li><a data-mscc-ic="false" href="https://docs.microsoft.com/teamblog" data-bi-name="bloglink">Blog</a></li>
+		<li><a data-mscc-ic="false" href="https://docs.microsoft.com/contribute" data-bi-name="contributorGuide">Contribute</a></li>
+			<li><a data-mscc-ic="false" href="https://go.microsoft.com/fwlink/?LinkId=521839" data-bi-name="privacy">Privacy &amp; Cookies</a></li>
+		<li><a data-mscc-ic="false" href="/en-us/legal/termsofuse" data-bi-name="termsofuse">Terms of Use</a></li>
+		<li><a data-mscc-ic="false" href="https://aka.ms/sitefeedback" data-bi-name="feedback">Site Feedback</a></li>
+		<li><a data-mscc-ic="false" href="https://www.microsoft.com/en-us/legal/intellectualproperty/Trademarks/EN-US.aspx" data-bi-name="trademarks">Trademarks</a></li>
+    </ul>
+</footer>	</div>
+
+	<div class="action-panel"></div>
+</body>
+</html>{ûCp*v      [Ö	D[Ö	P?§êQ[Öf   J    :https://docs.microsoft.com/en-us/azure/virtual-machines/windows/sizes-gpu necko:classified 1 strongly-framed 1 security-info FnhllAKWRHGAlo+ESXykKAAAAAAAAAAAwAAAAAAAAEaphjojH6pBabDSgSnsfLHeAAQAAgAAAAAAAAAAAAAAAAAAAAAB4vFIJp5wRkeyPxAQ9RJGKPqbqVvKO0mKuIl8ec8o/uhmCjImkVxP+7sgiYWmMt8FvcOXmlQiTNWFiWlrbpbqgwAAAAAAAAOQMIIDjDCCAnSgAwIBAgIERTJf9DANBgkqhkiG9w0BAQsFADCBijEUMBIGA1UEBhMLUG9ydFN3aWdnZXIxFDASBgNVBAgTC1BvcnRTd2lnZ2VyMRQwEgYDVQQHEwtQb3J0U3dpZ2dlcjEUMBIGA1UEChMLUG9ydFN3aWdnZXIxFzAVBgNVBAsTDlBvcnRTd2lnZ2VyIENBMRcwFQYDVQQDEw5Qb3J0U3dpZ2dlciBDQTAeFw0xNDEwMjgxMzEyMTBaFw0zODEwMjgxMzEyMTBaMGIxFDASBgNVBAYTC1BvcnRTd2lnZ2VyMRQwEgYDVQQKEwtQb3J0U3dpZ2dlcjEXMBUGA1UECxMOUG9ydFN3aWdnZXIgQ0ExGzAZBgNVBAMTEmRvY3MubWljcm9zb2Z0LmNvbTCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBAIqft6Yog2ydao9n4L9WyptB/+Xg2yYiHfhtcFHTF02D1t9v7FyiCFGWZs+OFn8DboDaAnpGuDZ3QYYwuluoDydOVFEZcQAPf3fbXOTjJ7T0SVcKW+qC4ap2o4mk9DTkM8UPrBI6r4pUARuUTluL4syoEuKkMRHOBR7vHN6pVWTSLSV2H3JA4iTdi7NwFH2KBIS7DmqVp2Yxi9codgz1hnPRHtrExzzEC1p0rsL0p8U98QjktLaeGbLi8GtOAXJiF+QS8p+YiPodNfQhIUIALaWVwEukQNy6Jbvq0AenWlcN5a1J5pXfoB45y12V5WCtuawazd+7qmm5FxaMRlRuMTcCAwEAAaMhMB8wHQYDVR0RBBYwFIISZG9jcy5taWNyb3NvZnQuY29tMA0GCSqGSIb3DQEBCwUAA4IBAQAMj3TEdnG+PH2U2cAj+aJoLPUzX44AMEhLfn2asy/0dTQG6JiRHpe/dgJKu1PNlCHU7In4xBYAdGV6BgF4ZSTCERR1Oa5aM8c+zrbu9s+S0Tt4MWh9JOswSdOXUPp7hi378QVADy4gBYHOtl0l1tvJepdpNz1db1/HW6hEqg10SHp4NmiNSekql5f+r3XHAi8D5zkATYzXWmoIMB15KnvpCXZAISj5aECbLHiNFGdCqqc2L7RaVvOMNx1NvCAPlEhyFK+dCgNDN0Jvolhaps63HeIDDEP9ZSltPX8qPkTPQ448Kmed2YYCc2EJEQrLpn6MwubkPDpgKAVmg8btCGE3wC8BAwAAAAABAQAAAAA= request-method GET request-Accept-Encoding gzip, deflate, br response-head HTTP/1.1 200 OK
+Last-Modified: Sat, 27 Oct 2018 00:53:44 GMT
+request-context: appId=cid-v1:cd765a3e-2aba-43aa-b307-6e4b3b4be342
+X-Datacenter: eus
+X-Frame-Options: DENY
+X-Content-Type-Options: nosniff
+X-UA-Compatible: IE=edge
+X-XSS-Protection: 1; mode=block
+Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+X-Rendering-Stack: Dynamic
+Content-Type: text/html
+Vary: Accept-Encoding
+Content-Length: 41261
+Cache-Control: public, max-age=546
+Expires: Sun, 28 Oct 2018 19:36:12 GMT
+Date: Sun, 28 Oct 2018 19:27:06 GMT
+X-Cache-Hit: true
+ original-response-headers Last-Modified: Sat, 27 Oct 2018 00:53:44 GMT
+request-context: appId=cid-v1:cd765a3e-2aba-43aa-b307-6e4b3b4be342
+X-Datacenter: eus
+X-Frame-Options: DENY
+X-Content-Type-Options: nosniff
+X-UA-Compatible: IE=edge
+X-XSS-Protection: 1; mode=block
+Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+X-Rendering-Stack: Dynamic
+Content-Type: text/html
+Vary: Accept-Encoding
+Content-Length: 41261
+Cache-Control: public, max-age=546
+Expires: Sun, 28 Oct 2018 19:36:12 GMT
+Date: Sun, 28 Oct 2018 19:27:06 GMT
+Connection: close
+X-Cache-Hit: true
+ uncompressed-len 0 net-response-time-onstart 910 net-response-time-onstop 910 predictor::resource-count 23 predictor::https://docs.microsoft.com/_themes/docs.theme/master/en-us/_themes/css/b3687bf5.site-ltr.css 1,1,1540753732,4096 predictor::https://docs.microsoft.com/_themes/docs.theme/master/en-us/_themes/css/e562b38f.conceptual.css 1,1,1540753732,4096 predictor::https://azurecomcdn.azureedge.net/en-us/asset/menucss/ 1,1,1540753732,4096 predictor::https://ajax.aspnetcdn.com/ajax/jQuery/jquery-3.3.1.min.js 1,1,1540753732,4096 predictor::https://docs.microsoft.com/_themes/docs.theme/master/en-us/_themes/global/js/de980046.localized-strings.js 1,1,1540753732,4096 predictor::https://docs.microsoft.com/_themes/docs.theme/master/en-us/_themes/global/js/79987ada.global.min.js 1,1,1540753732,4096 predictor::https://docs.microsoft.com/_themes/docs.theme/master/en-us/_themes/images/contributor.svg 1,1,1540753732,4096 predictor::https://az725175.vo.msecnd.net/scripts/jsll-4.js 1,1,1540753732,4096 predictor::https://c.s-microsoft.com/static/fonts/segoe-ui/west-european/semibold/latest.woff2 1,1,1540753732,4096 predictor::https://c.s-microsoft.com/static/fonts/segoe-ui/west-european/normal/latest.woff2 1,1,1540753732,4096 predictor::https://docs.microsoft.com/_themes/docs.theme/master/en-us/_themes/fonts/docons.woff2?5f30b1e7 1,1,1540753732,4096 predictor::https://c.s-microsoft.com/static/fonts/segoe-ui/west-european/bold/latest.woff2 1,1,1540753732,4096 predictor::https://azurecomcdn.azureedge.net/en-us/asset/menujs/ 1,1,1540753732,4096 predictor::https://c.s-microsoft.com/static/fonts/segoe-ui/west-european/semilight/latest.woff2 1,1,1540753732,4096 predictor::https://azurecomcdn.azureedge.net/cvt-770a627bd400b6e7dad7d5cd4e427295ae5bc8c379aec76385ddd6fd9710f739/fonts/bapimdl2/normal/latest.woff2 1,1,1540753732,4096 predictor::https://c1.microsoft.com/c.gif?DI=4050&did=1&t= 1,1,1540753732,4096 predictor::https://github.com/jonbeck7.png?size=32 1,1,1540753732,4096 predictor::https://github.com/dlepow.png?size=32 1,1,1540753732,4096 predictor::https://github.com/cynthn.png?size=32 1,1,1540753732,4096 predictor::https://github.com/jpconnock.png?size=32 1,1,1540753732,4096 predictor::https://github.com/squillace.png?size=32 1,1,1540753732,4096 predictor::https://www.google-analytics.com/analytics.js 1,1,1540753732,4096 predictor::https://www.google-analytics.com/r/collect?v=1&_v=j71&aip=1&a=311486371&t=pageview&_s=1&dl=https%3A%2F%2Fdocs.microsoft.com%2Fen-us%2Fazure%2Fvirtual-machines%2Fwindows%2Fsizes-gpu&ul=en-us&de=UTF-8&dt=Azure%20Windows%20VM%20sizes%20-%20GPU%20%7C%20Microsoft%20Docs&sd=24-bit&sr=1920x976&vp=1187x680&je=1&_u=YEBAAEAB~&jid=310926781&gjid=1375380029&cid=113936271.1540753737&tid=UA-62780441-21&_gid=708953083.1540753737&_r=1&z=710134924 1,1,1540753732,4096   ¡-

@@ -1,0 +1,214 @@
+var __extends = (this && this.__extends) || (function () {
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    }
+    return function (d, b) {
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
+define(["require", "exports", "knockout", "../../Tables/DataTable/DataTableUtilities", "./EntityPropertyViewModel", "../../Tables/Constants", "../../Tables/TableEntityProcessor", "../../Tables/Utilities", "../ContextualPaneBase"], function (require, exports, ko, DataTableUtilities, EntityPropertyViewModel_1, TableConstants, TableEntityProcessor, Utilities, ContextualPaneBase_1) {
+    "use strict";
+    // Class with variables and functions that are common to both adding and editing entities
+    var TableEntityPane = /** @class */ (function (_super) {
+        __extends(TableEntityPane, _super);
+        function TableEntityPane(options) {
+            var _this = _super.call(this, options) || this;
+            /* Labels */
+            _this.attributeNameLabel = "Property Name"; // localize
+            _this.dataTypeLabel = "Type"; // localize
+            _this.attributeValueLabel = "Value"; // localize
+            /* Controls */
+            _this.removeButtonLabel = "Remove"; // localize
+            _this.editButtonLabel = "Edit"; // localize
+            _this.addButtonLabel = "Add Property"; // localize
+            _this.edmTypes = ko.observableArray([
+                TableConstants.TableType.String,
+                TableConstants.TableType.Boolean,
+                TableConstants.TableType.Binary,
+                TableConstants.TableType.DateTime,
+                TableConstants.TableType.Double,
+                TableConstants.TableType.Guid,
+                TableConstants.TableType.Int32,
+                TableConstants.TableType.Int64
+            ]);
+            _this.displayedAttributes = ko.observableArray();
+            _this.editingProperty = ko.observable();
+            _this.isEditing = ko.observable(false);
+            _this.submitButtonText = ko.observable();
+            _this.removeAttribute = function (index, data) {
+                _this.displayedAttributes.splice(index, 1);
+                _this.updateIsActionEnabled();
+            };
+            _this.editAttribute = function (index, data) {
+                _this.editingProperty(data);
+                _this.isEditing(true);
+            };
+            _this.finishEditingAttribute = function () {
+                _this.isEditing(false);
+                _this.editingProperty(null);
+            };
+            _this.onKeyUp = function (data, event) {
+                var handled = Utilities.onEsc(event, function ($sourceElement) {
+                    _this.finishEditingAttribute();
+                });
+                return !handled;
+            };
+            _this.insertAttribute = function (name, type) {
+                var entityProperty;
+                if (!!name && !!type && _this.container.isPreferredApiCassandra()) {
+                    // TODO figure out validation story for blob and Inet so we can allow adding/editing them
+                    var nonEditableType = type === TableConstants.CassandraType.Blob || type === TableConstants.CassandraType.Inet;
+                    entityProperty = new EntityPropertyViewModel_1.default(_this, name, type, "", // default to empty string
+                    /* namePlaceholder */ undefined, 
+                    /* valuePlaceholder */ undefined, 
+                    /* editable */ false, 
+                    /* default valid name */ false, 
+                    /* default valid value */ true, 
+                    /* isRequired */ false, 
+                    /* removable */ false, 
+                    /*value editable*/ !nonEditableType);
+                }
+                else {
+                    entityProperty = new EntityPropertyViewModel_1.default(_this, "", _this.edmTypes()[0], // default to the first Edm type: 'string'
+                    "", // default to empty string
+                    /* namePlaceholder */ undefined, 
+                    /* valuePlaceholder */ undefined, 
+                    /* editable */ true, 
+                    /* default valid name */ false, 
+                    /* default valid value */ true);
+                }
+                _this.displayedAttributes.push(entityProperty);
+                _this.updateIsActionEnabled();
+                _this.scrollToBottom();
+                entityProperty.hasFocus(true);
+            };
+            _this.container.isPreferredApiCassandra.subscribe(function (isCassandra) {
+                if (isCassandra) {
+                    _this.edmTypes([
+                        TableConstants.CassandraType.Text,
+                        TableConstants.CassandraType.Ascii,
+                        TableConstants.CassandraType.Bigint,
+                        TableConstants.CassandraType.Blob,
+                        TableConstants.CassandraType.Boolean,
+                        TableConstants.CassandraType.Decimal,
+                        TableConstants.CassandraType.Double,
+                        TableConstants.CassandraType.Float,
+                        TableConstants.CassandraType.Int,
+                        TableConstants.CassandraType.Uuid,
+                        TableConstants.CassandraType.Varchar,
+                        TableConstants.CassandraType.Varint,
+                        TableConstants.CassandraType.Inet,
+                        TableConstants.CassandraType.Smallint,
+                        TableConstants.CassandraType.Tinyint,
+                    ]);
+                }
+            });
+            _this.canAdd = ko.computed(function () {
+                // Cassandra can't add since the schema can't be changed once created
+                if (_this.container.isPreferredApiCassandra()) {
+                    return false;
+                }
+                // Adding '2' to the maximum to take into account PartitionKey and RowKey
+                return (_this.displayedAttributes().length < (EntityPropertyViewModel_1.default.maximumNumberOfProperties + 2));
+            });
+            _this.canApply = ko.observable(true);
+            _this.editingProperty(_this.displayedAttributes()[0]);
+            return _this;
+        }
+        TableEntityPane.prototype.updateIsActionEnabled = function (needRequiredFields) {
+            if (needRequiredFields === void 0) { needRequiredFields = true; }
+            var properties = this.displayedAttributes() || [];
+            var disable = _.some(properties, function (property) {
+                return property.isInvalidName() || property.isInvalidValue();
+            });
+            this.canApply(!disable);
+        };
+        TableEntityPane.prototype.entityFromAttributes = function (displayedAttributes) {
+            var entity = {};
+            displayedAttributes.forEach(function (attribute) {
+                if (attribute.name() && ((attribute.value() !== "") || attribute.isRequired)) {
+                    var value = attribute.getPropertyValue();
+                    var type = attribute.type();
+                    if (type === TableConstants.TableType.Int64) {
+                        value = Utilities.padLongWithZeros(value);
+                    }
+                    entity[attribute.name()] = {
+                        "_": value,
+                        "$": type
+                    };
+                }
+            });
+            return entity;
+        };
+        // Removing Binary from Add Entity dialog until we have a full story for it.
+        TableEntityPane.prototype.setOptionDisable = function (option, value) {
+            ko.applyBindingsToNode(option, { disable: (value === TableConstants.TableType.Binary) }, value);
+        };
+        /**
+         * Parse the updated entity to see if there are any new attributes that old headers don't have.
+         * In this case, add these attributes names as new headers.
+         * Remarks: adding new headers will automatically trigger table redraw.
+         */
+        TableEntityPane.prototype.tryInsertNewHeaders = function (viewModel, newEntity) {
+            var newHeaders = [];
+            Object.keys(newEntity).forEach(function (key) {
+                if (!_.contains(viewModel.headers, key)
+                    && key !== TableEntityProcessor.keyProperties.attachments
+                    && key !== TableEntityProcessor.keyProperties.etag
+                    && key !== TableEntityProcessor.keyProperties.resourceId
+                    && key !== TableEntityProcessor.keyProperties.self
+                    && (!viewModel.queryTablesTab.container.isPreferredApiCassandra() || key !== TableConstants.EntityKeyNames.RowKey)) {
+                    newHeaders.push(key);
+                }
+            });
+            var newHeadersInserted = false;
+            if (newHeaders.length) {
+                if (!DataTableUtilities.checkForDefaultHeader(viewModel.headers)) {
+                    newHeaders = viewModel.headers.concat(newHeaders);
+                }
+                viewModel.updateHeaders(newHeaders, /* notifyColumnChanges */ true, /* enablePrompt */ false);
+                newHeadersInserted = true;
+            }
+            return newHeadersInserted;
+        };
+        TableEntityPane.prototype.scrollToBottom = function () {
+            var scrollBox = document.getElementById(this.scrollId());
+            var isScrolledToBottom = scrollBox.scrollHeight - scrollBox.clientHeight <= scrollBox.scrollHeight + 1;
+            if (isScrolledToBottom) {
+                scrollBox.scrollTop = scrollBox.scrollHeight - scrollBox.clientHeight;
+            }
+        };
+        TableEntityPane.requiredFieldsForTablesAPI = [
+            TableConstants.EntityKeyNames.PartitionKey,
+            TableConstants.EntityKeyNames.RowKey
+        ];
+        return TableEntityPane;
+    }(ContextualPaneBase_1.ContextualPaneBase));
+    return TableEntityPane;
+});
+KãþâÅ      [Õ¾Ò[Õ¾ä?§¶·[×kH   P    :https://cosmos.azure.com/built/Explorer/Panes/Tables/TableEntityPane.js?v=1.0.1 necko:classified 1 strongly-framed 1 security-info FnhllAKWRHGAlo+ESXykKAAAAAAAAAAAwAAAAAAAAEaphjojH6pBabDSgSnsfLHeAAQAAgAAAAAAAAAAAAAAAAAAAAAB4vFIJp5wRkeyPxAQ9RJGKPqbqVvKO0mKuIl8ec8o/uhmCjImkVxP+7sgiYWmMt8FvcOXmlQiTNWFiWlrbpbqgwAAAAAAAAOMMIIDiDCCAnCgAwIBAgIERTJgUjANBgkqhkiG9w0BAQsFADCBijEUMBIGA1UEBhMLUG9ydFN3aWdnZXIxFDASBgNVBAgTC1BvcnRTd2lnZ2VyMRQwEgYDVQQHEwtQb3J0U3dpZ2dlcjEUMBIGA1UEChMLUG9ydFN3aWdnZXIxFzAVBgNVBAsTDlBvcnRTd2lnZ2VyIENBMRcwFQYDVQQDEw5Qb3J0U3dpZ2dlciBDQTAeFw0xNDEwMjgxMzEyMTBaFw0zODEwMjgxMzEyMTBaMGAxFDASBgNVBAYTC1BvcnRTd2lnZ2VyMRQwEgYDVQQKEwtQb3J0U3dpZ2dlcjEXMBUGA1UECxMOUG9ydFN3aWdnZXIgQ0ExGTAXBgNVBAMTEGNvc21vcy5henVyZS5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCKn7emKINsnWqPZ+C/VsqbQf/l4NsmIh34bXBR0xdNg9bfb+xcoghRlmbPjhZ/A26A2gJ6Rrg2d0GGMLpbqA8nTlRRGXEAD39321zk4ye09ElXClvqguGqdqOJpPQ05DPFD6wSOq+KVAEblE5bi+LMqBLipDERzgUe7xzeqVVk0i0ldh9yQOIk3YuzcBR9igSEuw5qladmMYvXKHYM9YZz0R7axMc8xAtadK7C9KfFPfEI5LS2nhmy4vBrTgFyYhfkEvKfmIj6HTX0ISFCAC2llcBLpEDcuiW76tAHp1pXDeWtSeaV36AeOctdleVgrbmsGs3fu6ppuRcWjEZUbjE3AgMBAAGjHzAdMBsGA1UdEQQUMBKCEGNvc21vcy5henVyZS5jb20wDQYJKoZIhvcNAQELBQADggEBABYikT6Y5YgJJ4IVJldlFDF5MKxp26YegXhvT8EmAbgr0yQBIlY2DtKEiHf7Q8wRoJ9y5Ajst1D7HmRba+XLjS6s3IHJ7gtuvc3fZj9MPKpbqSKRfHDB8bDOVIzmjBseg2BqckHTkcYak3b/pTWCTqKHM3LxKsDwN8F3HNQ2pY4d5ma2kR1EtWdTpRiIbir3QxJDcWVp8CgHONZcoMn33NNwnWWjAQMX6d8e1CPuBZi0t+myaYduCqPgKKox9qMXSubF6uifQkAJ5RdLZrZ2pghENA/4r1oz51wqEmpjPsStSUxRPwJ6wJrB4gwGtX7++ZHLjAaNrTSUCGwIOlAT4LnALwEDAAAAAAEBAAAAAA== request-method GET request-Accept-Encoding gzip, deflate, br response-head HTTP/1.1 200 OK
+Content-Length: 10251
+Content-Type: application/x-javascript
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:39:32 GMT
+ original-response-headers Content-Length: 10251
+Content-Type: application/x-javascript
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:39:32 GMT
+Connection: close
+ uncompressed-len 0 net-response-time-onstart 17638 net-response-time-onstop 17638   (

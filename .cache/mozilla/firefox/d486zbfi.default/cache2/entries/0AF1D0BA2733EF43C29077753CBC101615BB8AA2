@@ -1,0 +1,207 @@
+var __extends = (this && this.__extends) || (function () {
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    }
+    return function (d, b) {
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
+define(["require", "exports", "../../Common/EnvironmentUtility", "../../Common/Constants", "knockout", "../../Contracts/ViewModels", "../../Platform/Hosted/Authorization", "../../PlatformType", "../../Shared/Telemetry/TelemetryProcessor", "../../Shared/Telemetry/TelemetryConstants", "./TabsBase", "../Menus/NotificationConsole/NotificationConsole", "../../Utils/NotificationConsoleUtils", "../../Common/HashMap"], function (require, exports, EnvironmentUtility, Constants, ko, ViewModels, AuthHeadersUtil, PlatformType_1, TelemetryProcessor_1, TelemetryConstants_1, TabsBase, NotificationConsole_1, NotificationConsoleUtils_1, HashMap_1) {
+    "use strict";
+    var DocumentDB = window.DocumentDB;
+    var MongoShellTab = /** @class */ (function (_super) {
+        __extends(MongoShellTab, _super);
+        function MongoShellTab(options) {
+            var _this = _super.call(this, options) || this;
+            _this._logTraces = new HashMap_1.HashMap();
+            _this._container = options.collection.container;
+            _this.url = ko.computed(function () {
+                var account = DocumentDB.RequestHandler && DocumentDB.RequestHandler._databaseAccount && DocumentDB.RequestHandler._databaseAccount() || {};
+                var resourceId = account && account.id;
+                var accountName = account && account.name;
+                var mongoEndpoint = account && account.properties.documentEndpoint;
+                _this._runtimeEndpoint = window.dataExplorerPlatform == PlatformType_1.PlatformType.Hosted ? AuthHeadersUtil.extensionEndpoint : "";
+                var authorization = DocumentDB.RequestHandler._authorizationToken && DocumentDB.RequestHandler._authorizationToken() || "";
+                var extensionEndpoint = _this._container.extensionEndpoint() || _this._runtimeEndpoint || "";
+                var baseUrl = '/content/mongoshell/dist/';
+                if (_this._container.serverId() === "localhost") {
+                    baseUrl = '/content/mongoshell/';
+                }
+                return "" + extensionEndpoint + baseUrl + "index.html?resourceId=" + resourceId + "&accountName=" + accountName + "&mongoEndpoint=" + mongoEndpoint;
+            });
+            window.addEventListener("message", _this.handleMessage.bind(_this), false);
+            return _this;
+        }
+        MongoShellTab.prototype.setContentFocus = function (event) {
+            // TODO: Work around cross origin security issue in Hosted Data Explorer by using Shell <-> Data Explorer messaging (253527)
+            // if(event.type === "load" && (<any>window).dataExplorerPlatform != PlatformType.Hosted) {
+            //     let activeShell = event.target.contentWindow && event.target.contentWindow.mongo && event.target.contentWindow.mongo.shells && event.target.contentWindow.mongo.shells[0];
+            //     activeShell && setTimeout(function(){
+            //         activeShell.focus();
+            //     },2000);
+            // }
+        };
+        MongoShellTab.prototype.onTabClick = function () {
+            var _this = this;
+            return _super.prototype.onTabClick.call(this).then(function () {
+                _this.collection.selectedSubnodeKind(ViewModels.CollectionTabKind.Documents);
+            });
+        };
+        MongoShellTab.prototype.handleMessage = function (event) {
+            var shellIframe = document.getElementById(this.tabId);
+            if (!shellIframe)
+                return;
+            if (typeof event.data !== "object" || event.data["signature"] !== "mongoshell")
+                return;
+            if (!("data" in event.data) || !("eventType" in event.data))
+                return;
+            if (event.data.eventType == MessageType.IframeReady) {
+                this.handleReadyMessage(event, shellIframe);
+            }
+            else if (event.data.eventType == MessageType.Notification) {
+                this.handleNotificationMessage(event, shellIframe);
+            }
+            else {
+                this.handleLogMessage(event, shellIframe);
+            }
+        };
+        MongoShellTab.prototype.handleReadyMessage = function (event, shellIframe) {
+            if (typeof event.data["data"] !== "string")
+                return;
+            if (event.data.data !== "ready")
+                return;
+            var authorization = DocumentDB.RequestHandler._authorizationToken && DocumentDB.RequestHandler._authorizationToken() || "";
+            var resourceId = this._container.databaseAccount().id;
+            var accountName = this._container.databaseAccount().name;
+            var documentEndpoint = this._container.databaseAccount().properties.documentEndpoint;
+            var mongoEndpoint = documentEndpoint.substr(Constants.MongoDBAccounts.protocol.length + 3, documentEndpoint.length - (Constants.MongoDBAccounts.protocol.length + 2 + Constants.MongoDBAccounts.defaultPort.length)) + Constants.MongoDBAccounts.defaultPort.toString();
+            var databaseId = this.collection.database.id();
+            var collectionId = this.collection.id();
+            var apiEndpoint = EnvironmentUtility.getMongoBackendEndpoint(this._container.serverId(), DocumentDB.RequestHandler && DocumentDB.RequestHandler._databaseAccount && DocumentDB.RequestHandler._databaseAccount().location, this._container.extensionEndpoint()).replace('/api/mongo/explorer', '');
+            var encryptedAuthToken = DocumentDB.RequestHandler._accessToken && DocumentDB.RequestHandler._accessToken();
+            shellIframe.contentWindow.postMessage({
+                signature: "dataexplorer",
+                data: {
+                    resourceId: resourceId,
+                    accountName: accountName,
+                    mongoEndpoint: mongoEndpoint,
+                    authorization: authorization,
+                    databaseId: databaseId,
+                    collectionId: collectionId,
+                    encryptedAuthToken: encryptedAuthToken,
+                    apiEndpoint: apiEndpoint
+                }
+            }, this._container.extensionEndpoint());
+        };
+        MongoShellTab.prototype.handleLogMessage = function (event, shellIframe) {
+            if (!("logType" in event.data.data) || typeof event.data.data["logType"] !== "string")
+                return;
+            if (!("logData" in event.data.data))
+                return;
+            var dataToLog = event.data.data.logData;
+            var logType = event.data.data.logType;
+            var shellTraceId = event.data.data.traceId || "none";
+            switch (logType) {
+                case LogType.Information:
+                    TelemetryProcessor_1.default.trace(TelemetryConstants_1.Action.MongoShell, TelemetryConstants_1.ActionModifiers.Success, dataToLog);
+                    break;
+                case LogType.Warning:
+                    TelemetryProcessor_1.default.trace(TelemetryConstants_1.Action.MongoShell, TelemetryConstants_1.ActionModifiers.Failed, dataToLog);
+                    break;
+                case LogType.Verbose:
+                    TelemetryProcessor_1.default.trace(TelemetryConstants_1.Action.MongoShell, TelemetryConstants_1.ActionModifiers.Mark, dataToLog);
+                    break;
+                case LogType.StartTrace:
+                    var telemetryTraceId = TelemetryProcessor_1.default.traceStart(TelemetryConstants_1.Action.MongoShell, dataToLog);
+                    this._logTraces.set(shellTraceId, telemetryTraceId);
+                    break;
+                case LogType.SuccessTrace:
+                    if (this._logTraces.has(shellTraceId)) {
+                        var originalTelemetryTraceId = this._logTraces.get(shellTraceId);
+                        TelemetryProcessor_1.default.traceSuccess(TelemetryConstants_1.Action.MongoShell, dataToLog, originalTelemetryTraceId);
+                        this._logTraces.delete(shellTraceId);
+                    }
+                    else {
+                        TelemetryProcessor_1.default.trace(TelemetryConstants_1.Action.MongoShell, TelemetryConstants_1.ActionModifiers.Success, dataToLog);
+                    }
+                    break;
+                case LogType.FailureTrace:
+                    if (this._logTraces.has(shellTraceId)) {
+                        var originalTelemetryTraceId = this._logTraces.get(shellTraceId);
+                        TelemetryProcessor_1.default.traceFailure(TelemetryConstants_1.Action.MongoShell, dataToLog, originalTelemetryTraceId);
+                        this._logTraces.delete(shellTraceId);
+                    }
+                    else {
+                        TelemetryProcessor_1.default.trace(TelemetryConstants_1.Action.MongoShell, TelemetryConstants_1.ActionModifiers.Failed, dataToLog);
+                    }
+                    break;
+            }
+        };
+        MongoShellTab.prototype.handleNotificationMessage = function (event, shellIframe) {
+            if (!("logType" in event.data.data) || typeof event.data.data["logType"] !== "string")
+                return;
+            if (!("logData" in event.data.data))
+                return;
+            var dataToLog = event.data.data.logData;
+            var logType = event.data.data.logType;
+            switch (logType) {
+                case LogType.Information:
+                    NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Info, dataToLog);
+                    break;
+                case LogType.Warning:
+                    NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Error, dataToLog);
+                    break;
+                case LogType.InProgress:
+                    NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.InProgress, dataToLog);
+            }
+        };
+        return MongoShellTab;
+    }(TabsBase));
+    var MessageType = /** @class */ (function () {
+        function MessageType() {
+        }
+        MessageType.IframeReady = "iframeready";
+        MessageType.Notification = "notification";
+        MessageType.Log = "log";
+        return MessageType;
+    }());
+    var LogType = /** @class */ (function () {
+        function LogType() {
+        }
+        LogType.Information = "information";
+        LogType.Warning = "warning";
+        LogType.Verbose = "verbose";
+        LogType.InProgress = "inprogress";
+        LogType.StartTrace = "start";
+        LogType.SuccessTrace = "success";
+        LogType.FailureTrace = "failure";
+        return LogType;
+    }());
+    return MongoShellTab;
+});
+é¢\¼[      [Õ¾á[Õ¾õ?§¶Á[×kX   F    :https://cosmos.azure.com/built/Explorer/Tabs/MongoShellTab.js?v=1.0.1 necko:classified 1 strongly-framed 1 security-info FnhllAKWRHGAlo+ESXykKAAAAAAAAAAAwAAAAAAAAEaphjojH6pBabDSgSnsfLHeAAQAAgAAAAAAAAAAAAAAAAAAAAAB4vFIJp5wRkeyPxAQ9RJGKPqbqVvKO0mKuIl8ec8o/uhmCjImkVxP+7sgiYWmMt8FvcOXmlQiTNWFiWlrbpbqgwAAAAAAAAOMMIIDiDCCAnCgAwIBAgIERTJgUjANBgkqhkiG9w0BAQsFADCBijEUMBIGA1UEBhMLUG9ydFN3aWdnZXIxFDASBgNVBAgTC1BvcnRTd2lnZ2VyMRQwEgYDVQQHEwtQb3J0U3dpZ2dlcjEUMBIGA1UEChMLUG9ydFN3aWdnZXIxFzAVBgNVBAsTDlBvcnRTd2lnZ2VyIENBMRcwFQYDVQQDEw5Qb3J0U3dpZ2dlciBDQTAeFw0xNDEwMjgxMzEyMTBaFw0zODEwMjgxMzEyMTBaMGAxFDASBgNVBAYTC1BvcnRTd2lnZ2VyMRQwEgYDVQQKEwtQb3J0U3dpZ2dlcjEXMBUGA1UECxMOUG9ydFN3aWdnZXIgQ0ExGTAXBgNVBAMTEGNvc21vcy5henVyZS5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCKn7emKINsnWqPZ+C/VsqbQf/l4NsmIh34bXBR0xdNg9bfb+xcoghRlmbPjhZ/A26A2gJ6Rrg2d0GGMLpbqA8nTlRRGXEAD39321zk4ye09ElXClvqguGqdqOJpPQ05DPFD6wSOq+KVAEblE5bi+LMqBLipDERzgUe7xzeqVVk0i0ldh9yQOIk3YuzcBR9igSEuw5qladmMYvXKHYM9YZz0R7axMc8xAtadK7C9KfFPfEI5LS2nhmy4vBrTgFyYhfkEvKfmIj6HTX0ISFCAC2llcBLpEDcuiW76tAHp1pXDeWtSeaV36AeOctdleVgrbmsGs3fu6ppuRcWjEZUbjE3AgMBAAGjHzAdMBsGA1UdEQQUMBKCEGNvc21vcy5henVyZS5jb20wDQYJKoZIhvcNAQELBQADggEBABYikT6Y5YgJJ4IVJldlFDF5MKxp26YegXhvT8EmAbgr0yQBIlY2DtKEiHf7Q8wRoJ9y5Ajst1D7HmRba+XLjS6s3IHJ7gtuvc3fZj9MPKpbqSKRfHDB8bDOVIzmjBseg2BqckHTkcYak3b/pTWCTqKHM3LxKsDwN8F3HNQ2pY4d5ma2kR1EtWdTpRiIbir3QxJDcWVp8CgHONZcoMn33NNwnWWjAQMX6d8e1CPuBZi0t+myaYduCqPgKKox9qMXSubF6uifQkAJ5RdLZrZ2pghENA/4r1oz51wqEmpjPsStSUxRPwJ6wJrB4gwGtX7++ZHLjAaNrTSUCGwIOlAT4LnALwEDAAAAAAEBAAAAAA== request-method GET request-Accept-Encoding gzip, deflate, br response-head HTTP/1.1 200 OK
+Content-Length: 11224
+Content-Type: application/x-javascript
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:39:49 GMT
+ original-response-headers Content-Length: 11224
+Content-Type: application/x-javascript
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:39:49 GMT
+Connection: close
+ uncompressed-len 0 net-response-time-onstart 20548 net-response-time-onstop 20548   +Ø

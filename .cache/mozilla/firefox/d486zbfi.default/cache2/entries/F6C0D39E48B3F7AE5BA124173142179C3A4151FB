@@ -1,0 +1,190 @@
+define(["require", "exports", "../../Common/Constants", "q", "../../Utils/NotificationConsoleUtils", "../../Explorer/Menus/NotificationConsole/NotificationConsole"], function (require, exports, Constants, Q, NotificationConsoleUtils_1, NotificationConsole_1) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    var resourceTypes = {
+        databases: "dbs",
+        collections: "colls",
+        documents: "docs",
+        sprocs: "sprocs",
+        udfs: "udfs",
+        triggers: "triggers",
+        users: "users",
+        permissions: "permissions",
+        attachments: "attachments",
+        media: "media",
+        conflicts: "conflicts",
+        pkranges: "pkranges",
+        offers: "offers"
+    };
+    var AuthHeadersUtil = /** @class */ (function () {
+        function AuthHeadersUtil() {
+        }
+        AuthHeadersUtil.getAuthorizationHeader = function (verb, path, resourceId, resourceType, headers) {
+            var tokenId = AuthHeadersUtil.getTokensCacheId(verb, resourceId, resourceType);
+            var authorizationHeaders = AuthHeadersUtil.tokensCache[tokenId];
+            if (!authorizationHeaders) {
+                console.log("Missing authorization header for " + tokenId);
+                return "";
+            }
+            // override date set by SDK
+            headers[Constants.HttpHeaders.msDate] = authorizationHeaders["x-ms-date"];
+            return authorizationHeaders.authorization;
+        };
+        AuthHeadersUtil.getTokensCacheId = function (verb, resourceId, resourceType) {
+            return (verb && verb.toLowerCase() || "") + "," + (resourceType && resourceType.toLowerCase() || "") + "," + (resourceId && resourceId.toLowerCase() || "");
+        };
+        AuthHeadersUtil.getForReadDatabases = function () {
+            return AuthHeadersUtil._getAuthorizationHeaders("get", resourceTypes.databases, "");
+        };
+        AuthHeadersUtil.getForQueryDatabases = function () {
+            return AuthHeadersUtil._getAuthorizationHeaders("post", resourceTypes.databases, "");
+        };
+        AuthHeadersUtil.getForCreateDatabases = function () {
+            return AuthHeadersUtil._getAuthorizationHeaders("post", resourceTypes.databases, "");
+        };
+        AuthHeadersUtil.getForDeleteDocument = function (documentRid) {
+            return AuthHeadersUtil._getAuthorizationHeaders("delete", resourceTypes.documents, documentRid);
+        };
+        AuthHeadersUtil.getForDeleteConflicts = function (conflictRid) {
+            return AuthHeadersUtil._getAuthorizationHeaders("delete", resourceTypes.conflicts, conflictRid);
+        };
+        AuthHeadersUtil.getForDeleteStoredProcedure = function (storedProcedureRid) {
+            return AuthHeadersUtil._getAuthorizationHeaders("delete", resourceTypes.sprocs, storedProcedureRid);
+        };
+        AuthHeadersUtil.getForDeleteUserDefinedFunction = function (userDefinedFunctionRid) {
+            return AuthHeadersUtil._getAuthorizationHeaders("delete", resourceTypes.udfs, userDefinedFunctionRid);
+        };
+        AuthHeadersUtil.getForDeleteTrigger = function (triggerRid) {
+            return AuthHeadersUtil._getAuthorizationHeaders("delete", resourceTypes.triggers, triggerRid);
+        };
+        AuthHeadersUtil.getForCreateStoredProcedure = function (collectionRid) {
+            return AuthHeadersUtil._getAuthorizationHeaders("post", resourceTypes.sprocs, collectionRid);
+        };
+        AuthHeadersUtil.getForCreateUserDefinedFunction = function (collectionRid) {
+            return AuthHeadersUtil._getAuthorizationHeaders("post", resourceTypes.udfs, collectionRid);
+        };
+        AuthHeadersUtil.getForCreateTrigger = function (collectionRid) {
+            return AuthHeadersUtil._getAuthorizationHeaders("post", resourceTypes.triggers, collectionRid);
+        };
+        AuthHeadersUtil.getForSaveDocument = function (collectionRid) {
+            return AuthHeadersUtil._getAuthorizationHeaders("post", resourceTypes.documents, collectionRid);
+        };
+        AuthHeadersUtil.getForReadCollections = function (databaseRid) {
+            return AuthHeadersUtil._getAuthorizationHeaders("get", resourceTypes.collections, databaseRid);
+        };
+        AuthHeadersUtil.getForReadCollection = function (collectionRid) {
+            return AuthHeadersUtil._getAuthorizationHeaders("get", resourceTypes.collections, collectionRid);
+        };
+        AuthHeadersUtil.getForReadOffers = function () {
+            return AuthHeadersUtil._getAuthorizationHeaders("get", resourceTypes.offers, "");
+        };
+        AuthHeadersUtil.getForReadOffer = function (offerRid) {
+            return AuthHeadersUtil._getAuthorizationHeaders("get", resourceTypes.offers, offerRid);
+        };
+        AuthHeadersUtil.getForQueryCollections = function (databaseRid) {
+            return AuthHeadersUtil._getAuthorizationHeaders("post", resourceTypes.collections, databaseRid);
+        };
+        AuthHeadersUtil.getForCreateCollections = function (databaseRid) {
+            return AuthHeadersUtil._getAuthorizationHeaders("post", resourceTypes.collections, databaseRid);
+        };
+        AuthHeadersUtil.getForDeleteCollection = function (collectionRid) {
+            return AuthHeadersUtil._getAuthorizationHeaders("delete", resourceTypes.collections, collectionRid);
+        };
+        AuthHeadersUtil.getForDeleteDatabase = function (databaseRid) {
+            return AuthHeadersUtil._getAuthorizationHeaders("delete", resourceTypes.databases, databaseRid);
+        };
+        AuthHeadersUtil.getForQueryDocuments = function (collectionRid) {
+            return AuthHeadersUtil._getAuthorizationHeaders("get", resourceTypes.pkranges, collectionRid).then(function () { return AuthHeadersUtil._getAuthorizationHeaders("post", resourceTypes.documents, collectionRid); });
+        };
+        AuthHeadersUtil.getForReadDocument = function (documentRid) {
+            return AuthHeadersUtil._getAuthorizationHeaders("get", resourceTypes.documents, documentRid);
+        };
+        AuthHeadersUtil.getForReadStoredProcedures = function (collectionRid) {
+            return AuthHeadersUtil._getAuthorizationHeaders("get", resourceTypes.sprocs, collectionRid);
+        };
+        AuthHeadersUtil.getForExecuteStoredProcedure = function (sprocRid) {
+            return AuthHeadersUtil._getAuthorizationHeaders("post", resourceTypes.sprocs, sprocRid);
+        };
+        AuthHeadersUtil.getForReadUserDefinedFunctions = function (collectionRid) {
+            return AuthHeadersUtil._getAuthorizationHeaders("get", resourceTypes.udfs, collectionRid);
+        };
+        AuthHeadersUtil.getForReadTriggers = function (collectionRid) {
+            return AuthHeadersUtil._getAuthorizationHeaders("get", resourceTypes.triggers, collectionRid);
+        };
+        AuthHeadersUtil.getForUpdateCollection = function (collectionRid) {
+            return AuthHeadersUtil._getAuthorizationHeaders("put", resourceTypes.collections, collectionRid);
+        };
+        AuthHeadersUtil.getForUpdateDocument = function (documentRid) {
+            return AuthHeadersUtil._getAuthorizationHeaders("put", resourceTypes.documents, documentRid);
+        };
+        AuthHeadersUtil.getForUpdateOffer = function (offerRid) {
+            return AuthHeadersUtil._getAuthorizationHeaders("put", resourceTypes.offers, offerRid);
+        };
+        AuthHeadersUtil.getForUpdateStoredProcedure = function (storedProcedureRid) {
+            return AuthHeadersUtil._getAuthorizationHeaders("put", resourceTypes.sprocs, storedProcedureRid);
+        };
+        AuthHeadersUtil.getForUpdateUserDefinedFunction = function (userDefinedFunctionRid) {
+            return AuthHeadersUtil._getAuthorizationHeaders("put", resourceTypes.udfs, userDefinedFunctionRid);
+        };
+        AuthHeadersUtil.getForUpdateTrigger = function (triggerRid) {
+            return AuthHeadersUtil._getAuthorizationHeaders("put", resourceTypes.triggers, triggerRid);
+        };
+        AuthHeadersUtil._getAuthorizationHeaders = function (verb, resourceType, resourceId) {
+            var date = new Date().toUTCString();
+            var authorizationEndpoint = AuthHeadersUtil._authorizationEndpoint || "";
+            var tokenId = AuthHeadersUtil.getTokensCacheId(verb, resourceId, resourceType);
+            var cachedAuthHeaders = AuthHeadersUtil.tokensCache[tokenId];
+            if (cachedAuthHeaders) {
+                return Q(cachedAuthHeaders);
+            }
+            var deferred = Q.defer();
+            Q($.ajax({
+                type: 'GET',
+                url: authorizationEndpoint + "/_explorer/authorization/" + verb + "/" + resourceType + "/" + resourceId,
+                headers: {
+                    "x-ms-date": date,
+                    "authorization": "...."
+                }
+            }).done(function (data) {
+                var result = {
+                    "x-ms-date": date,
+                    "authorization": data.Token
+                };
+                AuthHeadersUtil.tokensCache[tokenId] = result;
+                setTimeout(function () {
+                    delete AuthHeadersUtil.tokensCache[tokenId];
+                }, Constants.ClientDefaults.cacheBustingTimeoutMs);
+                deferred.resolve(result);
+            }).fail(function (reason) {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Error, "Failed to get authorization headers for " + resourceType + ": " + JSON.stringify(reason));
+                deferred.reject(reason);
+            }));
+            return deferred.promise;
+        };
+        AuthHeadersUtil.tokensCache = {};
+        return AuthHeadersUtil;
+    }());
+    exports.AuthHeadersUtil = AuthHeadersUtil;
+});
+6ðŒ®
+­      [Õ¾Ê[Õ¾Ý?§¶²[×k?   J    :https://cosmos.azure.com/built/Platform/Emulator/Authorization.js?v=1.0.1 necko:classified 1 strongly-framed 1 security-info FnhllAKWRHGAlo+ESXykKAAAAAAAAAAAwAAAAAAAAEaphjojH6pBabDSgSnsfLHeAAQAAgAAAAAAAAAAAAAAAAAAAAAB4vFIJp5wRkeyPxAQ9RJGKPqbqVvKO0mKuIl8ec8o/uhmCjImkVxP+7sgiYWmMt8FvcOXmlQiTNWFiWlrbpbqgwAAAAAAAAOMMIIDiDCCAnCgAwIBAgIERTJgUjANBgkqhkiG9w0BAQsFADCBijEUMBIGA1UEBhMLUG9ydFN3aWdnZXIxFDASBgNVBAgTC1BvcnRTd2lnZ2VyMRQwEgYDVQQHEwtQb3J0U3dpZ2dlcjEUMBIGA1UEChMLUG9ydFN3aWdnZXIxFzAVBgNVBAsTDlBvcnRTd2lnZ2VyIENBMRcwFQYDVQQDEw5Qb3J0U3dpZ2dlciBDQTAeFw0xNDEwMjgxMzEyMTBaFw0zODEwMjgxMzEyMTBaMGAxFDASBgNVBAYTC1BvcnRTd2lnZ2VyMRQwEgYDVQQKEwtQb3J0U3dpZ2dlcjEXMBUGA1UECxMOUG9ydFN3aWdnZXIgQ0ExGTAXBgNVBAMTEGNvc21vcy5henVyZS5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCKn7emKINsnWqPZ+C/VsqbQf/l4NsmIh34bXBR0xdNg9bfb+xcoghRlmbPjhZ/A26A2gJ6Rrg2d0GGMLpbqA8nTlRRGXEAD39321zk4ye09ElXClvqguGqdqOJpPQ05DPFD6wSOq+KVAEblE5bi+LMqBLipDERzgUe7xzeqVVk0i0ldh9yQOIk3YuzcBR9igSEuw5qladmMYvXKHYM9YZz0R7axMc8xAtadK7C9KfFPfEI5LS2nhmy4vBrTgFyYhfkEvKfmIj6HTX0ISFCAC2llcBLpEDcuiW76tAHp1pXDeWtSeaV36AeOctdleVgrbmsGs3fu6ppuRcWjEZUbjE3AgMBAAGjHzAdMBsGA1UdEQQUMBKCEGNvc21vcy5henVyZS5jb20wDQYJKoZIhvcNAQELBQADggEBABYikT6Y5YgJJ4IVJldlFDF5MKxp26YegXhvT8EmAbgr0yQBIlY2DtKEiHf7Q8wRoJ9y5Ajst1D7HmRba+XLjS6s3IHJ7gtuvc3fZj9MPKpbqSKRfHDB8bDOVIzmjBseg2BqckHTkcYak3b/pTWCTqKHM3LxKsDwN8F3HNQ2pY4d5ma2kR1EtWdTpRiIbir3QxJDcWVp8CgHONZcoMn33NNwnWWjAQMX6d8e1CPuBZi0t+myaYduCqPgKKox9qMXSubF6uifQkAJ5RdLZrZ2pghENA/4r1oz51wqEmpjPsStSUxRPwJ6wJrB4gwGtX7++ZHLjAaNrTSUCGwIOlAT4LnALwEDAAAAAAEBAAAAAA== request-method GET request-Accept-Encoding gzip, deflate, br response-head HTTP/1.1 200 OK
+Content-Length: 9775
+Content-Type: application/x-javascript
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:39:24 GMT
+ original-response-headers Content-Length: 9775
+Content-Type: application/x-javascript
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:39:24 GMT
+Connection: close
+ uncompressed-len 0 net-response-time-onstart 18215 net-response-time-onstop 18216   &/

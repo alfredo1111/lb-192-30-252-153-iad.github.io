@@ -1,0 +1,437 @@
+define(["require", "exports"], function (require, exports) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    ;
+    ;
+    /**
+     * Functionality related to graph manipulation
+     */
+    var GraphData = /** @class */ (function () {
+        function GraphData() {
+            this._vertices = [];
+            this._edges = [];
+            this._targetsMap = {};
+            this._sourcesMap = {};
+            this._id2VertexMap = {};
+        }
+        /**
+         * Copy from plain object
+         * @param data
+         */
+        GraphData.prototype.setData = function (data) {
+            if (!data) {
+                return;
+            }
+            var props = ['_vertices', '_edges', '_targetsMap', '_sourcesMap', '_id2VertexMap'];
+            for (var i = 0; i < props.length; i++) {
+                if (!data.hasOwnProperty(props[i])) {
+                    return;
+                }
+            }
+            this._vertices = data._vertices;
+            this._edges = data._edges;
+            this._targetsMap = data._targetsMap;
+            this._sourcesMap = data._sourcesMap;
+            this._id2VertexMap = data._id2VertexMap;
+        };
+        Object.defineProperty(GraphData.prototype, "vertices", {
+            get: function () {
+                return this._vertices;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(GraphData.prototype, "edges", {
+            get: function () {
+                return this._edges;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        GraphData.prototype.getVertexById = function (id) {
+            return this._id2VertexMap[id];
+        };
+        GraphData.prototype.hasVertexId = function (id) {
+            return this._id2VertexMap.hasOwnProperty(id);
+        };
+        Object.defineProperty(GraphData.prototype, "ids", {
+            get: function () {
+                return Object.keys(this._id2VertexMap);
+            },
+            enumerable: true,
+            configurable: true
+        });
+        GraphData.prototype.addVertex = function (vertex) {
+            if (this.ids.indexOf(vertex.id) !== -1) {
+                // Make sure vertex is not already in
+                return;
+            }
+            this._vertices.push(vertex);
+            this._id2VertexMap[vertex.id] = vertex;
+            this.addNeighborInfo(vertex);
+        };
+        /**
+         * Look in this inE and outE and update nodes already in the graph
+         * @param vertex
+         */
+        GraphData.prototype.addNeighborInfo = function (vertex) {
+            var _this = this;
+            // Add edge if the other end is in the graph
+            if (vertex.hasOwnProperty('inE')) {
+                var _loop_1 = function (p) {
+                    vertex['inE'][p].forEach(function (e) {
+                        if (_this.hasVertexId(e.outV)) {
+                            var v = _this.getVertexById(e.outV);
+                            GraphData.addOutE(v, p, {
+                                id: e.id,
+                                inV: e.outV
+                            });
+                        }
+                    });
+                };
+                for (var p in vertex['inE']) {
+                    _loop_1(p);
+                }
+            }
+            if (vertex.hasOwnProperty('outE')) {
+                var _loop_2 = function (p) {
+                    vertex['outE'][p].forEach(function (e) {
+                        if (_this.hasVertexId(e.inV)) {
+                            var v = _this.getVertexById(e.inV);
+                            GraphData.addInE(v, p, {
+                                id: e.id,
+                                outV: e.inV
+                            });
+                        }
+                    });
+                };
+                for (var p in vertex['outE']) {
+                    _loop_2(p);
+                }
+            }
+        };
+        GraphData.prototype.getSourcesForId = function (id) {
+            return this._sourcesMap[id];
+        };
+        GraphData.prototype.getTargetsForId = function (id) {
+            return this._targetsMap[id];
+        };
+        GraphData.prototype.addEdge = function (edge) {
+            // Check if edge is not already in
+            for (var i = 0; i < this._edges.length; i++) {
+                if (this._edges[i].inV === edge.inV &&
+                    this._edges[i].outV === edge.outV) {
+                    return;
+                }
+            }
+            // Add edge only if both ends of the edge are in the graph
+            if (this.hasVertexId(edge.inV) && this.hasVertexId(edge.outV)) {
+                this._edges.push(edge);
+            }
+            GraphData.addToMap(this._targetsMap, edge.outV, edge.inV);
+            GraphData.addToMap(this._sourcesMap, edge.inV, edge.outV);
+            // Add edge info to vertex
+            if (this.hasVertexId(edge.inV)) {
+                GraphData.addInE(this.getVertexById(edge.inV), edge.label, edge);
+            }
+            if (this.hasVertexId(edge.outV)) {
+                GraphData.addOutE(this.getVertexById(edge.outV), edge.label, edge);
+            }
+        };
+        /**
+         * Add inE edge to vertex
+         * @param v
+         * @param edge
+         */
+        GraphData.addInE = function (v, label, edge) {
+            v['inE'] = v['inE'] || {};
+            v['inE'][label] = v['inE'][label] || [];
+            GraphData.addToEdgeArray(edge, v['inE'][label]);
+        };
+        ;
+        /**
+         * Add outE edge to vertex
+         * @param v
+         * @param edge
+         */
+        GraphData.addOutE = function (v, label, edge) {
+            v['outE'] = v['outE'] || {};
+            v['outE'][label] = v['outE'][label] || [];
+            GraphData.addToEdgeArray(edge, v['outE'][label]);
+        };
+        /**
+         * Make sure to not add the same edge if already exists
+         * TODO Unit test this!
+         * @param edge
+         * @param edgeArray
+         */
+        GraphData.addToEdgeArray = function (edge, edgeArray) {
+            for (var i = 0; i < edgeArray.length; i++) {
+                if (edgeArray[i].id === edge.id) {
+                    return;
+                }
+            }
+            edgeArray.push(edge);
+        };
+        /**
+         * Merge all inE and outE from source to target
+         * @param target
+         * @param source
+         */
+        GraphData.addEdgeInfoToVertex = function (target, source) {
+            if (source.hasOwnProperty('outE')) {
+                var _loop_3 = function (p) {
+                    source.outE[p].forEach(function (e) {
+                        GraphData.addOutE(target, p, e);
+                    });
+                };
+                for (var p in source.outE) {
+                    _loop_3(p);
+                }
+            }
+            if (source.hasOwnProperty('inE')) {
+                var _loop_4 = function (p) {
+                    source.inE[p].forEach(function (e) {
+                        GraphData.addInE(target, p, e);
+                    });
+                };
+                for (var p in source.inE) {
+                    _loop_4(p);
+                }
+            }
+        };
+        /**
+         * Add a new value to the key-values map
+         * key <--> [ value1, value2, ... ]
+         * @param kvmap
+         * @param key
+         * @param value
+         */
+        GraphData.addToMap = function (kvmap, key, value) {
+            var values = [];
+            if (kvmap.hasOwnProperty(key)) {
+                values = kvmap[key];
+            }
+            else {
+                kvmap[key] = values;
+            }
+            if (values.indexOf(value) === -1) {
+                values.push(value);
+            }
+        };
+        GraphData.prototype.unloadAllVertices = function (excludedIds) {
+            var _this = this;
+            this.ids.forEach(function (id) {
+                if (excludedIds.indexOf(id) !== -1) {
+                    return;
+                }
+                _this.removeVertex(id, true);
+            });
+        };
+        GraphData.prototype.deleteVertex = function (id) {
+            var v = this.getVertexById(id);
+            var n = this.vertices.indexOf(v);
+            this._vertices.splice(n, 1);
+            delete this._id2VertexMap[id];
+        };
+        GraphData.removeIdFromArray = function (idArray, id2remove) {
+            var n = idArray.indexOf(id2remove);
+            if (n !== -1) {
+                idArray.splice(n, 1);
+            }
+        };
+        /**
+         * Remove id from map
+         * Note: map may end up with empty arrays
+         * @param map
+         * @param id2remove
+         */
+        GraphData.removeFromMap = function (map, id2remove) {
+            // First remove entry if it exists
+            if (map.hasOwnProperty(id2remove)) {
+                delete map[id2remove];
+            }
+            // Then remove element if it's in any array
+            GraphData.getValues(map).forEach(function (idArray) {
+                GraphData.removeIdFromArray(idArray, id2remove);
+            });
+        };
+        /**
+         * IE doesn't support Object.values(object)
+         * @param object
+         */
+        GraphData.getValues = function (object) {
+            if (!object)
+                return [];
+            return Object.keys(object).map(function (p) { return object[p]; });
+        };
+        /**
+         * Remove value2remove for entryId in map
+         * @param map
+         * @param entryId
+         * @param value2Remove
+         */
+        GraphData.removeEltFromMap = function (map, entryId, id2remove) {
+            var idArray = map[entryId];
+            if (!idArray || idArray.length < 1) {
+                return;
+            }
+            GraphData.removeIdFromArray(idArray, id2remove);
+        };
+        /**
+         * Erase all references to vertex in graph
+         * @param id
+         * @param unloadOnly true: unload from cache. Delete edge and vertices, but not the references to it in the vertices
+         */
+        GraphData.prototype.removeVertex = function (id, unloadOnly) {
+            var _this = this;
+            if (!this.hasVertexId(id)) {
+                console.error('No vertex to delete found with id', id);
+                return;
+            }
+            // Find all edges that touches this vertex and remove them
+            var edgeIds = [];
+            this._edges.forEach(function (edge) {
+                if (edge.inV === id || edge.outV === id) {
+                    edgeIds.push(edge.id);
+                }
+            });
+            edgeIds.forEach(function (id) {
+                _this.removeEdge(id, unloadOnly);
+            });
+            GraphData.removeFromMap(this._sourcesMap, id);
+            GraphData.removeFromMap(this._targetsMap, id);
+            // Delete from the map
+            this.deleteVertex(id);
+        };
+        /**
+         * Remove edge from graph data
+         * @param edgeId
+         * @param unloadOnly remove edge, but not references in the nodes
+         */
+        GraphData.prototype.removeEdge = function (edgeId, unloadOnly) {
+            // Remove from edges array
+            for (var i = 0; i < this._edges.length; i++) {
+                if (this._edges[i].id === edgeId) {
+                    var edge = this._edges[i];
+                    this._edges.splice(i, 1);
+                    GraphData.removeEltFromMap(this._sourcesMap, edge.inV, edge.outV);
+                    GraphData.removeEltFromMap(this._targetsMap, edge.outV, edge.inV);
+                    break;
+                }
+            }
+            if (!unloadOnly) {
+                // Cleanup vertices
+                this._vertices.forEach(function (vertex) {
+                    GraphData.getValues(vertex.inE).forEach(function (edges) {
+                        for (var i = 0; i < edges.length; i++) {
+                            if (edges[i].id === edgeId) {
+                                edges.splice(i, 1);
+                                return;
+                            }
+                        }
+                    });
+                    GraphData.getValues(vertex.inE).forEach(function (edges) {
+                        for (var i = 0; i < edges.length; i++) {
+                            if (edges[i].id === edgeId) {
+                                edges.splice(i, 1);
+                                return;
+                            }
+                        }
+                    });
+                });
+            }
+        };
+        /**
+         * Set this node as root, clear root tag for other nodes
+         * @param id
+         */
+        GraphData.prototype.setAsRoot = function (id) {
+            this._vertices.forEach(function (v) {
+                delete v._isRoot;
+                delete v._isFixedPosition;
+            });
+            if (this.hasVertexId(id)) {
+                var v = this.getVertexById(id);
+                v._isRoot = true;
+                v._isFixedPosition = true;
+            }
+        };
+        /**
+         * Find root node id
+         * @return root node id if found, undefined otherwise
+         */
+        GraphData.prototype.findRootNodeId = function () {
+            return (this._vertices.find(function (v) { return !!v._isRoot; }) || {}).id;
+        };
+        ;
+        /**
+         * Get list of children ids of a given vertex
+         * @param vertex
+         */
+        GraphData.getChildrenId = function (vertex) {
+            var ids = {}; // HashSet
+            if (vertex.hasOwnProperty('outE')) {
+                var outE = vertex.outE;
+                for (var label in outE) {
+                    for (var i = 0; i < outE[label].length; i++) {
+                        var edge = outE[label][i];
+                        ids[edge.inV] = true;
+                    }
+                }
+            }
+            if (vertex.hasOwnProperty('inE')) {
+                var inE = vertex.inE;
+                for (var label in inE) {
+                    for (var i = 0; i < inE[label].length; i++) {
+                        var edge = inE[label][i];
+                        ids[edge.outV] = true;
+                    }
+                }
+            }
+            return Object.keys(ids);
+        };
+        /**
+         *
+         * @param v
+         * @return list of edge ids for this vertex
+         */
+        GraphData.getEdgesId = function (v) {
+            var ids = [];
+            if (v.inE) {
+                for (var l in v.inE) {
+                    v.inE[l].forEach(function (e) { return ids.push(e.id); });
+                }
+            }
+            if (v.outE) {
+                for (var l in v.outE) {
+                    v.outE[l].forEach(function (e) { return ids.push(e.id); });
+                }
+            }
+            return ids;
+        };
+        return GraphData;
+    }());
+    exports.GraphData = GraphData;
+});
+;Jot˜£      [Õ¾ç[Õ¾ù?§¶Æ[×k_   Z    :https://cosmos.azure.com/built/Explorer/Graph/GraphExplorerComponent/GraphData.js?v=1.0.1 necko:classified 1 strongly-framed 1 security-info FnhllAKWRHGAlo+ESXykKAAAAAAAAAAAwAAAAAAAAEaphjojH6pBabDSgSnsfLHeAAQAAgAAAAAAAAAAAAAAAAAAAAAB4vFIJp5wRkeyPxAQ9RJGKPqbqVvKO0mKuIl8ec8o/uhmCjImkVxP+7sgiYWmMt8FvcOXmlQiTNWFiWlrbpbqgwAAAAAAAAOMMIIDiDCCAnCgAwIBAgIERTJgUjANBgkqhkiG9w0BAQsFADCBijEUMBIGA1UEBhMLUG9ydFN3aWdnZXIxFDASBgNVBAgTC1BvcnRTd2lnZ2VyMRQwEgYDVQQHEwtQb3J0U3dpZ2dlcjEUMBIGA1UEChMLUG9ydFN3aWdnZXIxFzAVBgNVBAsTDlBvcnRTd2lnZ2VyIENBMRcwFQYDVQQDEw5Qb3J0U3dpZ2dlciBDQTAeFw0xNDEwMjgxMzEyMTBaFw0zODEwMjgxMzEyMTBaMGAxFDASBgNVBAYTC1BvcnRTd2lnZ2VyMRQwEgYDVQQKEwtQb3J0U3dpZ2dlcjEXMBUGA1UECxMOUG9ydFN3aWdnZXIgQ0ExGTAXBgNVBAMTEGNvc21vcy5henVyZS5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCKn7emKINsnWqPZ+C/VsqbQf/l4NsmIh34bXBR0xdNg9bfb+xcoghRlmbPjhZ/A26A2gJ6Rrg2d0GGMLpbqA8nTlRRGXEAD39321zk4ye09ElXClvqguGqdqOJpPQ05DPFD6wSOq+KVAEblE5bi+LMqBLipDERzgUe7xzeqVVk0i0ldh9yQOIk3YuzcBR9igSEuw5qladmMYvXKHYM9YZz0R7axMc8xAtadK7C9KfFPfEI5LS2nhmy4vBrTgFyYhfkEvKfmIj6HTX0ISFCAC2llcBLpEDcuiW76tAHp1pXDeWtSeaV36AeOctdleVgrbmsGs3fu6ppuRcWjEZUbjE3AgMBAAGjHzAdMBsGA1UdEQQUMBKCEGNvc21vcy5henVyZS5jb20wDQYJKoZIhvcNAQELBQADggEBABYikT6Y5YgJJ4IVJldlFDF5MKxp26YegXhvT8EmAbgr0yQBIlY2DtKEiHf7Q8wRoJ9y5Ajst1D7HmRba+XLjS6s3IHJ7gtuvc3fZj9MPKpbqSKRfHDB8bDOVIzmjBseg2BqckHTkcYak3b/pTWCTqKHM3LxKsDwN8F3HNQ2pY4d5ma2kR1EtWdTpRiIbir3QxJDcWVp8CgHONZcoMn33NNwnWWjAQMX6d8e1CPuBZi0t+myaYduCqPgKKox9qMXSubF6uifQkAJ5RdLZrZ2pghENA/4r1oz51wqEmpjPsStSUxRPwJ6wJrB4gwGtX7++ZHLjAaNrTSUCGwIOlAT4LnALwEDAAAAAAEBAAAAAA== request-method GET request-Accept-Encoding gzip, deflate, br response-head HTTP/1.1 200 OK
+Content-Length: 14963
+Content-Type: application/x-javascript
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:39:52 GMT
+ original-response-headers Content-Length: 14963
+Content-Type: application/x-javascript
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:39:52 GMT
+Connection: close
+ uncompressed-len 0 net-response-time-onstart 17078 net-response-time-onstop 17078   :s

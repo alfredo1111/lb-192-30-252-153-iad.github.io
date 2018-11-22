@@ -1,0 +1,213 @@
+define(["require", "exports", "knockout"], function (require, exports, ko) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    var ContextMenuButtonFactory = /** @class */ (function () {
+        function ContextMenuButtonFactory() {
+        }
+        ContextMenuButtonFactory.createDatabaseContextMenuButton = function (container) {
+            var newCollectionButtonOptions = {
+                iconSrc: 'images/AddCollection.svg',
+                onCommandClick: function () {
+                    if (container.isPreferredApiCassandra()) {
+                        container.cassandraAddCollectionPane.open();
+                    }
+                    else {
+                        container.addCollectionPane.open(container.selectedDatabaseId());
+                    }
+                    var selectedDatabase = container.findSelectedDatabase();
+                    selectedDatabase && selectedDatabase.contextMenu.hide(selectedDatabase, null);
+                },
+                commandButtonLabel: container.addCollectionText(),
+                hasPopup: true
+            };
+            var deleteDatabaseButtonOptions = {
+                iconSrc: 'images/DeleteDatabase.svg',
+                onCommandClick: function () {
+                    var database = container.findSelectedDatabase();
+                    database.onDeleteDatabaseContextMenuClick(database, null);
+                },
+                commandButtonLabel: container.deleteDatabaseText(),
+                hasPopup: true,
+                disabled: ko.computed(function () { return container.isNoneSelected(); }),
+                visible: ko.computed(function () { return !container.isNoneSelected(); })
+            };
+            return [
+                newCollectionButtonOptions,
+                deleteDatabaseButtonOptions,
+            ];
+        };
+        ContextMenuButtonFactory.createCollectionContextMenuButton = function (container) {
+            var newSQLQueryButtonOptions = {
+                iconSrc: 'images/AddSqlQuery_16x16.svg',
+                onCommandClick: function () {
+                    var selectedCollection = container.findSelectedCollection();
+                    selectedCollection && selectedCollection.onNewQueryClick(selectedCollection, null);
+                },
+                commandButtonLabel: 'New SQL Query',
+                hasPopup: true,
+                disabled: ko.computed(function () { return container.isDatabaseNodeOrNoneSelected() && container.isPreferredApiDocumentDB(); }),
+                visible: ko.computed(function () { return !container.isDatabaseNodeOrNoneSelected() && container.isPreferredApiDocumentDB(); })
+                //TODO: Merge with add query logic below, same goes for CommandBarButtonFactory
+            };
+            var newSQLQueryButtonOptionsForGraph = {
+                iconSrc: 'images/AddSqlQuery_16x16.svg',
+                onCommandClick: function () {
+                    var selectedCollection = container.findSelectedCollection();
+                    selectedCollection && selectedCollection.onNewQueryClick(selectedCollection, null);
+                },
+                commandButtonLabel: 'New SQL Query',
+                hasPopup: true,
+                disabled: ko.computed(function () { return container.isDatabaseNodeOrNoneSelected() && container.isPreferredApiGraph(); }),
+                visible: ko.computed(function () { return !container.isDatabaseNodeOrNoneSelected() && container.isPreferredApiGraph(); })
+            };
+            var newMongoQueryButtonOptions = {
+                iconSrc: 'images/AddSqlQuery_16x16.svg',
+                onCommandClick: function () {
+                    var selectedCollection = container.findSelectedCollection();
+                    selectedCollection && selectedCollection.onNewMongoQueryClick(selectedCollection, null);
+                },
+                commandButtonLabel: 'New Query',
+                hasPopup: true,
+                disabled: ko.computed(function () { return container.isDatabaseNodeOrNoneSelected() && container.isPreferredApiMongoDB(); }),
+                visible: ko.computed(function () { return !container.isDatabaseNodeOrNoneSelected() && container.isPreferredApiMongoDB(); })
+            };
+            var newMongoShellButtonOptions = {
+                iconSrc: 'images/Mongoshell1.svg',
+                onCommandClick: function () {
+                    var selectedCollection = container.findSelectedCollection();
+                    selectedCollection && selectedCollection.onNewMongoShellClick();
+                },
+                commandButtonLabel: 'New Shell',
+                hasPopup: true,
+                disabled: ko.computed(function () { return container.isDatabaseNodeOrNoneSelected() && container.isPreferredApiMongoDB(); }),
+                visible: ko.computed(function () { return !container.isDatabaseNodeOrNoneSelected() && container.isPreferredApiMongoDB(); })
+            };
+            var newStoredProcedureButtonOptions = {
+                iconSrc: 'images/AddStoredProcedure.svg',
+                onCommandClick: function () {
+                    var selectedCollection = container.findSelectedCollection();
+                    selectedCollection && selectedCollection.onNewStoredProcedureClick(selectedCollection, null);
+                },
+                commandButtonLabel: 'New Stored Procedure',
+                hasPopup: true,
+                disabled: ko.computed(function () { return container.isDatabaseNodeOrNoneSelected(); }),
+                visible: ko.computed(function () { return !container.isDatabaseNodeOrNoneSelected() && !container.isPreferredApiCassandra(); })
+            };
+            var newUserDefinedFunctionButtonOptions = {
+                iconSrc: 'images/AddUdf.svg',
+                onCommandClick: function () {
+                    var selectedCollection = container.findSelectedCollection();
+                    selectedCollection && selectedCollection.onNewUserDefinedFunctionClick(selectedCollection, null);
+                },
+                commandButtonLabel: 'New UDF',
+                hasPopup: true,
+                disabled: ko.computed(function () { return container.isDatabaseNodeOrNoneSelected(); }),
+                visible: ko.computed(function () { return !container.isDatabaseNodeOrNoneSelected() && !container.isPreferredApiCassandra(); })
+            };
+            var newTriggerButtonOptions = {
+                iconSrc: 'images/AddTrigger.svg',
+                onCommandClick: function () {
+                    var selectedCollection = container.findSelectedCollection();
+                    selectedCollection && selectedCollection.onNewTriggerClick(selectedCollection, null);
+                },
+                commandButtonLabel: 'New Trigger',
+                hasPopup: true,
+                disabled: ko.computed(function () { return container.isDatabaseNodeOrNoneSelected(); }),
+                visible: ko.computed(function () { return !container.isDatabaseNodeOrNoneSelected() && !container.isPreferredApiCassandra(); })
+            };
+            var deleteCollectionButtonOptions = {
+                iconSrc: 'images/DeleteCollection.svg',
+                onCommandClick: function () {
+                    var selectedCollection = container.findSelectedCollection();
+                    selectedCollection && selectedCollection.onDeleteCollectionContextMenuClick(selectedCollection, null);
+                },
+                commandButtonLabel: container.deleteCollectionText(),
+                hasPopup: true,
+                disabled: ko.computed(function () { return container.isDatabaseNodeOrNoneSelected(); }),
+                visible: ko.computed(function () { return !container.isDatabaseNodeOrNoneSelected(); })
+                //TODO: Change to isCollectionNodeorNoneSelected and same in CommandBarButtonFactory
+            };
+            return [
+                newSQLQueryButtonOptions,
+                newSQLQueryButtonOptionsForGraph,
+                newMongoQueryButtonOptions,
+                newMongoShellButtonOptions,
+                newStoredProcedureButtonOptions,
+                newUserDefinedFunctionButtonOptions,
+                newTriggerButtonOptions,
+                deleteCollectionButtonOptions,
+            ];
+        };
+        ContextMenuButtonFactory.createStoreProcedureContextMenuButton = function (container) {
+            var deleteStoreProcedureButtonOptions = {
+                iconSrc: 'images/DeleteSproc.svg',
+                onCommandClick: function () {
+                    var selectedStoreProcedure = container.findSelectedStoredProcedure();
+                    selectedStoreProcedure && selectedStoreProcedure.delete(selectedStoreProcedure, null);
+                },
+                commandButtonLabel: 'Delete Store Procedure',
+                hasPopup: false,
+                disabled: ko.computed(function () { return container.isDatabaseNodeOrNoneSelected(); }),
+                visible: ko.computed(function () { return !container.isDatabaseNodeOrNoneSelected() && !container.isPreferredApiCassandra(); })
+            };
+            return [
+                deleteStoreProcedureButtonOptions
+            ];
+        };
+        ContextMenuButtonFactory.createTriggerContextMenuButton = function (container) {
+            var deleteTriggerButtonOptions = {
+                iconSrc: 'images/DeleteTrigger.svg',
+                onCommandClick: function () {
+                    var selectedTrigger = container.findSelectedTrigger();
+                    selectedTrigger && selectedTrigger.delete(selectedTrigger, null);
+                },
+                commandButtonLabel: 'Delete Trigger',
+                hasPopup: false,
+                disabled: ko.computed(function () { return container.isDatabaseNodeOrNoneSelected(); }),
+                visible: ko.computed(function () { return !container.isDatabaseNodeOrNoneSelected() && !container.isPreferredApiCassandra(); })
+            };
+            return [
+                deleteTriggerButtonOptions
+            ];
+        };
+        ContextMenuButtonFactory.createUserDefinedFunctionContextMenuButton = function (container) {
+            var deleteUserDefinedFunctionButtonOptions = {
+                iconSrc: 'images/DeleteUDF.svg',
+                onCommandClick: function () {
+                    var selectedUDF = container.findSelectedUDF();
+                    selectedUDF && selectedUDF.delete(selectedUDF, null);
+                },
+                commandButtonLabel: 'Delete User Defined Function',
+                hasPopup: false,
+                disabled: ko.computed(function () { return container.isDatabaseNodeOrNoneSelected(); }),
+                visible: ko.computed(function () { return !container.isDatabaseNodeOrNoneSelected() && !container.isPreferredApiCassandra(); })
+            };
+            return [
+                deleteUserDefinedFunctionButtonOptions
+            ];
+        };
+        return ContextMenuButtonFactory;
+    }());
+    exports.ContextMenuButtonFactory = ContextMenuButtonFactory;
+});
+ÔþÛ|nu      [Õ¾Ð[Õ¾á?§¶¶[×kE   L    :https://cosmos.azure.com/built/Explorer/ContextMenuButtonFactory.js?v=1.0.1 necko:classified 1 strongly-framed 1 security-info FnhllAKWRHGAlo+ESXykKAAAAAAAAAAAwAAAAAAAAEaphjojH6pBabDSgSnsfLHeAAQAAgAAAAAAAAAAAAAAAAAAAAAB4vFIJp5wRkeyPxAQ9RJGKPqbqVvKO0mKuIl8ec8o/uhmCjImkVxP+7sgiYWmMt8FvcOXmlQiTNWFiWlrbpbqgwAAAAAAAAOMMIIDiDCCAnCgAwIBAgIERTJgUjANBgkqhkiG9w0BAQsFADCBijEUMBIGA1UEBhMLUG9ydFN3aWdnZXIxFDASBgNVBAgTC1BvcnRTd2lnZ2VyMRQwEgYDVQQHEwtQb3J0U3dpZ2dlcjEUMBIGA1UEChMLUG9ydFN3aWdnZXIxFzAVBgNVBAsTDlBvcnRTd2lnZ2VyIENBMRcwFQYDVQQDEw5Qb3J0U3dpZ2dlciBDQTAeFw0xNDEwMjgxMzEyMTBaFw0zODEwMjgxMzEyMTBaMGAxFDASBgNVBAYTC1BvcnRTd2lnZ2VyMRQwEgYDVQQKEwtQb3J0U3dpZ2dlcjEXMBUGA1UECxMOUG9ydFN3aWdnZXIgQ0ExGTAXBgNVBAMTEGNvc21vcy5henVyZS5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCKn7emKINsnWqPZ+C/VsqbQf/l4NsmIh34bXBR0xdNg9bfb+xcoghRlmbPjhZ/A26A2gJ6Rrg2d0GGMLpbqA8nTlRRGXEAD39321zk4ye09ElXClvqguGqdqOJpPQ05DPFD6wSOq+KVAEblE5bi+LMqBLipDERzgUe7xzeqVVk0i0ldh9yQOIk3YuzcBR9igSEuw5qladmMYvXKHYM9YZz0R7axMc8xAtadK7C9KfFPfEI5LS2nhmy4vBrTgFyYhfkEvKfmIj6HTX0ISFCAC2llcBLpEDcuiW76tAHp1pXDeWtSeaV36AeOctdleVgrbmsGs3fu6ppuRcWjEZUbjE3AgMBAAGjHzAdMBsGA1UdEQQUMBKCEGNvc21vcy5henVyZS5jb20wDQYJKoZIhvcNAQELBQADggEBABYikT6Y5YgJJ4IVJldlFDF5MKxp26YegXhvT8EmAbgr0yQBIlY2DtKEiHf7Q8wRoJ9y5Ajst1D7HmRba+XLjS6s3IHJ7gtuvc3fZj9MPKpbqSKRfHDB8bDOVIzmjBseg2BqckHTkcYak3b/pTWCTqKHM3LxKsDwN8F3HNQ2pY4d5ma2kR1EtWdTpRiIbir3QxJDcWVp8CgHONZcoMn33NNwnWWjAQMX6d8e1CPuBZi0t+myaYduCqPgKKox9qMXSubF6uifQkAJ5RdLZrZ2pghENA/4r1oz51wqEmpjPsStSUxRPwJ6wJrB4gwGtX7++ZHLjAaNrTSUCGwIOlAT4LnALwEDAAAAAAEBAAAAAA== request-method GET request-Accept-Encoding gzip, deflate, br response-head HTTP/1.1 200 OK
+Content-Length: 11104
+Content-Type: application/x-javascript
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:39:29 GMT
+ original-response-headers Content-Length: 11104
+Content-Type: application/x-javascript
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:39:29 GMT
+Connection: close
+ uncompressed-len 0 net-response-time-onstart 17321 net-response-time-onstop 17321   +`

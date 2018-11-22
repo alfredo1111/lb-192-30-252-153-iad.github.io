@@ -1,0 +1,244 @@
+/******************************************************************************
+                                FONTS
+/******************************************************************************/
+@font-face {
+  font-family: wf_segoe-ui_normal;
+  src: url('../fonts/segoe-ui/west-european/normal/latest.woff');
+}
+/******************************************************************************
+                                COLORS
+/******************************************************************************/
+/******************************************************************************
+                                METRICS
+/******************************************************************************/
+/**********************************************************************************
+                              Common Flex Property
+/**********************************************************************************/
+/*************************************************************************************
+                                 High contrast mode active
+**************************************************************************************/
+@media all and (-ms-high-contrast: none), (-ms-high-contrast: active) {
+  .selectedRadio,
+  .selectedRadio:hover,
+  .selectedRadio:active,
+  .selectedRadio.dirty,
+  .tab [type=radio]:checked ~ label,
+  .tab [type=radio]:checked ~ label:hover {
+    -ms-high-contrast-adjust: none;
+    -webkit-text-fill-color: HighlightText;
+    color: HighlightText;
+    border-color: HighlightText;
+    background-color: Highlight;
+  }
+  .queryMetricsSummaryTuple th:nth-child(2),
+  .queryMetricsSummaryTuple td:nth-child(2) {
+    width: 650px;
+  }
+  .queryMetricsSummaryTuple th:nth-child(3),
+  .queryMetricsSummaryTuple td:nth-child(3) {
+    width: 50%;
+  }
+}
+/********************************************************************************************
+                            Common Hover and Active color
+*********************************************************************************************/
+/************************************************************************************************
+                               Common Toggle Switch
+*************************************************************************************************/
+/********************************************************************************************************
+                             Common Data Explorer Icons
+*********************************************************************************************************/
+/*********************************************************************************************************
+                            Info Tooltip
+**********************************************************************************************************/
+/*********************************************************************************************************
+                          Media Queries
+**********************************************************************************************************/
+@media only screen and (max-width: 1920px) {
+  .staticCommandExpand {
+    display: none;
+  }
+}
+@media only screen and (min-width: 1039px) and (max-width: 1112px) {
+  .visibleCommands command-button:nth-child(n+9) {
+    display: none;
+  }
+  .hiddenCommands command-button:not(:nth-child(n+3)) {
+    display: none;
+  }
+  .staticCommandExpand {
+    display: block;
+  }
+}
+@media only screen and (min-width: 874px) and (max-width: 1038px) {
+  .visibleCommands command-button:nth-child(n+8) {
+    display: none;
+  }
+  .hiddenCommands command-button:not(:nth-child(n+2)) {
+    display: none;
+  }
+  .staticCommandExpand {
+    display: block;
+  }
+}
+@media only screen and (min-width: 723px) and (max-width: 873px) {
+  .visibleCommands command-button:nth-child(n+7) {
+    display: none;
+  }
+  .hiddenCommands command-button:not(:nth-child(n+1)) {
+    display: none;
+  }
+  .staticCommandExpand {
+    display: block;
+  }
+}
+@media only screen and (max-width: 722px) {
+  .visibleCommands command-button:nth-child(n+7) {
+    display: none;
+  }
+  .hiddenCommands command-button:not(:nth-child(n+1)) {
+    display: none;
+  }
+  .staticCommandExpand {
+    display: block;
+  }
+}
+.notificationConsoleContainer {
+  width: 100%;
+  display: -webkit-flex;
+  display: -ms-flexbox;
+  display: -ms-flex;
+  display: flex;
+  -webkit-flex-direction: column;
+  -ms-flex-direction: column;
+  flex-direction: column;
+}
+.notificationConsoleContainer img {
+  width: 12px;
+  height: 12px;
+}
+.notificationConsoleContainer .notificationConsoleHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 32px;
+  width: 100%;
+  background-color: #FFF4CE;
+  border-top: 1px #CCCCCC solid;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.notificationConsoleContainer .notificationConsoleHeader:hover {
+  background-color: #F9E9B0;
+}
+.notificationConsoleContainer .notificationConsoleHeader:active {
+  background-color: #F9E9B0;
+}
+.notificationConsoleContainer .notificationConsoleHeader .statusBar .dataTypeIcons {
+  cursor: pointer;
+  margin: 0px 8px 0px 12px;
+  padding-left: 8px;
+}
+.notificationConsoleContainer .notificationConsoleHeader .statusBar .dataTypeIcons .notificationConsoleHeaderIconWithData:not(:last-child) {
+  padding-right: 16px;
+}
+.notificationConsoleContainer .notificationConsoleHeader .statusBar .dataTypeIcons .notificationConsoleHeaderIconWithData img {
+  margin-bottom: 4px;
+  margin-right: 8px;
+}
+.notificationConsoleContainer .notificationConsoleHeader .statusBar .consoleSplitter {
+  border-left: 1px solid #CCCCCC;
+  margin-right: 16px;
+  padding: 0px 0px 2px;
+}
+.notificationConsoleContainer .notificationConsoleHeader .statusBar .headerStatus {
+  display: inline-flex;
+}
+.notificationConsoleContainer .notificationConsoleHeader .statusBar .headerStatus .headerStatusEllipsis {
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  max-width: 672px;
+}
+.notificationConsoleContainer .notificationConsoleHeader .expandCollapseButton {
+  cursor: pointer;
+  padding-right: 5px;
+}
+.notificationConsoleContainer .notificationConsoleHeader .expandCollapseButton img {
+  width: 20px;
+  height: 20px;
+}
+.notificationConsoleContainer .notificationConsoleContents {
+  width: 100%;
+  height: 220px;
+  display: flex;
+  flex-direction: column;
+  background-color: #F2F2F2;
+}
+.notificationConsoleContainer .notificationConsoleContents .notificationConsoleControls {
+  padding: 12px;
+  margin-left: 8px;
+}
+.notificationConsoleContainer .notificationConsoleContents .notificationConsoleControls .consoleSplitter {
+  border-left: 1px solid #CCCCCC;
+  margin: 12px;
+}
+.notificationConsoleContainer .notificationConsoleContents .notificationConsoleControls .clearNotificationsButton {
+  cursor: pointer;
+  padding: 4px;
+  border: 1px solid #F2F2F2;
+}
+.notificationConsoleContainer .notificationConsoleContents .notificationConsoleControls .clearNotificationsButton:hover {
+  background-color: #E6E6E6;
+}
+.notificationConsoleContainer .notificationConsoleContents .notificationConsoleControls .clearNotificationsButton:active {
+  border: 1px dashed #004E87;
+  background-color: #DDEEFE;
+}
+.notificationConsoleContainer .notificationConsoleContents .notificationConsoleControls .clearNotificationsButton img {
+  margin-bottom: 4px;
+  margin-right: 2px;
+}
+.notificationConsoleContainer .notificationConsoleContents .notificationConsoleData {
+  overflow-y: auto;
+  overflow-x: hidden;
+  margin-left: 16px;
+}
+.notificationConsoleContainer .notificationConsoleContents .notificationConsoleData .rowData {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  padding: 4px;
+}
+.notificationConsoleContainer .notificationConsoleContents .notificationConsoleData .rowData img {
+  margin-top: 4px;
+}
+.notificationConsoleContainer .notificationConsoleContents .notificationConsoleData .rowData .date {
+  margin: 0px 16px;
+  white-space: nowrap;
+}
+.notificationConsoleContainer .notificationConsoleContents .notificationConsoleData .rowData .message {
+  flex-grow: 1;
+  white-space: pre-wrap;
+}
+T¹×´Þµ      [Õ¾±[Õ¾µ?§¶ [×k"   =    :https://cosmos.azure.com/css/NotificationConsole.css?v=1.0.1 necko:classified 1 strongly-framed 1 security-info FnhllAKWRHGAlo+ESXykKAAAAAAAAAAAwAAAAAAAAEaphjojH6pBabDSgSnsfLHeAAQAAgAAAAAAAAAAAAAAAAAAAAAB4vFIJp5wRkeyPxAQ9RJGKPqbqVvKO0mKuIl8ec8o/uhmCjImkVxP+7sgiYWmMt8FvcOXmlQiTNWFiWlrbpbqgwAAAAAAAAOMMIIDiDCCAnCgAwIBAgIERTJgUjANBgkqhkiG9w0BAQsFADCBijEUMBIGA1UEBhMLUG9ydFN3aWdnZXIxFDASBgNVBAgTC1BvcnRTd2lnZ2VyMRQwEgYDVQQHEwtQb3J0U3dpZ2dlcjEUMBIGA1UEChMLUG9ydFN3aWdnZXIxFzAVBgNVBAsTDlBvcnRTd2lnZ2VyIENBMRcwFQYDVQQDEw5Qb3J0U3dpZ2dlciBDQTAeFw0xNDEwMjgxMzEyMTBaFw0zODEwMjgxMzEyMTBaMGAxFDASBgNVBAYTC1BvcnRTd2lnZ2VyMRQwEgYDVQQKEwtQb3J0U3dpZ2dlcjEXMBUGA1UECxMOUG9ydFN3aWdnZXIgQ0ExGTAXBgNVBAMTEGNvc21vcy5henVyZS5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCKn7emKINsnWqPZ+C/VsqbQf/l4NsmIh34bXBR0xdNg9bfb+xcoghRlmbPjhZ/A26A2gJ6Rrg2d0GGMLpbqA8nTlRRGXEAD39321zk4ye09ElXClvqguGqdqOJpPQ05DPFD6wSOq+KVAEblE5bi+LMqBLipDERzgUe7xzeqVVk0i0ldh9yQOIk3YuzcBR9igSEuw5qladmMYvXKHYM9YZz0R7axMc8xAtadK7C9KfFPfEI5LS2nhmy4vBrTgFyYhfkEvKfmIj6HTX0ISFCAC2llcBLpEDcuiW76tAHp1pXDeWtSeaV36AeOctdleVgrbmsGs3fu6ppuRcWjEZUbjE3AgMBAAGjHzAdMBsGA1UdEQQUMBKCEGNvc21vcy5henVyZS5jb20wDQYJKoZIhvcNAQELBQADggEBABYikT6Y5YgJJ4IVJldlFDF5MKxp26YegXhvT8EmAbgr0yQBIlY2DtKEiHf7Q8wRoJ9y5Ajst1D7HmRba+XLjS6s3IHJ7gtuvc3fZj9MPKpbqSKRfHDB8bDOVIzmjBseg2BqckHTkcYak3b/pTWCTqKHM3LxKsDwN8F3HNQ2pY4d5ma2kR1EtWdTpRiIbir3QxJDcWVp8CgHONZcoMn33NNwnWWjAQMX6d8e1CPuBZi0t+myaYduCqPgKKox9qMXSubF6uifQkAJ5RdLZrZ2pghENA/4r1oz51wqEmpjPsStSUxRPwJ6wJrB4gwGtX7++ZHLjAaNrTSUCGwIOlAT4LnALwEDAAAAAAEBAAAAAA== request-method GET request-Accept-Encoding gzip, deflate, br response-head HTTP/1.1 200 OK
+Content-Length: 8099
+Content-Type: text/css
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:38:45 GMT
+ original-response-headers Content-Length: 8099
+Content-Type: text/css
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:38:45 GMT
+Connection: close
+ uncompressed-len 0 net-response-time-onstart 4141 net-response-time-onstop 4141   £

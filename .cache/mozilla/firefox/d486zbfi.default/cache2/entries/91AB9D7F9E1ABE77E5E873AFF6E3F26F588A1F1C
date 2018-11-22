@@ -1,0 +1,236 @@
+define(["require", "exports", "q", "knockout", "../../Common/Constants", "../../Contracts/ViewModels", "./Authorization", "../../AuthType", "../../Shared/DefaultExperienceUtility", "./ExplorerFactory", "../../Common/MessageHandler", "../../Shared/StorageUtility", "../../Shared/Constants", "../../Shared/Constants", "./Helpers/UrlParser", "../../Explorer/Tables/DataTable/DataTableBindingManager"], function (require, exports, Q, ko, Constants, ViewModels, AuthHeadersUtil, AuthType_1, DefaultExperienceUtility_1, HostedExplorerFactory, MessageHandler_1, StorageUtility_1, Constants_1, Constants_2, UrlParser_1) {
+    "use strict";
+    var DocumentDB = window.DocumentDB;
+    var Main = /** @class */ (function () {
+        function Main() {
+        }
+        Main.isValidReferrer = function () {
+            var referrer = window.document.referrer;
+            return Main._referrers.some(function (r) { return referrer.indexOf(r) === 0; });
+        };
+        Main.initializeExplorer = function () {
+            var _this = this;
+            var params = UrlParser_1.UrlParser.parseUrlQueryParams();
+            var deferred = Q.defer();
+            var authType = AuthType_1.AuthType.EncryptedToken;
+            if (!!params && params.has("key")) {
+                Main._encryptedToken = encodeURIComponent(params.get("key"));
+                StorageUtility_1.SessionStorageUtility.setEntryString(StorageUtility_1.StorageKey.EncryptedKeyToken, Main._encryptedToken);
+                authType = AuthType_1.AuthType.EncryptedToken;
+            }
+            else if (Main._hasCachedEncryptedKey()) {
+                Main._encryptedToken = StorageUtility_1.SessionStorageUtility.getEntryString(StorageUtility_1.StorageKey.EncryptedKeyToken);
+                authType = AuthType_1.AuthType.EncryptedToken;
+            }
+            window.authType = authType;
+            if (!Main._encryptedToken) {
+                return Q.reject("No token found");
+            }
+            var explorer = null;
+            if (authType === AuthType_1.AuthType.EncryptedToken) {
+                DocumentDB.RequestHandler._accessToken = ko.observable(Main._encryptedToken);
+                Main._getAccessInputMetadata(Main._encryptedToken).then(function () {
+                    explorer = _this._instantiateExplorer();
+                    var expiryTimestamp = Main._accessInputMetadata && parseInt(Main._accessInputMetadata.expiryTimestamp);
+                    if (authType === AuthType_1.AuthType.EncryptedToken && (isNaN(expiryTimestamp) || expiryTimestamp <= 0)) {
+                        return deferred.reject("Token expired");
+                    }
+                    Main.initDataExplorerFrameInputs(explorer);
+                    deferred.resolve(explorer);
+                }, function (error) {
+                    console.error(error);
+                    deferred.reject(error);
+                });
+            }
+            else {
+                explorer = this._instantiateExplorer();
+                Main.initDataExplorerFrameInputs(explorer);
+                deferred.resolve(explorer);
+            }
+            return deferred.promise;
+        };
+        Main.configureTokenValidationDisplayPrompt = function (explorer) {
+            var authType = window.authType;
+            if (!explorer || !Main._encryptedToken || !Main._accessInputMetadata || Main._accessInputMetadata.expiryTimestamp == null || authType !== AuthType_1.AuthType.EncryptedToken) {
+                return;
+            }
+            Main._showGuestAccessTokenRenewalPromptInMs(explorer, parseInt(Main._accessInputMetadata.expiryTimestamp));
+        };
+        Main.getUninitializedExplorerForGuestAccess = function () {
+            var explorer = Main._instantiateExplorer();
+            explorer.isRefreshingExplorer(false);
+            window.dataExplorer = explorer;
+            return explorer;
+        };
+        Main.initDataExplorerFrameInputs = function (explorer, masterKey /* master key extracted from connection string if available */) {
+            var subscriptionId = Main._databaseAccountId && Main._databaseAccountId.split("subscriptions/")[1].split("/")[0];
+            var resourceGroup = Main._databaseAccountId && Main._databaseAccountId.split("resourceGroups/")[1].split("/")[0];
+            var serverId = AuthHeadersUtil.serverId;
+            var authType = window.authType;
+            explorer.isTryCosmosDBSubscription(Constants_2.SubscriptionUtilMappings.FreeTierSubscriptionIds.indexOf(subscriptionId) >= 0);
+            if (authType === AuthType_1.AuthType.EncryptedToken) {
+                var apiExperience = DefaultExperienceUtility_1.DefaultExperienceUtility.getDefaultExperienceFromApiKind(Main._accessInputMetadata.apiKind);
+                var masterKeyForAccount = masterKey;
+                return explorer.initDataExplorerWithFrameInputs({
+                    databaseAccount: {
+                        id: Main._databaseAccountId,
+                        name: Main._accessInputMetadata.accountName,
+                        kind: this._getDatabaseAccountKindFromExperience(apiExperience),
+                        properties: this._getDatabaseAccountPropertiesFromMetadata(Main._accessInputMetadata),
+                        tags: { defaultExperience: apiExperience }
+                    },
+                    subscriptionId: subscriptionId,
+                    resourceGroup: resourceGroup,
+                    masterKey: masterKeyForAccount,
+                    hasWriteAccess: true,
+                    authorizationToken: undefined,
+                    features: null,
+                    csmEndpoint: null,
+                    dnsSuffix: null,
+                    serverId: serverId,
+                    extensionEndpoint: AuthHeadersUtil.extensionEndpoint,
+                    subscriptionType: Constants_1.CollectionCreation.DefaultSubscriptionType,
+                    quotaId: undefined,
+                    addCollectionDefaultFlight: explorer.addCollectionPane.defaultFlight(),
+                    isTryCosmosDBSubscription: explorer.isTryCosmosDBSubscription()
+                });
+            }
+            return Q.reject("Unsupported AuthType " + authType);
+        };
+        Main._instantiateExplorer = function () {
+            var hostedExplorerFactory = new HostedExplorerFactory();
+            var explorer = hostedExplorerFactory.createExplorer();
+            explorer.renewExplorerShareAccess = Main.renewExplorerAccess; // workaround to resolve cyclic refs with view
+            window.addEventListener("message", explorer.handleMessage.bind(explorer), false);
+            return explorer;
+        };
+        Main._showGuestAccessTokenRenewalPromptInMs = function (explorer, interval) {
+            if (interval != null && !isNaN(interval)) {
+                setTimeout(function () {
+                    explorer.displayGuestAccessTokenRenewalPrompt();
+                }, interval);
+            }
+        };
+        Main._hasCachedDatabaseAccount = function () {
+            return StorageUtility_1.SessionStorageUtility.hasItem(StorageUtility_1.StorageKey.DatabaseAccountId);
+        };
+        Main._hasCachedEncryptedKey = function () {
+            return StorageUtility_1.SessionStorageUtility.hasItem(StorageUtility_1.StorageKey.EncryptedKeyToken);
+        };
+        Main._getDatabaseAccountKindFromExperience = function (apiExperience) {
+            if (apiExperience === Constants.DefaultAccountExperience.MongoDB) {
+                return Constants.AccountKind.MongoDB;
+            }
+            return Constants.AccountKind.GlobalDocumentDB;
+        };
+        Main._getDatabaseAccountPropertiesFromMetadata = function (metadata) {
+            var properties = { documentEndpoint: metadata.documentEndpoint };
+            var apiExperience = DefaultExperienceUtility_1.DefaultExperienceUtility.getDefaultExperienceFromApiKind(metadata.apiKind);
+            if (apiExperience === Constants.DefaultAccountExperience.Cassandra) {
+                properties = Object.assign(properties, { cassandraEndpoint: metadata.apiEndpoint });
+            }
+            else if (apiExperience === Constants.DefaultAccountExperience.Table) {
+                properties = Object.assign(properties, { tableEndpoint: metadata.apiEndpoint });
+            }
+            else if (apiExperience === Constants.DefaultAccountExperience.Graph) {
+                properties = Object.assign(properties, { gremlinEndpoint: metadata.apiEndpoint });
+            }
+            return properties;
+        };
+        Main._getAccessInputMetadata = function (accessInput) {
+            var deferred = Q.defer();
+            AuthHeadersUtil.getAccessInputMetadata(accessInput).then(function (metadata) {
+                Main._accessInputMetadata = metadata;
+                deferred.resolve();
+            }, function (error) {
+                deferred.reject(error);
+            });
+            return deferred.promise.timeout(Constants.ClientDefaults.requestTimeoutMs);
+        };
+        Main._getMasterKeyFromConnectionString = function (connectionString) {
+            if (!connectionString || Main._accessInputMetadata == null || Main._accessInputMetadata.apiKind !== 4 /* Graph */) { // client only needs master key for Graph API
+                return undefined;
+            }
+            var matchedParts = connectionString.match("AccountKey=(.*);ApiKind=Gremlin;$");
+            return (matchedParts.length > 1 && matchedParts[1]) || undefined;
+        };
+        Main._getSubscriptionTypeFromQuotaId = function (quotaId) {
+            var subscriptionType = Constants_2.SubscriptionUtilMappings.SubscriptionTypeMap[quotaId];
+            return subscriptionType || Main._defaultSubscriptionType;
+        };
+        Main._defaultSubscriptionType = ViewModels.SubscriptionType.Free;
+        Main._referrers = [
+            Constants.Referrers.hostedDataExplorer,
+            Constants.Referrers.originalHostedDataExplorer,
+            Constants.Referrers.developmentHostedDataExplorer
+        ];
+        Main.renewExplorerAccess = function (explorer, connectionString) {
+            if (!connectionString) {
+                console.error("Missing or invalid connection string input");
+                Q.reject("Missing or invalid connection string input");
+            }
+            var deferred = Q.defer();
+            AuthHeadersUtil.generateUnauthenticatedEncryptedTokenForConnectionString(connectionString).then(function (encryptedToken) {
+                if (!encryptedToken || !encryptedToken.readWrite) {
+                    deferred.reject("Encrypted token is empty or undefined");
+                }
+                Main._encryptedToken = encryptedToken.readWrite;
+                window.authType = AuthType_1.AuthType.EncryptedToken;
+                if (!DocumentDB.RequestHandler._accessToken) {
+                    DocumentDB.RequestHandler._accessToken = ko.observable(Main._encryptedToken);
+                }
+                DocumentDB.RequestHandler._accessToken(Main._encryptedToken);
+                Main._getAccessInputMetadata(Main._encryptedToken).then(function () {
+                    if (explorer.isConnectExplorerVisible()) {
+                        HostedExplorerFactory.reInitializeDocumentClientUtilityForExplorer(explorer);
+                        explorer.hideConnectExplorerForm();
+                    }
+                    if (Main._accessInputMetadata.apiKind != 4 /* Graph */) {
+                        // do not save encrypted token for graphs because we cannot extract master key in the client
+                        StorageUtility_1.SessionStorageUtility.setEntryString(StorageUtility_1.StorageKey.EncryptedKeyToken, Main._encryptedToken);
+                        window.parent && window.parent.history.replaceState({ encryptedToken: encryptedToken }, "", "?key=" + Main._encryptedToken + (window.parent && window.parent.location.hash || "")); // replace query params if any
+                    }
+                    else {
+                        StorageUtility_1.SessionStorageUtility.removeEntry(StorageUtility_1.StorageKey.EncryptedKeyToken);
+                        window.parent && window.parent.history.replaceState({ encryptedToken: encryptedToken }, "", "?" + (window.parent && window.parent.location.hash || "")); // replace query params if any
+                    }
+                    var masterKey = Main._getMasterKeyFromConnectionString(connectionString);
+                    Main.initDataExplorerFrameInputs(explorer, masterKey);
+                    explorer.isAccountReady.valueHasMutated(); // to force re-render
+                    Main.configureTokenValidationDisplayPrompt(explorer);
+                    MessageHandler_1.MessageHandler.sendMessage("ready");
+                    deferred.resolve();
+                }, function (error) {
+                    console.error(error);
+                    deferred.reject(error);
+                });
+            }, function (error) {
+                deferred.reject("Failed to generate encrypted token: " + JSON.stringify(error));
+            });
+            return deferred.promise.timeout(Constants.ClientDefaults.requestTimeoutMs);
+        };
+        return Main;
+    }());
+    return Main;
+});
+á>ôÌ      [Õ¾Á[Õ¾È?§¶«[×k4   ?    :https://cosmos.azure.com/built/Platform/Hosted/Main.js?v=1.0.1 necko:classified 1 strongly-framed 1 security-info FnhllAKWRHGAlo+ESXykKAAAAAAAAAAAwAAAAAAAAEaphjojH6pBabDSgSnsfLHeAAQAAgAAAAAAAAAAAAAAAAAAAAAB4vFIJp5wRkeyPxAQ9RJGKPqbqVvKO0mKuIl8ec8o/uhmCjImkVxP+7sgiYWmMt8FvcOXmlQiTNWFiWlrbpbqgwAAAAAAAAOMMIIDiDCCAnCgAwIBAgIERTJgUjANBgkqhkiG9w0BAQsFADCBijEUMBIGA1UEBhMLUG9ydFN3aWdnZXIxFDASBgNVBAgTC1BvcnRTd2lnZ2VyMRQwEgYDVQQHEwtQb3J0U3dpZ2dlcjEUMBIGA1UEChMLUG9ydFN3aWdnZXIxFzAVBgNVBAsTDlBvcnRTd2lnZ2VyIENBMRcwFQYDVQQDEw5Qb3J0U3dpZ2dlciBDQTAeFw0xNDEwMjgxMzEyMTBaFw0zODEwMjgxMzEyMTBaMGAxFDASBgNVBAYTC1BvcnRTd2lnZ2VyMRQwEgYDVQQKEwtQb3J0U3dpZ2dlcjEXMBUGA1UECxMOUG9ydFN3aWdnZXIgQ0ExGTAXBgNVBAMTEGNvc21vcy5henVyZS5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCKn7emKINsnWqPZ+C/VsqbQf/l4NsmIh34bXBR0xdNg9bfb+xcoghRlmbPjhZ/A26A2gJ6Rrg2d0GGMLpbqA8nTlRRGXEAD39321zk4ye09ElXClvqguGqdqOJpPQ05DPFD6wSOq+KVAEblE5bi+LMqBLipDERzgUe7xzeqVVk0i0ldh9yQOIk3YuzcBR9igSEuw5qladmMYvXKHYM9YZz0R7axMc8xAtadK7C9KfFPfEI5LS2nhmy4vBrTgFyYhfkEvKfmIj6HTX0ISFCAC2llcBLpEDcuiW76tAHp1pXDeWtSeaV36AeOctdleVgrbmsGs3fu6ppuRcWjEZUbjE3AgMBAAGjHzAdMBsGA1UdEQQUMBKCEGNvc21vcy5henVyZS5jb20wDQYJKoZIhvcNAQELBQADggEBABYikT6Y5YgJJ4IVJldlFDF5MKxp26YegXhvT8EmAbgr0yQBIlY2DtKEiHf7Q8wRoJ9y5Ajst1D7HmRba+XLjS6s3IHJ7gtuvc3fZj9MPKpbqSKRfHDB8bDOVIzmjBseg2BqckHTkcYak3b/pTWCTqKHM3LxKsDwN8F3HNQ2pY4d5ma2kR1EtWdTpRiIbir3QxJDcWVp8CgHONZcoMn33NNwnWWjAQMX6d8e1CPuBZi0t+myaYduCqPgKKox9qMXSubF6uifQkAJ5RdLZrZ2pghENA/4r1oz51wqEmpjPsStSUxRPwJ6wJrB4gwGtX7++ZHLjAaNrTSUCGwIOlAT4LnALwEDAAAAAAEBAAAAAA== request-method GET request-Accept-Encoding gzip, deflate, br response-head HTTP/1.1 200 OK
+Content-Length: 13221
+Content-Type: application/x-javascript
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:39:04 GMT
+ original-response-headers Content-Length: 13221
+Content-Type: application/x-javascript
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:39:04 GMT
+Connection: close
+ uncompressed-len 0 net-response-time-onstart 7563 net-response-time-onstop 7563   3¥

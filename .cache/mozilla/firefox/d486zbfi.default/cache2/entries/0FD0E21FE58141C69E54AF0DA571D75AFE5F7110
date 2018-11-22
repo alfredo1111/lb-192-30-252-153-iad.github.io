@@ -1,0 +1,185 @@
+define(["require", "exports", "q", "../../Common/Constants", "../../AuthType", "../../Utils/NotificationConsoleUtils", "../../Explorer/Menus/NotificationConsole/NotificationConsole", "../../Shared/DefaultExperienceUtility"], function (require, exports, Q, Constants, AuthType_1, NotificationConsoleUtils_1, NotificationConsole_1, DefaultExperienceUtility_1) {
+    "use strict";
+    var DocumentDB = window.DocumentDB;
+    var AuthenticationContext = window.AuthenticationContext;
+    var AuthHeadersUtil = /** @class */ (function () {
+        function AuthHeadersUtil() {
+        }
+        AuthHeadersUtil.getAuthorizationToken = function (endpoint) {
+            var deferred = Q.defer();
+            var AuthorizationType = window.authType;
+            if (AuthorizationType === AuthType_1.AuthType.EncryptedToken) {
+                // setting authorization header to an undefined value causes the browser to exclude
+                // the header, which is expected here
+                return Q(undefined);
+            }
+            var authToken = "";
+            var resourceEndpoint = endpoint || Constants.AuthorizationEndpoints.arm;
+            var authenticationContext = new AuthenticationContext({
+                tenant: AuthHeadersUtil._tenant,
+                clientId: AuthHeadersUtil._clientId,
+                instance: Constants.AuthorizationEndpoints.common,
+                endpoints: AuthHeadersUtil.AllAuthorizationEndpoints,
+                redirectUri: AuthHeadersUtil._getCurrentSanitizedUri()
+            });
+            var extractTokenCallback = function (errorDescription, token, error) {
+                if (error || !token) {
+                    if (error == "interaction_required") {
+                        authenticationContext.acquireTokenRedirect(resourceEndpoint, null /** extra query params **/, null /** claims **/);
+                        return;
+                    }
+                    else {
+                        var errorMessage = "Error while acquiring authentication token: " + errorDescription;
+                        NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Error, errorMessage);
+                        deferred.reject(error);
+                    }
+                }
+                authToken = "Bearer " + token;
+                deferred.resolve(authToken);
+            };
+            authenticationContext.callback = extractTokenCallback;
+            AuthHeadersUtil._processTokenResponseIfAnyOrInitiateLogin(authenticationContext);
+            authenticationContext.acquireToken(resourceEndpoint, extractTokenCallback);
+            return deferred.promise;
+        };
+        AuthHeadersUtil.getAccessInputMetadata = function (accessInput) {
+            var deferred = Q.defer();
+            var url = "" + AuthHeadersUtil.extensionEndpoint + Constants.ApiEndpoints.guestRuntimeProxy + "/accessinputmetadata";
+            var authType = window.authType;
+            var headers = {};
+            if (authType === AuthType_1.AuthType.EncryptedToken) {
+                headers[Constants.HttpHeaders.guestAccessToken] = accessInput;
+            }
+            else {
+                headers[Constants.HttpHeaders.connectionString] = accessInput;
+            }
+            $.ajax({
+                url: url,
+                type: 'GET',
+                headers: headers,
+                cache: false,
+                dataType: "text"
+            }).then(function (data, textStatus, xhr) {
+                if (!data) {
+                    NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Error, "Failed to get access input metadata");
+                    deferred.reject("Failed to get access input metadata");
+                }
+                try {
+                    var metadata = JSON.parse(JSON.parse(data));
+                    deferred.resolve(metadata); // TODO: update to a single JSON parse once backend response is stringified exactly once
+                }
+                catch (error) {
+                    NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Error, "Failed to parse access input metadata");
+                    deferred.reject("Failed to parse access input metadata");
+                    throw error;
+                }
+            }, function (xhr, textStatus, error) {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Error, "Error while fetching access input metadata: " + JSON.stringify(xhr.responseText));
+                deferred.reject(xhr.responseText);
+            });
+            return deferred.promise.timeout(Constants.ClientDefaults.requestTimeoutMs);
+        };
+        AuthHeadersUtil.generateEncryptedToken = function () {
+            var url = AuthHeadersUtil.extensionEndpoint + "/api/tokens/generateToken" + AuthHeadersUtil._generateResourceUrl();
+            var explorer = window.dataExplorer;
+            var headers = { authorization: DocumentDB.RequestHandler._authorizationToken() };
+            headers[Constants.HttpHeaders.getReadOnlyKey] = !explorer.hasWriteAccess();
+            return AuthHeadersUtil._initiateGenerateTokenRequest({
+                url: url,
+                type: 'POST',
+                headers: headers,
+                contentType: 'application/json',
+                cache: false
+            });
+        };
+        AuthHeadersUtil.generateUnauthenticatedEncryptedTokenForConnectionString = function (connectionString) {
+            if (!connectionString) {
+                return Q.reject("None or empty connection string specified");
+            }
+            var url = AuthHeadersUtil.extensionEndpoint + "/api/guest/tokens/generateToken";
+            var headers = {};
+            headers[Constants.HttpHeaders.connectionString] = connectionString;
+            return AuthHeadersUtil._initiateGenerateTokenRequest({
+                url: url,
+                type: 'POST',
+                headers: headers,
+                contentType: 'application/json',
+                cache: false
+            });
+        };
+        AuthHeadersUtil._generateResourceUrl = function () {
+            var databaseAccount = DocumentDB.RequestHandler._databaseAccount();
+            var subscriptionId = DocumentDB.RequestHandler._subscriptionId();
+            var resourceGroup = DocumentDB.RequestHandler._resourceGroup();
+            var defaultExperience = DefaultExperienceUtility_1.DefaultExperienceUtility.getDefaultExperienceFromDatabaseAccount(databaseAccount);
+            var apiKind = DefaultExperienceUtility_1.DefaultExperienceUtility.getApiKindFromDefaultExperience(defaultExperience);
+            var accountEndpoint = (databaseAccount && databaseAccount.properties.documentEndpoint) || "";
+            var sid = subscriptionId || "";
+            var rg = resourceGroup || "";
+            var dba = (databaseAccount && databaseAccount.name) || "";
+            var resourceUrl = encodeURIComponent(accountEndpoint);
+            var rid = "";
+            var rtype = "";
+            return "?resourceUrl=" + resourceUrl + "&rid=" + rid + "&rtype=" + rtype + "&sid=" + sid + "&rg=" + rg + "&dba=" + dba + "&api=" + apiKind;
+        };
+        AuthHeadersUtil._initiateGenerateTokenRequest = function (requestSettings) {
+            var deferred = Q.defer();
+            $.ajax(requestSettings).then(function (data, textStatus, xhr) {
+                if (!data) {
+                    deferred.reject("No token generated");
+                }
+                deferred.resolve(JSON.parse(data));
+            }, function (xhr, textStatus, error) {
+                deferred.reject(xhr.responseText);
+            });
+            return deferred.promise.timeout(Constants.ClientDefaults.requestTimeoutMs);
+        };
+        AuthHeadersUtil._getCurrentSanitizedUri = function () {
+            var currentUri = window.location.href;
+            return currentUri.substring(0, currentUri.lastIndexOf("?"));
+        };
+        AuthHeadersUtil._processTokenResponseIfAnyOrInitiateLogin = function (authenticationContext) {
+            var isCallback = authenticationContext.isCallback(window.location.hash);
+            if (isCallback && !authenticationContext.getLoginError()) {
+                authenticationContext.handleWindowCallback();
+            }
+            var user = authenticationContext.getCachedUser();
+            if (!user) {
+                authenticationContext.login();
+            }
+        };
+        // TODO: Figure out a way to determine the extension endpoint and serverId at runtime
+        AuthHeadersUtil.extensionEndpoint = Constants.BackendEndpoints.productionPortal;
+        AuthHeadersUtil.serverId = Constants.ServerIds.productionPortal;
+        // TODO: App is currently configured for a single tenant. Update when the app is multi-tenant.
+        AuthHeadersUtil._tenant = "72f988bf-86f1-41af-91ab-2d7cd011db47";
+        AuthHeadersUtil._clientId = "2064a189-635a-4cf4-94f1-1e409e719621";
+        AuthHeadersUtil.AllAuthorizationEndpoints = {
+            common: Constants.AuthorizationEndpoints.common,
+            arm: Constants.AuthorizationEndpoints.arm
+        };
+        return AuthHeadersUtil;
+    }());
+    return AuthHeadersUtil;
+});
+½%NšH®      [Õ¾È[Õ¾Ì?§¶°[×k;   H    :https://cosmos.azure.com/built/Platform/Hosted/Authorization.js?v=1.0.1 necko:classified 1 strongly-framed 1 security-info FnhllAKWRHGAlo+ESXykKAAAAAAAAAAAwAAAAAAAAEaphjojH6pBabDSgSnsfLHeAAQAAgAAAAAAAAAAAAAAAAAAAAAB4vFIJp5wRkeyPxAQ9RJGKPqbqVvKO0mKuIl8ec8o/uhmCjImkVxP+7sgiYWmMt8FvcOXmlQiTNWFiWlrbpbqgwAAAAAAAAOMMIIDiDCCAnCgAwIBAgIERTJgUjANBgkqhkiG9w0BAQsFADCBijEUMBIGA1UEBhMLUG9ydFN3aWdnZXIxFDASBgNVBAgTC1BvcnRTd2lnZ2VyMRQwEgYDVQQHEwtQb3J0U3dpZ2dlcjEUMBIGA1UEChMLUG9ydFN3aWdnZXIxFzAVBgNVBAsTDlBvcnRTd2lnZ2VyIENBMRcwFQYDVQQDEw5Qb3J0U3dpZ2dlciBDQTAeFw0xNDEwMjgxMzEyMTBaFw0zODEwMjgxMzEyMTBaMGAxFDASBgNVBAYTC1BvcnRTd2lnZ2VyMRQwEgYDVQQKEwtQb3J0U3dpZ2dlcjEXMBUGA1UECxMOUG9ydFN3aWdnZXIgQ0ExGTAXBgNVBAMTEGNvc21vcy5henVyZS5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCKn7emKINsnWqPZ+C/VsqbQf/l4NsmIh34bXBR0xdNg9bfb+xcoghRlmbPjhZ/A26A2gJ6Rrg2d0GGMLpbqA8nTlRRGXEAD39321zk4ye09ElXClvqguGqdqOJpPQ05DPFD6wSOq+KVAEblE5bi+LMqBLipDERzgUe7xzeqVVk0i0ldh9yQOIk3YuzcBR9igSEuw5qladmMYvXKHYM9YZz0R7axMc8xAtadK7C9KfFPfEI5LS2nhmy4vBrTgFyYhfkEvKfmIj6HTX0ISFCAC2llcBLpEDcuiW76tAHp1pXDeWtSeaV36AeOctdleVgrbmsGs3fu6ppuRcWjEZUbjE3AgMBAAGjHzAdMBsGA1UdEQQUMBKCEGNvc21vcy5henVyZS5jb20wDQYJKoZIhvcNAQELBQADggEBABYikT6Y5YgJJ4IVJldlFDF5MKxp26YegXhvT8EmAbgr0yQBIlY2DtKEiHf7Q8wRoJ9y5Ajst1D7HmRba+XLjS6s3IHJ7gtuvc3fZj9MPKpbqSKRfHDB8bDOVIzmjBseg2BqckHTkcYak3b/pTWCTqKHM3LxKsDwN8F3HNQ2pY4d5ma2kR1EtWdTpRiIbir3QxJDcWVp8CgHONZcoMn33NNwnWWjAQMX6d8e1CPuBZi0t+myaYduCqPgKKox9qMXSubF6uifQkAJ5RdLZrZ2pghENA/4r1oz51wqEmpjPsStSUxRPwJ6wJrB4gwGtX7++ZHLjAaNrTSUCGwIOlAT4LnALwEDAAAAAAEBAAAAAA== request-method GET request-Accept-Encoding gzip, deflate, br response-head HTTP/1.1 200 OK
+Content-Length: 9358
+Content-Type: application/x-javascript
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:39:08 GMT
+ original-response-headers Content-Length: 9358
+Content-Type: application/x-javascript
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:39:08 GMT
+Connection: close
+ uncompressed-len 0 net-response-time-onstart 3513 net-response-time-onstop 3513   $Ž

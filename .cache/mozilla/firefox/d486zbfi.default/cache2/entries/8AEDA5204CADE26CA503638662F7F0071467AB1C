@@ -1,0 +1,199 @@
+define(["require", "exports", "node-uuid"], function (require, exports, NodeUuid) {
+    "use strict";
+    var BaseService = (function () {
+        function BaseService(appContext, classLogger, moduleName) {
+            this.moduleName = null;
+            this._apiVersion = null;
+            this._appContext = null;
+            this._classLogger = null;
+            this._appContext = appContext;
+            this._classLogger = classLogger;
+            this.moduleName = moduleName;
+        }
+        BaseService.prototype.spinner = function () {
+            return this._appContext.spinner.getInstance();
+        };
+        BaseService.prototype.sendMessage = function (relativeUri, type, queryStringParams, postData) {
+            if (queryStringParams === void 0) { queryStringParams = null; }
+            if (postData === void 0) { postData = null; }
+            var options = {
+                url: relativeUri + ((queryStringParams) ? "?" + $.param(queryStringParams) : ""),
+                contentType: "application/json",
+                type: type
+            };
+            if (postData !== null) {
+                options["data"] = JSON.stringify(postData);
+            }
+            return this.ajaxQ(options);
+        };
+        BaseService.prototype.sendFormData = function (relativeUri, type, queryStringParams, postData) {
+            if (queryStringParams === void 0) { queryStringParams = null; }
+            if (postData === void 0) { postData = null; }
+            var options = {
+                url: relativeUri + ((queryStringParams) ? "?" + $.param(queryStringParams) : ""),
+                type: type,
+                contentType: false,
+                processData: false
+            };
+            if (postData !== null) {
+                options["data"] = postData;
+                options["data"]["noApiVersion"] = "true";
+            }
+            return this.ajaxQ(options);
+        };
+        BaseService.prototype.getResponseInfo = function (response) {
+            if (response.response) {
+                return response.response;
+            }
+            if (response.responseText) {
+                return response.responseText;
+            }
+            return "No response text: (" + JSON.stringify(response) + ")";
+        };
+        BaseService.prototype.getAppRelativeUri = function (location) {
+            return Microsoft.DataStudio.Application.ResourceConstants.AZURE_RESOURCE_URL + location;
+        };
+        BaseService.prototype.ajax = function (request, usingNextLink) {
+            var _this = this;
+            var spinner = this._appContext.spinner.getInstance().on();
+            var deferred = jQuery.Deferred();
+            var subscriptionId = (this._appContext.splitFactoryId() && this._appContext.splitFactoryId().subscriptionId);
+            Microsoft.DataStudio.Managers.AuthenticationManager.instance.getAccessToken(subscriptionId).then(function (token) {
+                if (!usingNextLink) {
+                    request.url = _this.getAppRelativeUri(request.url);
+                    if (!request.type || request.type === "GET") {
+                        if (!request.data) {
+                            request.data = {};
+                        }
+                        if (!request.data["api-version"]) {
+                            request.data["api-version"] = _this._apiVersion;
+                        }
+                    }
+                    else {
+                        var params = {
+                            "api-version": _this._apiVersion
+                        };
+                        if (request.getData) {
+                            jQuery.extend(params, request.getData);
+                        }
+                        request.url += "?" + jQuery.param(params);
+                    }
+                }
+                request.crossDomain = true;
+                if (!request.headers) {
+                    request.headers = {};
+                }
+                jQuery.extend(request.headers, {
+                    "Authorization": "Bearer " + token
+                });
+                var _a = _this.addClientIdentificationIds(request), requestId = _a.requestId, sessionId = _a.sessionId;
+                _this._classLogger.logInfo("Making request to {0}".format(request.url), {
+                    clientRequestId: requestId
+                });
+                var moduleName = _this.moduleName ? _this.moduleName() : "Unspecified";
+                _this.addModuleName(request, moduleName);
+                jQuery.ajax(request).then(function () {
+                    var args = [];
+                    for (var _i = 0; _i < arguments.length; _i++) {
+                        args[_i - 0] = arguments[_i];
+                    }
+                    spinner.off();
+                    _this._classLogger.logInfo("Completed request to {0}".format(request.url), {
+                        clientRequestId: requestId,
+                        correlationId: _this.getCorrelationId(args[2])
+                    });
+                    deferred.resolve.apply(deferred, args);
+                }, function () {
+                    var args = [];
+                    for (var _i = 0; _i < arguments.length; _i++) {
+                        args[_i - 0] = arguments[_i];
+                    }
+                    spinner.off();
+                    var reason = args[0];
+                    reason.requestUrl = request.url;
+                    var errorMessage = "Api call failed: {0}, Reason: {1}, RequestId: {2}, SessionId: {3}".format(request.url, _this.getResponseInfo(reason), requestId, sessionId);
+                    _this.logMessage(reason.status, errorMessage, {
+                        clientRequestId: requestId,
+                        correlationId: _this.getCorrelationId(args[0])
+                    });
+                    deferred.reject.apply(deferred, args);
+                });
+            }, function (reason) {
+                spinner.off();
+                _this._classLogger.logError(reason.toString(), reason);
+                deferred.reject(reason);
+            });
+            return deferred.promise();
+        };
+        BaseService.prototype.ajaxQ = function (request, usingNextLink) {
+            if (usingNextLink === void 0) { usingNextLink = false; }
+            var deferred = Q.defer();
+            this.ajax(request, usingNextLink).then(function (data) {
+                deferred.resolve(data);
+            }, function (jqXHR) {
+                deferred.reject(jqXHR);
+            });
+            return deferred.promise;
+        };
+        BaseService.prototype.getBaseUrl = function (baseUrl, baseUrlParams) {
+            return baseUrl.slice().replace(/{([^}]+)}/g, function (matchedString, varName) {
+                return baseUrlParams[varName].toString();
+            });
+        };
+        BaseService.prototype.addClientIdentificationIds = function (request) {
+            var requestId = NodeUuid.v4();
+            request.headers["x-ms-client-request-id"] = requestId;
+            var sessionId = Microsoft.DataStudio.Managers.AuthenticationManager.instance.getCurrentUser().sessionId;
+            request.headers["x-ms-client-session-id"] = sessionId;
+            return { requestId: requestId, sessionId: sessionId };
+        };
+        BaseService.prototype.addModuleName = function (request, moduleName) {
+            if (moduleName) {
+                request.headers["x-ms-client-module-name"] = moduleName;
+            }
+        };
+        BaseService.prototype.getCorrelationId = function (response) {
+            return response.getResponseHeader("x-ms-request-id");
+        };
+        BaseService.prototype.logMessage = function (statusCode, message, data) {
+            if (statusCode >= 500) {
+                this._classLogger.logError(message, data);
+            }
+            else {
+                this._classLogger.logInfo(message, data);
+            }
+        };
+        return BaseService;
+    }());
+    exports.BaseService = BaseService;
+});
+//# sourceMappingURL=BaseService.js.map˙
+O(ñ∆      [÷[÷?ßÁ_[ÿÂ]   ç    :https://datafactory-endpoint.azureedge.net/node_modules/@ms-atlas-module/datastudio-datafactory/scripts/Services/BaseService.js?v=1.0.4164.1 necko:classified 1 strongly-framed 1 security-info FnhllAKWRHGAlo+ESXykKAAAAAAAAAAAwAAAAAAAAEaphjojH6pBabDSgSnsfLHeAAQAAgAAAAAAAAAAAAAAAAAAAAAB4vFIJp5wRkeyPxAQ9RJGKPqbqVvKO0mKuIl8ec8o/uhmCjImkVxP+7sgiYWmMt8FvcOXmlQiTNWFiWlrbpbqgwAAAAAAAAOwMIIDrDCCApSgAwIBAgIERTJgTjANBgkqhkiG9w0BAQsFADCBijEUMBIGA1UEBhMLUG9ydFN3aWdnZXIxFDASBgNVBAgTC1BvcnRTd2lnZ2VyMRQwEgYDVQQHEwtQb3J0U3dpZ2dlcjEUMBIGA1UEChMLUG9ydFN3aWdnZXIxFzAVBgNVBAsTDlBvcnRTd2lnZ2VyIENBMRcwFQYDVQQDEw5Qb3J0U3dpZ2dlciBDQTAeFw0xNDEwMjgxMzEyMTBaFw0zODEwMjgxMzEyMTBaMHIxFDASBgNVBAYTC1BvcnRTd2lnZ2VyMRQwEgYDVQQKEwtQb3J0U3dpZ2dlcjEXMBUGA1UECxMOUG9ydFN3aWdnZXIgQ0ExKzApBgNVBAMTImRhdGFmYWN0b3J5LWVuZHBvaW50LmF6dXJlZWRnZS5uZXQwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCKn7emKINsnWqPZ+C/VsqbQf/l4NsmIh34bXBR0xdNg9bfb+xcoghRlmbPjhZ/A26A2gJ6Rrg2d0GGMLpbqA8nTlRRGXEAD39321zk4ye09ElXClvqguGqdqOJpPQ05DPFD6wSOq+KVAEblE5bi+LMqBLipDERzgUe7xzeqVVk0i0ldh9yQOIk3YuzcBR9igSEuw5qladmMYvXKHYM9YZz0R7axMc8xAtadK7C9KfFPfEI5LS2nhmy4vBrTgFyYhfkEvKfmIj6HTX0ISFCAC2llcBLpEDcuiW76tAHp1pXDeWtSeaV36AeOctdleVgrbmsGs3fu6ppuRcWjEZUbjE3AgMBAAGjMTAvMC0GA1UdEQQmMCSCImRhdGFmYWN0b3J5LWVuZHBvaW50LmF6dXJlZWRnZS5uZXQwDQYJKoZIhvcNAQELBQADggEBAD5nTga0zudMitI/u0TfDiXUvU9MHWtnM1QsCR52LG8/P3zHlMPdW01WDRZUWTzCGka9MJHNjppqHPNsxY69i49nAksLYLzG7nK57bfwfvJQH/v27QUFGFMmKZNtpz+523V8pi+RJR9/DcmY0SQslyt1+Cj1SViKKOJYr8DiCwrYSUxWRp0XCM6ACnyoVhILHxIff7DQUE7Qq8eLX2UMcsrHHrlmbWpSCkEMtikIahIK4D2jjHj/CFWVzmKApRGZHRCenGUCvwPc6+mdefq6dna4yuo/9sC8unizedWeSL+sIj+Qxy7egEU4w3ZyvM8xUIozSNHY/VVwXW5ypPYqSlDALwEDAAAAAAEBAAAAAA== request-method GET request-Accept-Encoding gzip, deflate, br response-head HTTP/1.1 200 OK
+Content-Type: application/javascript
+Last-Modified: Sat, 06 Oct 2018 23:13:01 GMT
+Accept-Ranges: bytes
+Etag: "743eff20ca5dd41:0"
+Server: Microsoft-IIS/8.5
+X-Frame-Options: AllowAll
+X-XSS-Protection: 1; mode=block
+X-Content-Type-Options: nosniff
+Strict-Transport-Security: max-age=15724800; includeSubDomains
+Access-Control-Allow-Origin: *
+Vary: Accept-Encoding
+Content-Length: 8207
+Date: Sun, 28 Oct 2018 18:50:45 GMT
+ original-response-headers Content-Type: application/javascript
+Last-Modified: Sat, 06 Oct 2018 23:13:01 GMT
+Accept-Ranges: bytes
+Etag: "743eff20ca5dd41:0"
+Server: Microsoft-IIS/8.5
+X-Frame-Options: AllowAll
+X-XSS-Protection: 1; mode=block
+X-Content-Type-Options: nosniff
+Strict-Transport-Security: max-age=15724800; includeSubDomains
+Access-Control-Allow-Origin: *
+Vary: Accept-Encoding
+Content-Length: 8207
+Date: Sun, 28 Oct 2018 18:50:45 GMT
+Connection: close
+ uncompressed-len 0 net-response-time-onstart 1880 net-response-time-onstop 1880    

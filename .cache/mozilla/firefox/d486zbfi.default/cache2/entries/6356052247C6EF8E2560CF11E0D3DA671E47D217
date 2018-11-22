@@ -1,0 +1,873 @@
+{
+  "placeholder": {
+    "search": "Search"
+  },
+  "app": {
+    "role": {
+      "manager": {
+        "name": "Manager",
+        "name_plural": "Managers",
+        "description": "Can invite members & access settings",
+        "info": "{{startTag}}{{role}}{{endTag}} can manage app settings, collaborators, and integrations."
+      },
+      "developer": {
+        "name": "Developer",
+        "name_plural": "Developers",
+        "description": "Manage services (e.g. create builds, run tests)",
+        "info": "{{startTag}}{{role}}{{endTag}} can manage app services (e.g. create builds, run tests)."
+      },
+      "viewer": {
+        "name": "Viewer",
+        "name_plural": "Viewers",
+        "description": "View and download app data",
+        "info": "{{startTag}}{{role}}{{endTag}} can view and download all data but cannot make changes."
+      }
+    },
+    "qrCodeInfo": {
+      "title": "Install ‚Äò{{name}}‚Äô",
+      "os": "for {{os}}",
+      "inviteToScan": "Scan the code with your device camera, or visit the install page on your device browser:",
+      "copyBtnLabel": "Copy link to clipboard",
+      "copiedMessage": "Copied to clipboard"
+    }
+  },
+  "org": {
+    "role": {
+      "admin": "Admin",
+      "admin_plural": "Admins",
+      "collaborator": "Collaborator",
+      "collaborator_plural": "Collaborators"
+    }
+  },
+  "access": {
+    "collaborator": "Collaborator",
+    "collaborator_plural": "Collaborators",
+    "tester": "Tester",
+    "tester_plural": "Testers",
+    "team": "Team",
+    "team_plural": "Teams",
+    "distributionGroup": "Distribution group",
+    "distributionGroup_plural": "Distribution groups",
+    "role": "Role",
+    "allRoles": "All",
+    "name": "Name"
+  },
+  "title": {
+    "details": "Details",
+    "manage": "Manage",
+    "settings": "Settings"
+  },
+  "navigation": {
+    "expandCollapseToggle": {
+      "expand": "Expand navigation",
+      "collapse": "Collapse navigation"
+    },
+    "userMenu": {
+      "label": "Account",
+      "docs": "Docs & APIs",
+      "support": "Support",
+      "privacy": "Privacy Policy",
+      "legal": "Legal & Terms",
+      "accountSettings": "Account Settings",
+      "internalDocs": "Internal Docs",
+      "admin": "Admin",
+      "logout": "Log out"
+    },
+    "mobileMenu": {
+      "switchToDesktop": "Switch to desktop version"
+    },
+    "allApps": "All apps",
+    "home": "Home",
+    "apps": "Overview",
+    "build": "Build",
+    "test": {
+      "main": "Test",
+      "runs": "Test runs",
+      "deviceSets": "Device sets"
+    },
+    "distribute": {
+      "main": "Distribute",
+      "groups": "Groups",
+      "stores": "Stores",
+      "releases": "Releases",
+      "codePush": "CodePush"
+    },
+    "crashes": {
+      "main": "Diagnostics",
+      "groups": "Crashes",
+      "symbols": "Symbols",
+      "mappings": "Mappings",
+      "errors": "Errors",
+      "issues": "Issues"
+    },
+    "analytics": {
+      "main": "Analytics",
+      "overview": "Overview",
+      "events": "Events",
+      "logFlow": "Log flow"
+    },
+    "push": {
+      "main": "Push",
+      "notifications": "Notifications",
+      "audiences": "Audiences"
+    },
+    "settings": "Settings"
+  },
+  "page": {
+    "pageHeader": {
+      "loading": "{{title}}: loading page",
+      "loaded": "{{title}}: page loaded",
+      "loadingWithoutTitle": "Loading in progress"
+    },
+    "topBar": {
+      "loading": "{{title}}: loading page",
+      "loaded": "{{title}}: page loaded",
+      "loadingWithoutTitle": "Loading in progress"
+    },
+    "dialog": {
+      "title": "dialog"
+    }
+  },
+  "button": {
+    "dismiss": "Dismiss",
+    "ok": "OK",
+    "confirm": "Confirm",
+    "submit": "Submit",
+    "cancel": "Cancel",
+    "configure": "Configure",
+    "previous": "Previous",
+    "next": "Next",
+    "continue": "Continue",
+    "back": "Back",
+    "pageBack": "Up to {{backTitle}}",
+    "gotIt": "Got It",
+    "change": "Change",
+    "delete": "Delete",
+    "deleting": "Deleting",
+    "enable": "Enable",
+    "disable": "Disable",
+    "add": "Add",
+    "update": "Update",
+    "connect": "Connect",
+    "disconnect": "Disconnect",
+    "remove": "Remove",
+    "done": "Done",
+    "upgrade": "Upgrade",
+    "downgrade": "Downgrade",
+    "close": "Close",
+    "accept": "Accept",
+    "decline": "Decline",
+    "join": "Join",
+    "leave": "Leave",
+    "start": "Start",
+    "learnMore": "Learn more",
+    "expand": "Expand",
+    "collapse": "Collapse",
+    "save": "Save",
+    "saving": "Saving",
+    "download": "Download",
+    "checking": "Checking",
+    "register": "Register",
+    "turnOff": "Turn off",
+    "manage": "Manage"
+  },
+  "feature": {
+    "comingSoon": "Coming soon"
+  },
+  "state": {
+    "enabled": "Enabled",
+    "failed": "Failed",
+    "disabled": "Disabled",
+    "on": "On",
+    "off": "Off",
+    "copied": "Copied",
+    "loading": "Loading",
+    "expired": "Expired",
+    "expiredAt": "Expired: {{expiryDate, shortFullDate}}",
+    "expiresAt": "Expires: {{expiryDate, shortFullDate}}",
+    "selected": "Selected",
+    "none": "None",
+    "invalid": "Invalid"
+  },
+  "beacon": {
+    "distribute": "Distribute",
+    "distribution": "Distribution",
+    "crashes": "Crashes",
+    "build": "Build",
+    "test": "Test",
+    "push": "Push",
+    "analytics": "Analytics"
+  },
+  "countryCodes": {
+    "AD": "Andorra",
+    "AE": "United Arab Emirates",
+    "AF": "Afghanistan",
+    "AG": "Antigua and Barbuda",
+    "AL": "Albania",
+    "AM": "Armenia",
+    "AN": "Netherlands Antilles",
+    "AO": "Angola",
+    "AQ": "Antarctica",
+    "AR": "Argentina",
+    "AS": "American Samoa",
+    "AT": "Austria",
+    "AU": "Australia",
+    "AW": "Aruba",
+    "AZ": "Azerbaijan",
+    "BA": "Bosnia and Herzegovina",
+    "BB": "Barbados",
+    "BD": "Bangladesh",
+    "BE": "Belgium",
+    "BF": "Burkina Faso",
+    "BG": "Bulgaria",
+    "BH": "Bahrain",
+    "BI": "Burundi",
+    "BJ": "Benin",
+    "BM": "Bermuda",
+    "BN": "Brunei Darussalam",
+    "BO": "Bolivia",
+    "BR": "Brazil",
+    "BS": "Bahamas",
+    "BT": "Bhutan",
+    "BV": "Bouvet Island",
+    "BW": "Botswana",
+    "BY": "Belarus",
+    "BZ": "Belize",
+    "CA": "Canada",
+    "CC": "Cocos (Keeling) Islands",
+    "CD": "Congo, The Democratic Republic Of The",
+    "CF": "Central African Republic",
+    "CG": "Congo",
+    "CH": "Switzerland",
+    "CI": "C√¥te D'ivoire",
+    "CK": "Cook Islands",
+    "CL": "Chile",
+    "CM": "Cameroon",
+    "CN": "China",
+    "CO": "Colombia",
+    "CR": "Costa Rica",
+    "CU": "Cuba",
+    "CV": "Cape Verde",
+    "CX": "Christmas Island",
+    "CY": "Cyprus",
+    "CZ": "Czech Republic",
+    "DE": "Germany",
+    "DJ": "Djibouti",
+    "DK": "Denmark",
+    "DM": "Dominica",
+    "DO": "Dominican Republic",
+    "DZ": "Algeria",
+    "EC": "Ecuador",
+    "EE": "Estonia",
+    "EG": "Egypt",
+    "EH": "Western Sahara",
+    "ER": "Eritrea",
+    "ES": "Spain",
+    "ET": "Ethiopia",
+    "FI": "Finland",
+    "FJ": "Fiji",
+    "FK": "Falkland Islands",
+    "FM": "Micronesia, Federated States Of",
+    "FO": "Faroe Islands",
+    "FR": "France",
+    "GA": "Gabon",
+    "GB": "United Kingdom",
+    "GD": "Grenada",
+    "GE": "Georgia",
+    "GF": "French Guiana",
+    "GH": "Ghana",
+    "GI": "Gibraltar",
+    "GL": "Greenland",
+    "GM": "Gambia",
+    "GN": "Guinea",
+    "GP": "Guadeloupe",
+    "GQ": "Equatorial Guinea",
+    "GR": "Greece",
+    "GS": "South Georgia and The South Sandwich Islands",
+    "GT": "Guatemala",
+    "GU": "Guam",
+    "GW": "Guinea-bissau",
+    "GY": "Guyana",
+    "HK": "Hong Kong",
+    "HM": "Heard Island and Mcdonald Islands",
+    "HN": "Honduras",
+    "HR": "Croatia",
+    "HT": "Haiti",
+    "HU": "Hungary",
+    "ID": "Indonesia",
+    "IE": "Ireland",
+    "IL": "Israel",
+    "IN": "India",
+    "IO": "British Indian Ocean Territory",
+    "IQ": "Iraq",
+    "IR": "Iran, Islamic Republic Of",
+    "IS": "Iceland",
+    "IT": "Italy",
+    "JM": "Jamaica",
+    "JO": "Jordan",
+    "JP": "Japan",
+    "KE": "Kenya",
+    "KG": "Kyrgyzstan",
+    "KH": "Cambodia",
+    "KI": "Kiribati",
+    "KM": "Comoros",
+    "KN": "Saint Kitts and Nevis",
+    "KP": "Korea, Democratic People's Republic Of",
+    "KR": "Korea, Republic Of",
+    "KW": "Kuwait",
+    "KY": "Cayman Islands",
+    "KZ": "Kazakhstan",
+    "LA": "Lao People's Democratic Republic (Laos)",
+    "LB": "Lebanon",
+    "LC": "Saint Lucia",
+    "LI": "Liechtenstein",
+    "LK": "Sri Lanka",
+    "LR": "Liberia",
+    "LS": "Lesotho",
+    "LT": "Lithuania",
+    "LU": "Luxembourg",
+    "LV": "Latvia",
+    "LY": "Libyan Arab Jamahiriya",
+    "MA": "Morocco",
+    "MC": "Monaco",
+    "MD": "Moldova, Republic Of",
+    "ME": "Montenegro",
+    "MG": "Madagascar",
+    "MH": "Marshall Islands",
+    "MK": "Macedonia, The Former Yugoslav Republic Of",
+    "ML": "Mali",
+    "MM": "Myanmar",
+    "MN": "Mongolia",
+    "MO": "Macao",
+    "MP": "Northern Mariana Islands",
+    "MQ": "Martinique",
+    "MR": "Mauritania",
+    "MS": "Montserrat",
+    "MT": "Malta",
+    "MU": "Mauritius",
+    "MV": "Maldives",
+    "MW": "Malawi",
+    "MX": "Mexico",
+    "MY": "Malaysia",
+    "MZ": "Mozambique",
+    "NA": "Namibia",
+    "NC": "New Caledonia",
+    "NE": "Niger",
+    "NF": "Norfolk Island",
+    "NG": "Nigeria",
+    "NI": "Nicaragua",
+    "NL": "Netherlands",
+    "NO": "Norway",
+    "NP": "Nepal",
+    "NR": "Nauru",
+    "NU": "Niue",
+    "NZ": "New Zealand",
+    "OM": "Oman",
+    "PA": "Panama",
+    "PE": "Peru",
+    "PF": "French Polynesia",
+    "PG": "Papua New Guinea",
+    "PH": "Philippines",
+    "PK": "Pakistan",
+    "PL": "Poland",
+    "PM": "Saint Pierre and Miquelon",
+    "PN": "Pitcairn",
+    "PR": "Puerto Rico",
+    "PS": "Palestinian territories",
+    "PT": "Portugal",
+    "PW": "Palau",
+    "PY": "Paraguay",
+    "QA": "Qatar",
+    "RE": "R√©union",
+    "RO": "Romania",
+    "RS": "Serbia",
+    "RU": "Russian Federation",
+    "RW": "Rwanda",
+    "SA": "Saudi Arabia",
+    "SB": "Solomon Islands",
+    "SC": "Seychelles",
+    "SD": "Sudan",
+    "SE": "Sweden",
+    "SG": "Singapore",
+    "SH": "Saint Helena",
+    "SI": "Slovenia",
+    "SJ": "Svalbard and Jan Mayen",
+    "SK": "Slovakia",
+    "SL": "Sierra Leone",
+    "SM": "San Marino",
+    "SN": "Senegal",
+    "SO": "Somalia",
+    "SR": "Suriname",
+    "ST": "Sao Tome and Principe",
+    "SV": "El Salvador",
+    "SY": "Syrian Arab Republic",
+    "SZ": "Swaziland",
+    "TC": "Turks and Caicos Islands",
+    "TD": "Chad",
+    "TF": "French Southern Territories",
+    "TG": "Togo",
+    "TH": "Thailand",
+    "TJ": "Tajikistan",
+    "TK": "Tokelau",
+    "TL": "Timor-Leste",
+    "TM": "Turkmenistan",
+    "TN": "Tunisia",
+    "TO": "Tonga",
+    "TR": "Turkey",
+    "TT": "Trinidad and Tobago",
+    "TV": "Tuvalu",
+    "TW": "Taiwan",
+    "TZ": "Tanzania, United Republic Of",
+    "UA": "Ukraine",
+    "UG": "Uganda",
+    "UM": "United States Minor Outlying Islands",
+    "US": "United States",
+    "UY": "Uruguay",
+    "UZ": "Uzbekistan",
+    "VC": "Saint Vincent and The Grenadines",
+    "VE": "Venezuela",
+    "VG": "Virgin Islands, British",
+    "VI": "Virgin Islands, U.S.",
+    "VN": "Viet Nam",
+    "VU": "Vanuatu",
+    "WF": "Wallis and Futuna",
+    "WS": "Samoa",
+    "YE": "Yemen",
+    "YT": "Mayotte",
+    "ZA": "South Africa",
+    "ZM": "Zambia",
+    "ZW": "Zimbabwe"
+  },
+  "languageCodes": {
+    "ab": "Abkhazian",
+    "aa": "Afar",
+    "af": "Afrikaans",
+    "ak": "Akan",
+    "sq": "Albanian",
+    "am": "Amharic",
+    "ar": "Arabic",
+    "an": "Aragonese",
+    "hy": "Armenian",
+    "as": "Assamese",
+    "av": "Avaric",
+    "ae": "Avestan",
+    "ay": "Aymara",
+    "az": "Azerbaijani",
+    "bm": "Bambara",
+    "ba": "Bashkir",
+    "eu": "Basque",
+    "be": "Belarusian",
+    "bn": "Bengali (Bangla)",
+    "bh": "Bihari",
+    "bi": "Bislama",
+    "bs": "Bosnian",
+    "br": "Breton",
+    "bg": "Bulgarian",
+    "my": "Burmese",
+    "ca": "Catalan",
+    "ch": "Chamorro",
+    "ce": "Chechen",
+    "ny": "Chichewa, Chewa, Nyanja",
+    "zh": "Chinese",
+    "zh-Hans": "Chinese (Simplified)",
+    "zh-Hant": "Chinese (Traditional)",
+    "cv": "Chuvash",
+    "kw": "Cornish",
+    "co": "Corsican",
+    "cr": "Cree",
+    "hr": "Croatian",
+    "cs": "Czech",
+    "da": "Danish",
+    "dv": "Divehi, Dhivehi, Maldivian",
+    "nl": "Dutch",
+    "dz": "Dzongkha",
+    "en": "English",
+    "eo": "Esperanto",
+    "et": "Estonian",
+    "ee": "Ewe",
+    "fo": "Faroese",
+    "fj": "Fijian",
+    "fi": "Finnish",
+    "fr": "French",
+    "ff": "Fula, Fulah, Pulaar, Pular",
+    "gl": "Galician",
+    "gd": "Gaelic (Scottish)",
+    "gv": "Manx",
+    "ka": "Georgian",
+    "de": "German",
+    "el": "Greek",
+    "kl": "Kalaallisut, Greenlandic",
+    "gn": "Guarani",
+    "gu": "Gujarati",
+    "ht": "Haitian Creole",
+    "ha": "Hausa",
+    "he": "Hebrew",
+    "hz": "Herero",
+    "hi": "Hindi",
+    "ho": "Hiri Motu",
+    "hu": "Hungarian",
+    "is": "Icelandic",
+    "io": "Ido",
+    "ig": "Igbo",
+    "id": "Indonesian",
+    "in": "Indonesian",
+    "ia": "Interlingua",
+    "ie": "Interlingue",
+    "iu": "Inuktitut",
+    "ik": "Inupiak",
+    "ga": "Irish",
+    "it": "Italian",
+    "ja": "Japanese",
+    "jv": "Javanese",
+    "kn": "Kannada",
+    "kr": "Kanuri",
+    "ks": "Kashmiri",
+    "kk": "Kazakh",
+    "km": "Khmer",
+    "ki": "Kikuyu",
+    "rw": "Kinyarwanda (Rwanda)",
+    "rn": "Kirundi",
+    "ky": "Kyrgyz",
+    "kv": "Komi",
+    "kg": "Kongo",
+    "ko": "Korean",
+    "ku": "Kurdish",
+    "kj": "Kwanyama",
+    "lo": "Lao",
+    "la": "Latin",
+    "lv": "Latvian (Lettish)",
+    "li": "Limburgish (Limburger)",
+    "ln": "Lingala",
+    "lt": "Lithuanian",
+    "lu": "Luga-Katanga",
+    "lg": "Luganda, Ganda",
+    "lb": "Luxembourgish",
+    "mk": "Macedonian",
+    "mg": "Malagasy",
+    "ms": "Malay",
+    "ml": "Malayalam",
+    "mt": "Maltese",
+    "mi": "Maori",
+    "mr": "Marathi",
+    "mh": "Marshallese",
+    "mo": "Moldavian",
+    "mn": "Mongolian",
+    "na": "Nauru",
+    "nv": "Navajo",
+    "ng": "Ndonga",
+    "nd": "Northern Ndebele",
+    "ne": "Nepali",
+    "no": "Norwegian",
+    "nb": "Norwegian bokm√•l",
+    "nn": "Norwegian nynorsk",
+    "ii": "Sichuan Yi",
+    "oc": "Occitan",
+    "oj": "Ojibwe",
+    "cu": "Old Church Slavonic, Old Bulgarian",
+    "or": "Oriya",
+    "om": "Oromo (Afaan Oromo)",
+    "os": "Ossetian",
+    "pi": "PƒÅli",
+    "ps": "Pashto, Pushto",
+    "fa": "Persian (Farsi)",
+    "pl": "Polish",
+    "pt": "Portuguese",
+    "pa": "Punjabi (Eastern)",
+    "qu": "Quechua",
+    "rm": "Romansh",
+    "ro": "Romanian",
+    "ru": "Russian",
+    "se": "Sami",
+    "sm": "Samoan",
+    "sg": "Sango",
+    "sa": "Sanskrit",
+    "sr": "Serbian",
+    "sh": "Serbo-Croatian",
+    "st": "Sesotho",
+    "tn": "Setswana",
+    "sn": "Shona",
+    "sd": "Sindhi",
+    "si": "Sinhalese",
+    "ss": "Swati",
+    "sk": "Slovak",
+    "sl": "Slovenian",
+    "so": "Somali",
+    "nr": "Southern Ndebele",
+    "es": "Spanish",
+    "su": "Sundanese",
+    "sw": "Swahili (Kiswahili)",
+    "sv": "Swedish",
+    "tl": "Tagalog",
+    "ty": "Tahitian",
+    "tg": "Tajik",
+    "ta": "Tamil",
+    "tt": "Tatar",
+    "te": "Telugu",
+    "th": "Thai",
+    "bo": "Tibetan",
+    "ti": "Tigrinya",
+    "to": "Tonga",
+    "ts": "Tsonga",
+    "tr": "Turkish",
+    "tk": "Turkmen",
+    "tw": "Twi",
+    "ug": "Uyghur",
+    "uk": "Ukrainian",
+    "ur": "Urdu",
+    "uz": "Uzbek",
+    "ve": "Venda",
+    "vi": "Vietnamese",
+    "vo": "Volap√ºk",
+    "wa": "Wallon",
+    "cy": "Welsh",
+    "wo": "Wolof",
+    "fy": "Western Frisian",
+    "xh": "Xhosa",
+    "yi": "Yiddish",
+    "ji": "Yiddish",
+    "yo": "Yoruba",
+    "za": "Zhuang, Chuang",
+    "zu": "Zulu"
+  },
+  "comingSoon": {
+    "roadmapButton": "Open roadmap"
+  },
+  "input": {
+    "password": {
+      "strengthMessage": "At least 8 chars with caps and lowercase",
+      "passwordsShouldNotMatchError": "New and old passwords should not match"
+    },
+    "search": {
+      "noResultsAnnouncement": "No results found",
+      "resultsAnnouncement": "{{count}} result are available",
+      "resultsAnnouncement_plural": "{{count}} results are available"
+    },
+    "annotation": "Add annotation"
+  },
+  "tabs": {
+    "wizard-tabs-announcement": {
+      "message": "{{message}} {{steps}}",
+      "steps": "{{current}} of {{last}}"
+    }
+  },
+  "queryBuilder": {
+    "rules": {
+      "add": "Add rule",
+      "remove": "Remove rule",
+      "property": "Property",
+      "operator": "Operator"
+    }
+  },
+  "codeBlock": {
+    "copyBtnLabel": "Copy to clipboard",
+    "copiedMessage": "Copied to clipboard"
+  },
+  "dragDropUpload": {
+    "onSuccess": "File {{name}} was upload successfully",
+    "onFailure": "Upload failed, please try again."
+  },
+  "markdownEditor": {
+    "editor": {
+      "enabled": "Edit mode, editor enabled.",
+      "disabled": "Preview mode, editor disabled."
+    }
+  },
+  "preview": "Preview",
+  "unknown": "Unknown",
+  "dateTime": {
+    "relative": {
+      "namedDay": {
+        "justNow": "Just now",
+        "todayWithTime": "Today, {{time, shortTime}}",
+        "yesterdayWithTime": "Yesterday, {{time, shortTime}}"
+      },
+      "past": {
+        "full": {
+          "year": "{{value}} year ago",
+          "year_plural": "{{value}} years ago",
+          "month": "{{value}} month ago",
+          "month_plural": "{{value}} months ago",
+          "day": "{{value}} day ago",
+          "day_plural": "{{value}} days ago",
+          "week": "{{value}} week ago",
+          "week_plural": "{{value}} weeks ago",
+          "hour": "{{value}} hour ago",
+          "hour_plural": "{{value}} hours ago",
+          "minute": "{{value}} minute ago",
+          "minute_plural": "{{value}} minutes ago",
+          "second": "{{value}} second ago",
+          "second_plural": "{{value}} seconds ago"
+        },
+        "short": {
+          "year": "{{value}}y ago",
+          "month": "{{value}}m ago",
+          "day": "{{value}}d ago",
+          "week": "{{value}}w ago",
+          "hour": "{{value}}h ago",
+          "minute": "{{value}}min ago",
+          "second": "{{value}}s ago"
+        }
+      },
+      "future": {
+        "full": {
+          "year": "{{value}} year from now",
+          "year_plural": "{{value}} years from now",
+          "month": "{{value}} month from now",
+          "month_plural": "{{value}} months from now",
+          "day": "{{value}} day from now",
+          "day_plural": "{{value}} days from now",
+          "week": "{{value}} week from now",
+          "week_plural": "{{value}} weeks from now",
+          "hour": "{{value}} hour from now",
+          "hour_plural": "{{value}} hours from now",
+          "minute": "{{value}} minute from now",
+          "minute_plural": "{{value}} minutes from now",
+          "second": "{{value}} second from now",
+          "second_plural": "{{value}} seconds from now"
+        },
+        "short": {
+          "year": "{{value}}y from now",
+          "month": "{{value}}m from now",
+          "day": "{{value}}d from now",
+          "week": "{{value}}w from now",
+          "hour": "{{value}}h from now",
+          "minute": "{{value}}min from now",
+          "second": "{{value}}s from now"
+        }
+      }
+    },
+    "duration": {
+      "lessThanSomeSeconds": "< {{value}}s",
+      "simplifiedPretty": {
+        "day": "{{value}}d",
+        "hour": "{{value}}h",
+        "minute": "{{value}}m",
+        "second": "{{value}}s"
+      },
+      "abbreviated": {
+        "minutesAndSeconds": "{{minutes}} min {{seconds}} sec",
+        "minutes": "{{minutes}} min",
+        "seconds": "{{seconds}} sec"
+      }
+    },
+    "periods": {
+      "last7Days": "Last 7 days",
+      "last30Days": "Last 30 days",
+      "last60Days": "Last 60 days",
+      "last90Days": "Last 90 days"
+    },
+    "invalidDate": "Invalid Date"
+  },
+  "number": {
+    "abbreviation": {
+      "thousand": "{{value}}k",
+      "million": "{{value}}m",
+      "billion": "{{value}}b",
+      "trillion": "{{value}}t"
+    }
+  },
+  "notAvailable": "N/A",
+  "externalCredentialDialog": {
+    "dialogVerifyAuthentication": "Verifying Authentication...",
+    "appSpecificPasswordDialog": {
+      "dialogTitle": "Update app-specific password.",
+      "dialogDescription": "The app-specific password is required for two-factor authentication to work with App Store publishing.",
+      "inputPasswordPlaceHolderText": "App-specific password",
+      "appSpecificPasswordHelpLink": "How do I generate an app-specific password?"
+    },
+    "apple": {
+      "dialogTitle": "Add Apple Developer account",
+      "dialogTitle2FA": "Your Apple ID is protected with two-factor authentication.",
+      "dialogTitleReconnect": "Re-enter password",
+      "dialogDescription": "Only you can apply your own accounts to build configurations, auto-manage devices, and making store connections",
+      "dialogDescription2FA": "Enter the 6 digit verification code shown on your other devices.",
+      "inputUserNamePlaceHolderText": "Apple ID",
+      "inputDisplayNamePlaceHolderText": "Name this connection (optional)",
+      "inputPasswordPlaceHolderText": "Password",
+      "authenticationFailed": "Ooops, wrong username or password.",
+      "twoFactorAuthUnsupported": "Two-Factor Authentication is currently not supported.",
+      "conflict": "Ooops, given credentials already exist.",
+      "somethingWentWrong": "Oops. Something went wrong. Please try again later.",
+      "invalidSessionCode": "Oops, wrong verification code.",
+      "twoFactorHelpLink": "Don't have access to trusted devices?"
+    },
+    "google": {
+      "dialogTitle": "Add Google Developer account",
+      "dialogDescription": "Only you can apply your own accounts to build configurations, auto-manage devices, and making store connections",
+      "inputDisplayNamePlaceHolderText": "Name this connection (optional)",
+      "uploadTitle": "Security Token:",
+      "uploadSubtitle": "Upload .json file.",
+      "whereToFindJson": "Where can I find my .json file?"
+    },
+    "errors": {
+      "jsonFormatInvalid": "Uploaded file is not in a json format."
+    }
+  },
+  "certificateUpload": {
+    "password": {
+      "valid": "Valid password",
+      "wrong": "Wrong password",
+      "checking": "Checking password"
+    },
+    "certificateLabel": "Certificate:",
+    "uploadP12File": "Upload .p12 file",
+    "certificatePassword": "Certificate password",
+    "invalidPasswordErrorMessage": "The provided password can't open the selected certificate",
+    "invalidCertificateErrorMessage": "The selected file is not a valid P12 certificate.",
+    "generateP12Instructions": "How can I generate a <0>.p12 certificate</0>?",
+    "addAppleCertificates": "Add Apple certificates"
+  },
+  "certificateUploadDialog": {
+    "dialogTitle": "Upload distribution certificate",
+    "replaceTitle": "Replace distribution certificate",
+    "dialogDescription": "Certificates are needed to either distribute your app to testers, or publish it to the App Store.",
+    "somethingWentWrong": "Oops. Something went wrong. Please try again later."
+  },
+  "stores": {
+    "appleProductionSubtitle": "App Store",
+    "appleTestFlightSubtitle": "TestFlight",
+    "googleplaySubtitle": "Google Play",
+    "intuneSubtitle": "Intune Company Portal",
+    "windowsSubtitle": "Windows Store"
+  },
+  "byOwner": "by {{appOwnerName}}",
+  "appSpecificPassword": {
+    "errors": {
+      "appSpecificPasswordMissing": "App-specific password is required for two-factor enabled accounts."
+    }
+  }
+}(Ê<(=È      [÷	Ó[÷	Ó?®Gb]∑=5   o    a,:https://mobilecenter.azureedge.net/assets/locales/en-US/common-cc1941b3242b152a7101dedf81b1d814dc801ec5.json necko:classified 1 strongly-framed 1 security-info FnhllAKWRHGAlo+ESXykKAAAAAAAAAAAwAAAAAAAAEaphjojH6pBabDSgSnsfLHeAAQAAgAAAAAAAAAAAAAAAAAAAAAB4vFIJp5wRkeyPxAQ9RJGKPqbqVvKO0mKuIl8ec8o/uhmCjImkVxP+7sgiYWmMt8FvcOXmlQiTNWFiWlrbpbqgwAAAAAAAAOgMIIDnDCCAoSgAwIBAgIERTJf6DANBgkqhkiG9w0BAQsFADCBijEUMBIGA1UEBhMLUG9ydFN3aWdnZXIxFDASBgNVBAgTC1BvcnRTd2lnZ2VyMRQwEgYDVQQHEwtQb3J0U3dpZ2dlcjEUMBIGA1UEChMLUG9ydFN3aWdnZXIxFzAVBgNVBAsTDlBvcnRTd2lnZ2VyIENBMRcwFQYDVQQDEw5Qb3J0U3dpZ2dlciBDQTAeFw0xNDEwMjgxMzEyMTBaFw0zODEwMjgxMzEyMTBaMGoxFDASBgNVBAYTC1BvcnRTd2lnZ2VyMRQwEgYDVQQKEwtQb3J0U3dpZ2dlcjEXMBUGA1UECxMOUG9ydFN3aWdnZXIgQ0ExIzAhBgNVBAMTGm1vYmlsZWNlbnRlci5henVyZWVkZ2UubmV0MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAip+3piiDbJ1qj2fgv1bKm0H/5eDbJiId+G1wUdMXTYPW32/sXKIIUZZmz44WfwNugNoCeka4NndBhjC6W6gPJ05UURlxAA9/d9tc5OMntPRJVwpb6oLhqnajiaT0NOQzxQ+sEjqvilQBG5ROW4vizKgS4qQxEc4FHu8c3qlVZNItJXYfckDiJN2Ls3AUfYoEhLsOapWnZjGL1yh2DPWGc9Ee2sTHPMQLWnSuwvSnxT3xCOS0tp4ZsuLwa04BcmIX5BLyn5iI+h019CEhQgAtpZXAS6RA3Lolu+rQB6daVw3lrUnmld+gHjnLXZXlYK25rBrN37uqabkXFoxGVG4xNwIDAQABoykwJzAlBgNVHREEHjAcghptb2JpbGVjZW50ZXIuYXp1cmVlZGdlLm5ldDANBgkqhkiG9w0BAQsFAAOCAQEAMMgdk4OU4kpGCflRxkxvxnChx1OY9vch2qsG8qymPy9ZOwB/Nutwt8EJdT0MZkPaBuGdN7fl9vscggqOsl/b2/ASv0Rrse9A7hO4IWI8KlgWeVuMv7ym1mt0tRG9pNQUq2LeFaniKhVVuCF61PHBlqkxII99NrYKf4lFEsiw2O0ujJV25jyjH3LM5ef4YEmZ8tEzsxRlb4Tmj63CWYcFgNmx2Xfb2seiujhkTNDh7pHJjim5NSWi6XIfo9cse+j9heFilioSOUTuw5wTSA8tv2R9WUig7Ksh5/MrV+NKHXU2ASUkUo4EyaDIDiX9yOmD7BQ0zt5Clfhimcr0+xEOb8AvAQMAAAAAAQEAAAAA request-method GET response-head HTTP/1.1 200 OK
+Accept-Ranges: bytes
+Access-Control-Allow-Origin: *
+Cache-Control: public, max-age=31536000
+Content-MD5: DW3VKTPdy/8IyKJHYPqEQw==
+Content-Type: application/json
+Date: Sun, 28 Oct 2018 19:28:59 GMT
+Etag: "0x8D6346620D3812E"
+Last-Modified: Wed, 17 Oct 2018 19:24:16 GMT
+Server: ECAcc (toj/897F)
+X-Cache: HIT
+x-ms-blob-type: BlockBlob
+x-ms-lease-state: available
+x-ms-lease-status: unlocked
+x-ms-request-id: 485fef6d-101e-0001-3153-66addb000000
+x-ms-version: 2014-02-14
+Content-Length: 23219
+ original-response-headers Accept-Ranges: bytes
+Access-Control-Allow-Origin: *
+Cache-Control: public, max-age=31536000
+Content-MD5: DW3VKTPdy/8IyKJHYPqEQw==
+Content-Type: application/json
+Date: Sun, 28 Oct 2018 19:28:59 GMT
+Etag: "0x8D6346620D3812E"
+Last-Modified: Wed, 17 Oct 2018 19:24:16 GMT
+Server: ECAcc (toj/897F)
+X-Cache: HIT
+x-ms-blob-type: BlockBlob
+x-ms-lease-state: available
+x-ms-lease-status: unlocked
+x-ms-request-id: 485fef6d-101e-0001-3153-66addb000000
+x-ms-version: 2014-02-14
+Content-Length: 23219
+Connection: close
+ net-response-time-onstart 845 net-response-time-onstop 845   Z≥

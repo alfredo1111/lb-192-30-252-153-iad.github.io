@@ -1,0 +1,568 @@
+var __extends = (this && this.__extends) || function (d, b) {
+    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+    function __() { this.constructor = d; }
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+};
+define(["require", "exports", "../Framework/Util/Log", "./BaseService", "../../views/Shared/ProvisioningState"], function (require, exports, Log, BaseService, ProvisioningState) {
+    "use strict";
+    var logger = Log.getLogger({ loggerName: "AzureResourceManagerService" });
+    var JSON_CONTENT_TYPE = "application/json";
+    exports.datasetTypeName = "datasets/";
+    exports.linkedServicesTypeName = "linkedservices/";
+    exports.pipelineTypeName = "datapipelines/";
+    var AzureResourceManagerService = (function (_super) {
+        __extends(AzureResourceManagerService, _super);
+        function AzureResourceManagerService(appcontext, moduleName, apiVersion) {
+            _super.call(this, appcontext, logger, moduleName);
+            this._apiVersion = "2015-10-01";
+            this._resourceProviderNamespace = "Microsoft.DataFactory";
+            this._baseUrl = "/subscriptions/{subscriptionId}/resourcegroups/" +
+                "{resourceGroupName}/providers/" + this._resourceProviderNamespace + "/" +
+                "datafactories/{factoryName}";
+            this._pipelinesUrl = this._baseUrl + "/datapipelines";
+            this._pipelineUrl = this._pipelinesUrl + "/{pipelineName}";
+            this._datasetsUrl = this._baseUrl + "/datasets";
+            this._datasetUrl = this._datasetsUrl + "/{tableName}";
+            this._slicesUrl = this._datasetUrl + "/slices";
+            this._linkedServicesUrl = this._baseUrl + "/linkedservices";
+            this._linkedServiceUrl = this._linkedServicesUrl + "/{linkedServiceName}";
+            this._listGatewayUrl = this._baseUrl + "/gateways";
+            this._gatewayUrl = this._baseUrl + "/gateways/{gatewayName}";
+            this._activityRunUrl = this._baseUrl + "/activitywindows";
+            this._runRecordsUrl = this._datasetUrl + "/sliceruns";
+            this._runRecordUrl = this._baseUrl + "/runs/{runId}";
+            this._entityUrl = this._baseUrl + "/{entityType}/{entityName}";
+            if (apiVersion) {
+                this._apiVersion = apiVersion;
+            }
+        }
+        AzureResourceManagerService.prototype.setSliceStatus = function (baseUrlParams, statusParams) {
+            var url = this.getBaseUrl(this._slicesUrl, baseUrlParams);
+            url += "/setstatus";
+            var promise = this.ajaxQ({
+                url: url,
+                data: JSON.stringify(statusParams),
+                getData: { start: baseUrlParams.slicesStart, end: baseUrlParams.slicesEnd },
+                type: "PUT",
+                contentType: JSON_CONTENT_TYPE
+            });
+            return promise.fail(this._appContext.errorHandler.makeResourceFailedHandler("Setting {0} factory slice status".format(baseUrlParams.factoryName), url));
+        };
+        AzureResourceManagerService.prototype.listUpstreamSlicesOfInterest = function (baseUrlParams) {
+            var url = this.getBaseUrl(this._slicesUrl, baseUrlParams);
+            url += "/upstreamofinterest";
+            var data = { start: baseUrlParams.slicesStart, end: baseUrlParams.slicesEnd, top: "20", compressSlices: "False" };
+            var promise = this.ajaxQ({
+                url: url,
+                data: data,
+                type: "GET",
+                contentType: JSON_CONTENT_TYPE
+            });
+            return promise.fail(this._appContext.errorHandler.makeResourceFailedHandler("Upstream slice of interest for {0} DataFactory".format(baseUrlParams.factoryName), url));
+        };
+        AzureResourceManagerService.prototype.pausePipeline = function (baseUrlParams, pauseParams) {
+            var url = this.getBaseUrl(this._pipelineUrl, baseUrlParams);
+            url += "/pause";
+            var promise = this.ajaxQ({
+                url: url,
+                getData: pauseParams,
+                type: "POST",
+                contentType: JSON_CONTENT_TYPE
+            });
+            promise.fail(this._appContext.errorHandler.makeResourceFailedHandler("Pausing {0} pipeline".format(baseUrlParams.pipelineName), url));
+            return promise;
+        };
+        AzureResourceManagerService.prototype.resumePipeline = function (baseUrlParams) {
+            var url = this.getBaseUrl(this._pipelineUrl, baseUrlParams);
+            url += "/resume";
+            var promise = this.ajaxQ({
+                url: url,
+                type: "POST",
+                contentType: JSON_CONTENT_TYPE
+            });
+            return promise.fail(this._appContext.errorHandler.makeResourceFailedHandler("Resuming {0} pipeline".format(baseUrlParams.pipelineName), url));
+        };
+        AzureResourceManagerService.prototype.deployPipeline = function (baseUrlParams, deployParams) {
+            var url = this.getBaseUrl(this._pipelineUrl, baseUrlParams);
+            var promise = this.ajaxQ({
+                url: url,
+                type: "PUT",
+                data: JSON.stringify(deployParams),
+                contentType: JSON_CONTENT_TYPE
+            });
+            promise.fail(this._appContext.errorHandler.makeResourceFailedHandler("Deploying {0} pipeline".format(baseUrlParams.pipelineName), url));
+            return promise;
+        };
+        AzureResourceManagerService.prototype.createLinkedService = function (baseUrlParams, createParams) {
+            var url = this.getBaseUrl(this._linkedServiceUrl, baseUrlParams);
+            var promise = this.ajaxQ({
+                url: url,
+                type: "PUT",
+                data: JSON.stringify(createParams),
+                contentType: JSON_CONTENT_TYPE
+            });
+            promise.fail(this._appContext.errorHandler.makeResourceFailedHandler("Failed to create {0} linked service".format(baseUrlParams.linkedServiceName), url));
+            return promise;
+        };
+        AzureResourceManagerService.prototype.createEntity = function (baseUrlParams, createPayload) {
+            var url = this.getBaseUrl(this._entityUrl, baseUrlParams);
+            var promise = this.ajaxQ({
+                url: url,
+                type: "PUT",
+                data: JSON.stringify(createPayload),
+                contentType: JSON_CONTENT_TYPE
+            });
+            promise.fail(this._appContext.errorHandler.makeResourceFailedHandler("Failed to create entity {0}".format(baseUrlParams.entityName), url));
+            return promise;
+        };
+        AzureResourceManagerService.prototype.deleteEntity = function (baseUrlParams) {
+            var url = this.getBaseUrl(this._entityUrl, baseUrlParams);
+            var promise = this.ajaxQ({
+                url: url,
+                type: "DELETE",
+                contentType: JSON_CONTENT_TYPE
+            });
+            promise.fail(this._appContext.errorHandler.makeResourceFailedHandler("Failed to delete entity {0}".format(baseUrlParams.entityName), url));
+            return promise;
+        };
+        AzureResourceManagerService.prototype.listLinkedServices = function (baseUrlParams) {
+            var _this = this;
+            var url = this.getBaseUrl(this._linkedServicesUrl, baseUrlParams);
+            return this.ajaxQ({
+                url: url,
+                type: "GET",
+                contentType: JSON_CONTENT_TYPE
+            }).then(function (data) {
+                if (data.nextLink && data.value.length > 0) {
+                    return _this.listAll(data).then(function (response) {
+                        return (response || []).sort(_this.sortEntity);
+                    });
+                }
+                else {
+                    return (data.value || []).sort(_this.sortEntity);
+                }
+            }, function (reason) {
+                logger.logError("Failed to retrieve Linked services for params {0}. Reason: {1}.".format(JSON.stringify(baseUrlParams), JSON.stringify(reason)));
+                return Q.reject(reason);
+            });
+        };
+        AzureResourceManagerService.prototype.listGateways = function (baseUrlParams) {
+            var _this = this;
+            var url = this.getBaseUrl(this._listGatewayUrl, baseUrlParams);
+            return this.ajaxQ({
+                url: url,
+                type: "GET",
+                contentType: JSON_CONTENT_TYPE
+            }).then(function (data) {
+                if (data.nextLink && data.value.length > 0) {
+                    return _this.listAll(data).then(function (response) {
+                        return (response || []).sort(_this.sortEntity);
+                    });
+                }
+                else {
+                    return (data.value || []).sort(_this.sortEntity);
+                }
+            }, function (reason) {
+                logger.logError("Failed to retrieve Gateways for the {0} factory. Reason: {1}".format(baseUrlParams.factoryName, JSON.stringify(reason), JSON.stringify(reason)));
+                return Q.reject(reason);
+            });
+        };
+        AzureResourceManagerService.prototype.createGateway = function (baseUrlParams, gatewayParams) {
+            var url = this.getBaseUrl(this._gatewayUrl, baseUrlParams);
+            var data = JSON.stringify(gatewayParams);
+            var promise = this.ajaxQ({
+                url: url,
+                type: "PUT",
+                data: data,
+                contentType: JSON_CONTENT_TYPE
+            });
+            promise.fail(function (error) {
+                logger.logError("Failed to create gateway {0} for the factory {1}".format(baseUrlParams.gatewayName, baseUrlParams.factoryName) + JSON.stringify(error));
+            });
+            return promise;
+        };
+        AzureResourceManagerService.prototype.verifyGateway = function (baseUrlParams) {
+            var url = this.getBaseUrl(this._gatewayUrl, baseUrlParams);
+            url += "/verifyname";
+            var promise = this.ajaxQ({
+                url: url,
+                type: "GET",
+                contentType: JSON_CONTENT_TYPE
+            });
+            promise.fail(function (error) {
+                logger.logError("Failed to verify gateway {0} for the factory {1}".format(baseUrlParams.gatewayName, baseUrlParams.factoryName) + JSON.stringify(error));
+            });
+            return promise;
+        };
+        AzureResourceManagerService.prototype.getGateway = function (baseUrlParams) {
+            var url = this.getBaseUrl(this._gatewayUrl, baseUrlParams);
+            var promise = this.ajaxQ({
+                url: url,
+                type: "GET",
+                contentType: JSON_CONTENT_TYPE
+            });
+            promise.fail(function (error) {
+                logger.logError("Failed to get gateway {0} for the factory {1}".format(baseUrlParams.gatewayName, baseUrlParams.factoryName) + JSON.stringify(error));
+            });
+            return promise;
+        };
+        AzureResourceManagerService.prototype.deleteGateway = function (baseUrlParams) {
+            var url = this.getBaseUrl(this._gatewayUrl, baseUrlParams);
+            var promise = this.ajaxQ({
+                url: url,
+                type: "DELETE",
+                contentType: JSON_CONTENT_TYPE
+            });
+            promise.fail(function (error) {
+                logger.logError("Failed to delete gateway {0} for the factory {1}".format(baseUrlParams.gatewayName, baseUrlParams.factoryName) + JSON.stringify(error));
+            });
+            return promise;
+        };
+        AzureResourceManagerService.prototype.listActivityWindows = function (baseUrlParams, activityWindowParams, nextLink, fetchAllPages, cancelToken) {
+            var _this = this;
+            if (nextLink === void 0) { nextLink = null; }
+            if (fetchAllPages === void 0) { fetchAllPages = false; }
+            var deferred = Q.defer();
+            var usingNextLink = nextLink && nextLink !== "";
+            var url = usingNextLink ? nextLink : this.getBaseUrl(this._activityRunUrl, baseUrlParams);
+            this.ajaxQ({
+                url: url,
+                type: "POST",
+                contentType: JSON_CONTENT_TYPE,
+                processData: false,
+                data: JSON.stringify(activityWindowParams)
+            }, usingNextLink).then(function (response) {
+                if (cancelToken && cancelToken.isCanceled) {
+                    deferred.resolve({ nextLink: undefined, value: undefined });
+                    return deferred.promise;
+                }
+                var responseHasNextLink = response.nextLink && response.nextLink !== "";
+                if (fetchAllPages && responseHasNextLink) {
+                    _this.listActivityWindows(baseUrlParams, activityWindowParams, response.nextLink, true, cancelToken).then(function (newData) {
+                        deferred.resolve({ value: response.value.activityWindows.concat(newData.value) });
+                        return deferred.promise;
+                    }, _this._appContext.errorHandler.makeResourceFailedHandler("Failed to fetch activity windows for {0} data factory".format(baseUrlParams.factoryName), response.nextLink, deferred));
+                }
+                else {
+                    deferred.resolve({
+                        value: response.value.activityWindows,
+                        nextLink: responseHasNextLink ? response.nextLink : null
+                    });
+                }
+                return deferred.promise;
+            }, this._appContext.errorHandler.makeResourceFailedHandler("Failed to fetch activity windows for {0} data factory".format(baseUrlParams.factoryName), url, deferred));
+            return deferred.promise;
+        };
+        AzureResourceManagerService.prototype.getDataFactory = function (baseUrlParams) {
+            var url = this.getBaseUrl(this._baseUrl, baseUrlParams);
+            var promise = this.ajaxQ({
+                url: url,
+                type: "GET",
+                contentType: JSON_CONTENT_TYPE
+            });
+            return promise.fail(this._appContext.errorHandler.makeResourceFailedHandler("Getting information about data factory {0} failed".format(baseUrlParams.factoryName), url));
+        };
+        AzureResourceManagerService.prototype.getUserPermissions = function (resourceId) {
+            var getData = {
+                "api-version": "2015-05-01-preview"
+            };
+            var deferred = Q.defer();
+            this.ajaxQ({
+                url: "{0}/providers/Microsoft.Authorization/permissions".format(resourceId),
+                type: "GET",
+                contentType: JSON_CONTENT_TYPE,
+                data: getData
+            }).then(function (data) {
+                deferred.resolve(data.value);
+            }, function (reason) {
+                logger.logError("Failed to verify user permissions", reason);
+                deferred.reject(reason);
+            });
+            return deferred.promise;
+        };
+        AzureResourceManagerService.prototype.getLinkedService = function (baseUrlParams) {
+            var url = this.getBaseUrl(this._linkedServiceUrl, baseUrlParams);
+            return this.ajaxQ({
+                url: url,
+                type: "GET",
+                contentType: JSON_CONTENT_TYPE
+            }).then(function (service) {
+                return service;
+            }, function (reason) {
+                logger.logError("Failed to retrieve linked service for params {0}. Reason: {1}.".format(JSON.stringify(baseUrlParams), JSON.stringify(reason)));
+                return Q.reject(reason);
+            });
+        };
+        AzureResourceManagerService.prototype.getEntity = function (baseUrlParams) {
+            var url = this.getBaseUrl(this._entityUrl, baseUrlParams);
+            var promise = this.ajaxQ({
+                url: url,
+                type: "GET",
+                contentType: JSON_CONTENT_TYPE
+            });
+            return promise.fail(this._appContext.errorHandler.makeResourceFailedHandler("Failed to get entity {0}".format(baseUrlParams.entityName), url));
+        };
+        AzureResourceManagerService.prototype.listPipelines = function (baseUrlParams) {
+            var _this = this;
+            var url = this.getBaseUrl(this._pipelinesUrl, baseUrlParams);
+            return this.ajaxQ({
+                url: url,
+                type: "GET",
+                contentType: JSON_CONTENT_TYPE
+            }).then(function (data) {
+                if (data.nextLink && data.value.length > 0) {
+                    return _this.listAll(data).then(function (response) {
+                        return (response || []).sort(_this.sortEntity);
+                    });
+                }
+                else {
+                    return (data.value || []).sort(_this.sortEntity);
+                }
+            }, function (reason) {
+                logger.logError("Failed to retrieve pipelines for params {0}. Reason: {1}.".format(JSON.stringify(baseUrlParams), JSON.stringify(reason)));
+                return Q.reject(reason);
+            });
+        };
+        AzureResourceManagerService.prototype.getPipeline = function (baseUrlParams) {
+            var url = this.getBaseUrl(this._pipelineUrl, baseUrlParams);
+            return this.ajaxQ({
+                url: url,
+                type: "GET",
+                contentType: JSON_CONTENT_TYPE
+            }).then(function (data) {
+                return data;
+            }, function (reason) {
+                logger.logError("Failed to retrieve pipeline for params {0}. Reason: {1}.".format(JSON.stringify(baseUrlParams), JSON.stringify(reason)));
+                return Q.reject(reason);
+            });
+        };
+        AzureResourceManagerService.prototype.listDatasets = function (baseUrlParams) {
+            var _this = this;
+            var url = this.getBaseUrl(this._datasetsUrl, baseUrlParams);
+            return this.ajaxQ({
+                url: url,
+                type: "GET",
+                contentType: JSON_CONTENT_TYPE
+            }).then(function (data) {
+                if (data.nextLink && data.value.length > 0) {
+                    return _this.listAll(data).then(function (response) {
+                        return (response || []).sort(_this.sortEntity);
+                    });
+                }
+                else {
+                    return (data.value || []).sort(_this.sortEntity);
+                }
+            }, function (reason) {
+                logger.logError("Failed to retrieve datasets for params {0}. Reason: {1}.".format(JSON.stringify(baseUrlParams), JSON.stringify(reason)));
+                return Q.reject(reason);
+            });
+        };
+        AzureResourceManagerService.prototype.listSlices = function (baseUrlParams) {
+            var _this = this;
+            var url = this.getBaseUrl(this._slicesUrl, baseUrlParams);
+            return this.ajaxQ({
+                url: url,
+                type: "GET",
+                contentType: JSON_CONTENT_TYPE
+            }).then(function (data) {
+                if (data.nextLink && data.value.length > 0) {
+                    return _this.listAll(data);
+                }
+                else {
+                    return data.value;
+                }
+            }, function (reason) {
+                logger.logError("Failed to retrieve slices for params {0}. Reason: {1}.".format(JSON.stringify(baseUrlParams), JSON.stringify(reason)));
+                return Q.reject(reason);
+            });
+        };
+        AzureResourceManagerService.prototype.listRunRecords = function (baseUrlParams, queryParams) {
+            var _this = this;
+            var url = this.getBaseUrl(this._runRecordsUrl, baseUrlParams);
+            return this.ajaxQ({
+                url: url,
+                type: "GET",
+                data: queryParams,
+                contentType: JSON_CONTENT_TYPE
+            }).then(function (data) {
+                if (data.nextLink && data.value.length > 0) {
+                    return _this.listAll(data);
+                }
+                else {
+                    return data.value;
+                }
+            }, function (reason) {
+                logger.logError("Failed to retrieve run records for params {0}, {1}. Reason: {2}.".format(JSON.stringify(baseUrlParams), JSON.stringify(queryParams), JSON.stringify(reason)));
+                return Q.reject(reason);
+            });
+        };
+        AzureResourceManagerService.prototype.getRunRecord = function (baseUrlParams) {
+            var url = this.getBaseUrl(this._runRecordUrl, baseUrlParams);
+            return this.ajaxQ({
+                url: url,
+                type: "GET",
+                contentType: JSON_CONTENT_TYPE
+            }).then(function (data) {
+                return data;
+            }, function (reason) {
+                logger.logError("Failed to retrieve run record for params {0}. Reason: {1}.".format(JSON.stringify(baseUrlParams), JSON.stringify(reason)));
+                return Q.reject(reason);
+            });
+        };
+        AzureResourceManagerService.prototype.getDataset = function (baseUrlParams) {
+            var url = this.getBaseUrl(this._datasetUrl, baseUrlParams);
+            return this.ajaxQ({
+                url: url,
+                type: "GET",
+                contentType: JSON_CONTENT_TYPE
+            }).then(function (dataset) {
+                return dataset;
+            }, function (reason) {
+                logger.logError("Failed to retrieve dataset for params {0}. Reason: {1}.".format(JSON.stringify(baseUrlParams), JSON.stringify(reason)));
+                return Q.reject(reason);
+            });
+        };
+        AzureResourceManagerService.prototype.createDataset = function (baseUrlParams, datasetParams) {
+            var url = this.getBaseUrl(this._datasetUrl, baseUrlParams);
+            var data = JSON.stringify(datasetParams);
+            var promise = this.ajaxQ({
+                url: url,
+                type: "PUT",
+                contentType: JSON_CONTENT_TYPE,
+                data: data
+            });
+            return promise.fail(this._appContext.errorHandler.makeResourceFailedHandler("Creating {0} dataset failed".format(baseUrlParams.tableName), url));
+        };
+        AzureResourceManagerService.prototype.getFactorySchema = function (subscriptionId) {
+            return this.ajaxQ({
+                url: "/providers/" + this._resourceProviderNamespace + "/datafactoryschema/" + subscriptionId,
+                type: "GET",
+                contentType: JSON_CONTENT_TYPE,
+                data: null
+            });
+        };
+        AzureResourceManagerService.prototype.isFactoryNameAvailable = function (subscriptionId) {
+            var promise = this.ajaxQ({
+                url: "/providers/" + this._resourceProviderNamespace + "/checkazuredatafactorynameavailability/" + subscriptionId,
+                type: "GET",
+                contentType: JSON_CONTENT_TYPE,
+                data: null
+            });
+            promise.fail(this._appContext.errorHandler.makeResourceFailedHandler("Getting factory schema failed for subscription {0}".format(subscriptionId)));
+            return promise;
+        };
+        AzureResourceManagerService.prototype.createFactory = function (factoryParameters, region) {
+            var _this = this;
+            var defered = Q.defer();
+            var checkFactory = function (factory) {
+                if (factory.properties.provisioningState === ProvisioningState.succedeed) {
+                    defered.resolve(null);
+                }
+                else if (factory.properties.provisioningState === ProvisioningState.failed) {
+                    defered.reject("Factory provisioning failed:" + factory.properties.errorMessage);
+                }
+                else {
+                    setTimeout(function () {
+                        _this.getFactory(factoryParameters).then(function (f) {
+                            checkFactory(f);
+                        }).fail(function (reason) { return defered.reject(reason); });
+                    }, 5000);
+                }
+            };
+            this.ajaxQ({
+                url: this.getBaseUrl(this._baseUrl, factoryParameters),
+                type: "PUT",
+                contentType: JSON_CONTENT_TYPE,
+                data: JSON.stringify({ location: region })
+            }).then(function (response) {
+                checkFactory(response);
+            }).fail(function (reason) {
+                defered.reject(reason);
+                (_this._appContext.errorHandler.makeResourceFailedHandler("Unable to get factory"))(reason);
+            });
+            return defered.promise;
+        };
+        AzureResourceManagerService.prototype.getFactory = function (factoryParameters) {
+            var promise = this.ajaxQ({
+                url: this.getBaseUrl(this._baseUrl, factoryParameters),
+                type: "GET",
+                contentType: JSON_CONTENT_TYPE
+            });
+            promise.fail(this._appContext.errorHandler.makeResourceFailedHandler("Unable to get factory"));
+            return promise;
+        };
+        AzureResourceManagerService.prototype.getNextPage = function (url) {
+            var _this = this;
+            return this.ajaxQ({
+                url: url,
+                type: "GET",
+                contentType: JSON_CONTENT_TYPE
+            }, true).then(function (data) {
+                return data;
+            }, function (reason) {
+                _this._appContext.errorHandler.makeResourceFailedHandler("Failed to retrieve next page url {0}. Reason: {1}.".format(url, JSON.stringify(reason)));
+                return Q.reject(reason);
+            });
+        };
+        AzureResourceManagerService.prototype.listAll = function (previousResponse) {
+            var _this = this;
+            return this.getNextPage(previousResponse.nextLink).then(function (response) {
+                if (response.value.length === 0 && !!response.nextLink) {
+                    response.nextLink = "";
+                }
+                response.value = response.value.concat(previousResponse.value);
+                if (response.nextLink) {
+                    return _this.listAll(response);
+                }
+                else {
+                    return response.value;
+                }
+            });
+        };
+        AzureResourceManagerService.prototype.sortEntity = function (a, b) {
+            if (a == null || b == null || a.name == null || b.name == null) {
+                return -1;
+            }
+            if (a.name.toLowerCase() < b.name.toLowerCase()) {
+                return -1;
+            }
+            else if (a.name.toLowerCase() > b.name.toLowerCase()) {
+                return 1;
+            }
+            else {
+                return 0;
+            }
+        };
+        return AzureResourceManagerService;
+    }(BaseService.BaseService));
+    exports.AzureResourceManagerService = AzureResourceManagerService;
+});
+//# sourceMappingURL=AzureResourceManagerService.js.map£~≤ˇ—m      [÷ˇ[÷?ßÁ\[ÿÂY   ù    :https://datafactory-endpoint.azureedge.net/node_modules/@ms-atlas-module/datastudio-datafactory/scripts/Services/AzureResourceManagerService.js?v=1.0.4164.1 necko:classified 1 strongly-framed 1 security-info FnhllAKWRHGAlo+ESXykKAAAAAAAAAAAwAAAAAAAAEaphjojH6pBabDSgSnsfLHeAAQAAgAAAAAAAAAAAAAAAAAAAAAB4vFIJp5wRkeyPxAQ9RJGKPqbqVvKO0mKuIl8ec8o/uhmCjImkVxP+7sgiYWmMt8FvcOXmlQiTNWFiWlrbpbqgwAAAAAAAAOwMIIDrDCCApSgAwIBAgIERTJgTjANBgkqhkiG9w0BAQsFADCBijEUMBIGA1UEBhMLUG9ydFN3aWdnZXIxFDASBgNVBAgTC1BvcnRTd2lnZ2VyMRQwEgYDVQQHEwtQb3J0U3dpZ2dlcjEUMBIGA1UEChMLUG9ydFN3aWdnZXIxFzAVBgNVBAsTDlBvcnRTd2lnZ2VyIENBMRcwFQYDVQQDEw5Qb3J0U3dpZ2dlciBDQTAeFw0xNDEwMjgxMzEyMTBaFw0zODEwMjgxMzEyMTBaMHIxFDASBgNVBAYTC1BvcnRTd2lnZ2VyMRQwEgYDVQQKEwtQb3J0U3dpZ2dlcjEXMBUGA1UECxMOUG9ydFN3aWdnZXIgQ0ExKzApBgNVBAMTImRhdGFmYWN0b3J5LWVuZHBvaW50LmF6dXJlZWRnZS5uZXQwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCKn7emKINsnWqPZ+C/VsqbQf/l4NsmIh34bXBR0xdNg9bfb+xcoghRlmbPjhZ/A26A2gJ6Rrg2d0GGMLpbqA8nTlRRGXEAD39321zk4ye09ElXClvqguGqdqOJpPQ05DPFD6wSOq+KVAEblE5bi+LMqBLipDERzgUe7xzeqVVk0i0ldh9yQOIk3YuzcBR9igSEuw5qladmMYvXKHYM9YZz0R7axMc8xAtadK7C9KfFPfEI5LS2nhmy4vBrTgFyYhfkEvKfmIj6HTX0ISFCAC2llcBLpEDcuiW76tAHp1pXDeWtSeaV36AeOctdleVgrbmsGs3fu6ppuRcWjEZUbjE3AgMBAAGjMTAvMC0GA1UdEQQmMCSCImRhdGFmYWN0b3J5LWVuZHBvaW50LmF6dXJlZWRnZS5uZXQwDQYJKoZIhvcNAQELBQADggEBAD5nTga0zudMitI/u0TfDiXUvU9MHWtnM1QsCR52LG8/P3zHlMPdW01WDRZUWTzCGka9MJHNjppqHPNsxY69i49nAksLYLzG7nK57bfwfvJQH/v27QUFGFMmKZNtpz+523V8pi+RJR9/DcmY0SQslyt1+Cj1SViKKOJYr8DiCwrYSUxWRp0XCM6ACnyoVhILHxIff7DQUE7Qq8eLX2UMcsrHHrlmbWpSCkEMtikIahIK4D2jjHj/CFWVzmKApRGZHRCenGUCvwPc6+mdefq6dna4yuo/9sC8unizedWeSL+sIj+Qxy7egEU4w3ZyvM8xUIozSNHY/VVwXW5ypPYqSlDALwEDAAAAAAEBAAAAAA== request-method GET request-Accept-Encoding gzip, deflate, br response-head HTTP/1.1 200 OK
+Content-Type: application/javascript
+Last-Modified: Sat, 06 Oct 2018 23:13:01 GMT
+Accept-Ranges: bytes
+Etag: "743eff20ca5dd41:0"
+Server: Microsoft-IIS/8.5
+X-Frame-Options: AllowAll
+X-XSS-Protection: 1; mode=block
+X-Content-Type-Options: nosniff
+Strict-Transport-Security: max-age=15724800; includeSubDomains
+Access-Control-Allow-Origin: *
+Vary: Accept-Encoding
+Content-Length: 27653
+Date: Sun, 28 Oct 2018 18:50:44 GMT
+ original-response-headers Content-Type: application/javascript
+Last-Modified: Sat, 06 Oct 2018 23:13:01 GMT
+Accept-Ranges: bytes
+Etag: "743eff20ca5dd41:0"
+Server: Microsoft-IIS/8.5
+X-Frame-Options: AllowAll
+X-XSS-Protection: 1; mode=block
+X-Content-Type-Options: nosniff
+Strict-Transport-Security: max-age=15724800; includeSubDomains
+Access-Control-Allow-Origin: *
+Vary: Accept-Encoding
+Content-Length: 27653
+Date: Sun, 28 Oct 2018 18:50:44 GMT
+Connection: close
+ uncompressed-len 0 net-response-time-onstart 4908 net-response-time-onstop 4909   l

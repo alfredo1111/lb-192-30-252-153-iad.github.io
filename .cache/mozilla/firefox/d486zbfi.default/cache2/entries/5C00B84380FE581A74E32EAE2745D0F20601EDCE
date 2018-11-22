@@ -1,0 +1,521 @@
+define(["require", "exports"], function (require, exports) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    // TODO: define this list per environment in CSCFG (253501)
+    var Referrers = /** @class */ (function () {
+        function Referrers() {
+        }
+        Referrers.productionPortal = "https://portal.azure.com/";
+        Referrers.fairfaxPortal = "https://portal.azure.us/";
+        Referrers.mooncakePortal = "https://portal.azure.cn/";
+        Referrers.blackforestPortal = "https://portal.microsoftazure.de/";
+        Referrers.inTunePortal = "https://intuneeducation.portal.azure.com/";
+        Referrers.mpacPortal = "https://ms.portal.azure.com";
+        Referrers.previewPortal = "https://preview.portal.azure.com";
+        Referrers.rcPortal = "https://rc.portal.azure.com";
+        Referrers.s2Portal = "https://s2.portal.azure.com";
+        Referrers.dogfoodPortal = "https://df.onecloud.azure-test.net/";
+        Referrers.hostedDataExplorer = "https://cosmos.azure.com/";
+        Referrers.originalHostedDataExplorer = "https://dataexplorer.azure.com/"; // TODO: Remove (257010)
+        Referrers.developmentHostedDataExplorer = "https://dataexplorer-dev.azurewebsites.net/";
+        Referrers.developmentLocalhost = "?dev";
+        return Referrers;
+    }());
+    exports.Referrers = Referrers;
+    var AuthorizationEndpoints = /** @class */ (function () {
+        function AuthorizationEndpoints() {
+        }
+        AuthorizationEndpoints.arm = "https://management.core.windows.net/";
+        AuthorizationEndpoints.common = "https://login.windows.net/";
+        return AuthorizationEndpoints;
+    }());
+    exports.AuthorizationEndpoints = AuthorizationEndpoints;
+    var BackendEndpoints = /** @class */ (function () {
+        function BackendEndpoints() {
+        }
+        BackendEndpoints.localhost = "https://localhost:12900";
+        BackendEndpoints.dev = "https://ext.documents-dev.windows-int.net";
+        BackendEndpoints.productionPortal = "" || "https://main.documentdb.ext.azure.com";
+        return BackendEndpoints;
+    }());
+    exports.BackendEndpoints = BackendEndpoints;
+    var EndpointsRegex = /** @class */ (function () {
+        function EndpointsRegex() {
+        }
+        EndpointsRegex.cassandra = "AccountEndpoint=(.*).cassandra.cosmosdb.azure.com";
+        EndpointsRegex.mongo = "mongodb://.*:(.*)@(.*).documents.azure.com";
+        EndpointsRegex.sql = "AccountEndpoint=https://(.*).documents.azure.com";
+        EndpointsRegex.table = "TableEndpoint=https://(.*).table.cosmosdb.azure.com";
+        return EndpointsRegex;
+    }());
+    exports.EndpointsRegex = EndpointsRegex;
+    var ApiEndpoints = /** @class */ (function () {
+        function ApiEndpoints() {
+        }
+        ApiEndpoints.runtimeProxy = "/api/RuntimeProxy";
+        ApiEndpoints.guestRuntimeProxy = "/api/guest/RuntimeProxy";
+        return ApiEndpoints;
+    }());
+    exports.ApiEndpoints = ApiEndpoints;
+    var ServerIds = /** @class */ (function () {
+        function ServerIds() {
+        }
+        ServerIds.localhost = "localhost";
+        ServerIds.blackforest = "blackforest";
+        ServerIds.fairfax = "fairfax";
+        ServerIds.mooncake = "mooncake";
+        ServerIds.productionPortal = "prod";
+        ServerIds.dev = "dev";
+        return ServerIds;
+    }());
+    exports.ServerIds = ServerIds;
+    var ArmApiVersions = /** @class */ (function () {
+        function ArmApiVersions() {
+        }
+        ArmApiVersions.documentDB = "2015-11-06";
+        ArmApiVersions.arm = "2015-11-01";
+        return ArmApiVersions;
+    }());
+    exports.ArmApiVersions = ArmApiVersions;
+    var BackendDefaults = /** @class */ (function () {
+        function BackendDefaults() {
+        }
+        BackendDefaults.partitionKeyKind = "Hash";
+        BackendDefaults.singlePartitionStorageInGb = "10";
+        BackendDefaults.multiPartitionStorageInGb = "100";
+        BackendDefaults.singlePartitionMinThroughput = 400;
+        BackendDefaults.multiplePartitionMinThroughput = 2500;
+        BackendDefaults.multiplePartitionMinThroughputElastic = 1000;
+        BackendDefaults.singlePartitionMaxThroughput = 10000;
+        BackendDefaults.multiplePartitionMaxThroughput = 100000;
+        BackendDefaults.multiplePartitionMaxThroughputElastic = 1000000;
+        BackendDefaults.databaseLevelMaxThroughput = 1000000;
+        BackendDefaults.databaseLevelMinThroughput = 50000;
+        BackendDefaults.databaseLevelDefaultThroughput = 50000;
+        BackendDefaults.collectionSharedMinThroughput = 500;
+        BackendDefaults.collectionSharedDefaultMaxThroughput = 10000;
+        return BackendDefaults;
+    }());
+    exports.BackendDefaults = BackendDefaults;
+    var ClientDefaults = /** @class */ (function () {
+        function ClientDefaults() {
+        }
+        ClientDefaults.requestTimeoutMs = 60000;
+        ClientDefaults.errorNotificationTimeoutMs = 5000;
+        ClientDefaults.copyHelperTimeoutMs = 2000;
+        ClientDefaults.waitForDOMElementMs = 500;
+        ClientDefaults.cacheBustingTimeoutMs = 10 /** minutes **/ * 60 /** to seconds **/ * 1000 /** to milliseconds **/;
+        ClientDefaults.databaseThroughputIncreaseFactor = 5000;
+        return ClientDefaults;
+    }());
+    exports.ClientDefaults = ClientDefaults;
+    var AccountKind = /** @class */ (function () {
+        function AccountKind() {
+        }
+        AccountKind.DocumentDB = "DocumentDB";
+        AccountKind.MongoDB = "MongoDB";
+        AccountKind.Parse = "Parse";
+        AccountKind.GlobalDocumentDB = "GlobalDocumentDB";
+        AccountKind.Default = AccountKind.DocumentDB;
+        return AccountKind;
+    }());
+    exports.AccountKind = AccountKind;
+    var CorrelationBackend = /** @class */ (function () {
+        function CorrelationBackend() {
+        }
+        CorrelationBackend.Url = "https://aka.ms/cosmosdbanalytics";
+        return CorrelationBackend;
+    }());
+    exports.CorrelationBackend = CorrelationBackend;
+    var DefaultAccountExperience = /** @class */ (function () {
+        function DefaultAccountExperience() {
+        }
+        DefaultAccountExperience.DocumentDB = "DocumentDB";
+        DefaultAccountExperience.Graph = "Graph";
+        DefaultAccountExperience.MongoDB = "MongoDB";
+        DefaultAccountExperience.Table = "Table";
+        DefaultAccountExperience.Cassandra = "Cassandra";
+        DefaultAccountExperience.Default = DefaultAccountExperience.DocumentDB;
+        return DefaultAccountExperience;
+    }());
+    exports.DefaultAccountExperience = DefaultAccountExperience;
+    var CapabilityNames = /** @class */ (function () {
+        function CapabilityNames() {
+        }
+        CapabilityNames.EnableTable = "EnableTable";
+        CapabilityNames.EnableGremlin = "EnableGremlin";
+        CapabilityNames.EnableCassandra = "EnableCassandra";
+        return CapabilityNames;
+    }());
+    exports.CapabilityNames = CapabilityNames;
+    var Features = /** @class */ (function () {
+        function Features() {
+        }
+        Features.graphs = "graphs";
+        Features.cosmosdb = "cosmosdb";
+        Features.enableRupm = "enablerupm";
+        Features.cacheOptimizations = "dataexplorercacheoptimizations";
+        Features.executeSproc = "dataexplorerexecutesproc";
+        Features.hostedDataExplorer = "hosteddataexplorerenabled";
+        Features.enableTtl = "enablettl";
+        Features.queryMetrics = "dataexplorerquerymetrics";
+        Features.settingsPane = "dataexplorersettingspane";
+        Features.throughputOverview = "throughputOverview";
+        return Features;
+    }());
+    exports.Features = Features;
+    var TagNames = /** @class */ (function () {
+        function TagNames() {
+        }
+        TagNames.defaultExperience = "defaultExperience";
+        return TagNames;
+    }());
+    exports.TagNames = TagNames;
+    var MongoDBAccounts = /** @class */ (function () {
+        function MongoDBAccounts() {
+        }
+        MongoDBAccounts.protocol = "https";
+        MongoDBAccounts.defaultPort = "10250";
+        return MongoDBAccounts;
+    }());
+    exports.MongoDBAccounts = MongoDBAccounts;
+    var GremlinBackend = /** @class */ (function () {
+        function GremlinBackend() {
+        }
+        GremlinBackend.centralUsEndpoint = "https://portal-prod-centralus-graph.portal-prod-centralus.p.azurewebsites.net/api/graphs/";
+        GremlinBackend.northEuropeEndpoint = "https://portal-prod-northeurope-graph.portal-prod-northeurope.p.azurewebsites.net/api/graphs/";
+        GremlinBackend.southEastAsiaEndpoint = "https://portal-prod-seasia-graph.portal-prod-seasia.p.azurewebsites.net/api/graphs/";
+        GremlinBackend.endpointsByRegion = {
+            "default": GremlinBackend.centralUsEndpoint,
+            "northeurope": GremlinBackend.northEuropeEndpoint,
+            "ukwest": GremlinBackend.northEuropeEndpoint,
+            "uksouth": GremlinBackend.northEuropeEndpoint,
+            "westeurope": GremlinBackend.northEuropeEndpoint,
+            "australiaeast": GremlinBackend.southEastAsiaEndpoint,
+            "australiasoutheast": GremlinBackend.southEastAsiaEndpoint,
+            "centralindia": GremlinBackend.southEastAsiaEndpoint,
+            "eastasia": GremlinBackend.southEastAsiaEndpoint,
+            "japaneast": GremlinBackend.southEastAsiaEndpoint,
+            "japanwest": GremlinBackend.southEastAsiaEndpoint,
+            "koreacentral": GremlinBackend.southEastAsiaEndpoint,
+            "koreasouth": GremlinBackend.southEastAsiaEndpoint,
+            "southeastasia": GremlinBackend.southEastAsiaEndpoint,
+            "southindia": GremlinBackend.southEastAsiaEndpoint,
+            "westindia": GremlinBackend.southEastAsiaEndpoint
+        };
+        return GremlinBackend;
+    }());
+    exports.GremlinBackend = GremlinBackend;
+    var MongoBackendEndpointType;
+    (function (MongoBackendEndpointType) {
+        MongoBackendEndpointType[MongoBackendEndpointType["local"] = 0] = "local";
+        MongoBackendEndpointType[MongoBackendEndpointType["remote"] = 1] = "remote";
+    })(MongoBackendEndpointType = exports.MongoBackendEndpointType || (exports.MongoBackendEndpointType = {}));
+    ;
+    var MongoBackend = /** @class */ (function () {
+        function MongoBackend() {
+        }
+        MongoBackend.localhostEndpoint = "/api/mongo/explorer";
+        MongoBackend.centralUsEndpoint = "https://portal-prod-centralus-mongo.portal-prod-centralus.p.azurewebsites.net/api/mongo/explorer";
+        MongoBackend.northEuropeEndpoint = "https://portal-prod-northeurope-mongo.portal-prod-northeurope.p.azurewebsites.net/api/mongo/explorer";
+        MongoBackend.southEastAsiaEndpoint = "https://portal-prod-seasia-mongo.portal-prod-seasia.p.azurewebsites.net/api/mongo/explorer";
+        MongoBackend.endpointsByRegion = {
+            "default": MongoBackend.centralUsEndpoint,
+            "northeurope": MongoBackend.northEuropeEndpoint,
+            "ukwest": MongoBackend.northEuropeEndpoint,
+            "uksouth": MongoBackend.northEuropeEndpoint,
+            "westeurope": MongoBackend.northEuropeEndpoint,
+            "australiaeast": MongoBackend.southEastAsiaEndpoint,
+            "australiasoutheast": MongoBackend.southEastAsiaEndpoint,
+            "centralindia": MongoBackend.southEastAsiaEndpoint,
+            "eastasia": MongoBackend.southEastAsiaEndpoint,
+            "japaneast": MongoBackend.southEastAsiaEndpoint,
+            "japanwest": MongoBackend.southEastAsiaEndpoint,
+            "koreacentral": MongoBackend.southEastAsiaEndpoint,
+            "koreasouth": MongoBackend.southEastAsiaEndpoint,
+            "southeastasia": MongoBackend.southEastAsiaEndpoint,
+            "southindia": MongoBackend.southEastAsiaEndpoint,
+            "westindia": MongoBackend.southEastAsiaEndpoint
+        };
+        MongoBackend.endpointsByEnvironment = {
+            "default": MongoBackendEndpointType.local,
+            "localhost": MongoBackendEndpointType.local,
+            "prod1": MongoBackendEndpointType.remote,
+            "prod2": MongoBackendEndpointType.remote
+        };
+        return MongoBackend;
+    }());
+    exports.MongoBackend = MongoBackend;
+    var CassandraBackend = /** @class */ (function () {
+        function CassandraBackend() {
+        }
+        CassandraBackend.localhostEndpoint = "https://localhost:12901/";
+        CassandraBackend.devEndpoint = "https://platformproxycassandradev.azurewebsites.net/";
+        CassandraBackend.centralUsEndpoint = "https://portal-prod-centralus-cassandra.portal-prod-centralus.p.azurewebsites.net/";
+        CassandraBackend.northEuropeEndpoint = "https://portal-prod-northeurope-cassandra.portal-prod-northeurope.p.azurewebsites.net/";
+        CassandraBackend.southEastAsiaEndpoint = "https://portal-prod-seasia-cassandra.portal-prod-seasia.p.azurewebsites.net/";
+        CassandraBackend.endpointsByRegion = {
+            "default": CassandraBackend.centralUsEndpoint,
+            "northeurope": CassandraBackend.northEuropeEndpoint,
+            "ukwest": CassandraBackend.northEuropeEndpoint,
+            "uksouth": CassandraBackend.northEuropeEndpoint,
+            "westeurope": CassandraBackend.northEuropeEndpoint,
+            "australiaeast": CassandraBackend.southEastAsiaEndpoint,
+            "australiasoutheast": CassandraBackend.southEastAsiaEndpoint,
+            "centralindia": CassandraBackend.southEastAsiaEndpoint,
+            "eastasia": CassandraBackend.southEastAsiaEndpoint,
+            "japaneast": CassandraBackend.southEastAsiaEndpoint,
+            "japanwest": CassandraBackend.southEastAsiaEndpoint,
+            "koreacentral": CassandraBackend.southEastAsiaEndpoint,
+            "koreasouth": CassandraBackend.southEastAsiaEndpoint,
+            "southeastasia": CassandraBackend.southEastAsiaEndpoint,
+            "southindia": CassandraBackend.southEastAsiaEndpoint,
+            "westindia": CassandraBackend.southEastAsiaEndpoint
+        };
+        CassandraBackend.createOrDeleteApi = "api/cassandra/createordelete";
+        CassandraBackend.guestCreateOrDeleteApi = "api/guest/cassandra/createordelete";
+        CassandraBackend.queryApi = "api/cassandra";
+        CassandraBackend.guestQueryApi = "api/guest/cassandra";
+        CassandraBackend.keysApi = "api/cassandra/keys";
+        CassandraBackend.guestKeysApi = "api/guest/cassandra/keys";
+        CassandraBackend.schemaApi = "api/cassandra/schema";
+        CassandraBackend.guestSchemaApi = "api/guest/cassandra/schema";
+        return CassandraBackend;
+    }());
+    exports.CassandraBackend = CassandraBackend;
+    var RUPMStates = /** @class */ (function () {
+        function RUPMStates() {
+        }
+        RUPMStates.on = "on";
+        RUPMStates.off = "off";
+        return RUPMStates;
+    }());
+    exports.RUPMStates = RUPMStates;
+    var Queries = /** @class */ (function () {
+        function Queries() {
+        }
+        Queries.CustomPageOption = "custom";
+        Queries.UnlimitedPageOption = "unlimited";
+        Queries.itemsPerPage = 100;
+        Queries.unlimitedItemsPerPage = 100; // TODO: Figure out appropriate value so it works for accounts with a large number of partitions
+        Queries.QueryEditorMinHeightRatio = 0.1;
+        Queries.QueryEditorMaxHeightRatio = 0.4;
+        Queries.DefaultMaxDegreeOfParallelism = 6;
+        return Queries;
+    }());
+    exports.Queries = Queries;
+    var DocumentsGridMetrics = /** @class */ (function () {
+        function DocumentsGridMetrics() {
+        }
+        DocumentsGridMetrics.DocumentsPerPage = 100;
+        DocumentsGridMetrics.IndividualRowHeight = 34;
+        DocumentsGridMetrics.BufferHeight = 28;
+        DocumentsGridMetrics.SplitterMinWidth = 200;
+        DocumentsGridMetrics.SplitterMaxWidth = 360;
+        DocumentsGridMetrics.DocumentEditorMinWidthRatio = 0.2;
+        DocumentsGridMetrics.DocumentEditorMaxWidthRatio = 0.4;
+        return DocumentsGridMetrics;
+    }());
+    exports.DocumentsGridMetrics = DocumentsGridMetrics;
+    var ExplorerMetrics = /** @class */ (function () {
+        function ExplorerMetrics() {
+        }
+        ExplorerMetrics.SplitterMinWidth = 240;
+        ExplorerMetrics.SplitterMaxWidth = 400;
+        ExplorerMetrics.CollapsedResourceTreeWidth = 36;
+        return ExplorerMetrics;
+    }());
+    exports.ExplorerMetrics = ExplorerMetrics;
+    var SplitterMetrics = /** @class */ (function () {
+        function SplitterMetrics() {
+        }
+        SplitterMetrics.CollapsedPositionLeft = ExplorerMetrics.CollapsedResourceTreeWidth;
+        return SplitterMetrics;
+    }());
+    exports.SplitterMetrics = SplitterMetrics;
+    var Areas = /** @class */ (function () {
+        function Areas() {
+        }
+        Areas.ResourceTree = "Resource Tree";
+        Areas.ContextualPane = "Contextual Pane";
+        Areas.Tab = "Tab";
+        Areas.ShareDialog = "Share Access Dialog";
+        return Areas;
+    }());
+    exports.Areas = Areas;
+    var HttpHeaders = /** @class */ (function () {
+        function HttpHeaders() {
+        }
+        HttpHeaders.activityId = "x-ms-activity-id";
+        HttpHeaders.authorization = "authorization";
+        HttpHeaders.collectionIndexTransformationProgress = "x-ms-documentdb-collection-index-transformation-progress";
+        HttpHeaders.continuation = "x-ms-continuation";
+        HttpHeaders.correlationRequestId = "x-ms-correlation-request-id";
+        HttpHeaders.enableScriptLogging = "x-ms-documentdb-script-enable-logging";
+        HttpHeaders.guestAccessToken = "x-ms-encrypted-auth-token";
+        HttpHeaders.getReadOnlyKey = "x-ms-get-read-only-key";
+        HttpHeaders.connectionString = "x-ms-connection-string";
+        HttpHeaders.msDate = "x-ms-date";
+        HttpHeaders.location = "Location";
+        HttpHeaders.offerReplacePending = "x-ms-offer-replace-pending";
+        HttpHeaders.user = "x-ms-user";
+        HttpHeaders.populatePartitionStatistics = "x-ms-documentdb-populatepartitionstatistics";
+        HttpHeaders.queryMetrics = "x-ms-documentdb-query-metrics";
+        HttpHeaders.requestCharge = "x-ms-request-charge";
+        HttpHeaders.resourceQuota = "x-ms-resource-quota";
+        HttpHeaders.resourceUsage = "x-ms-resource-usage";
+        HttpHeaders.retryAfterMs = "x-ms-retry-after-ms";
+        HttpHeaders.scriptLogResults = "x-ms-documentdb-script-log-results";
+        HttpHeaders.populateCollectionThroughputInfo = "x-ms-documentdb-populatecollectionthroughputinfo";
+        return HttpHeaders;
+    }());
+    exports.HttpHeaders = HttpHeaders;
+    var HttpStatusCodes = /** @class */ (function () {
+        function HttpStatusCodes() {
+        }
+        HttpStatusCodes.Unauthorized = 401;
+        HttpStatusCodes.Forbidden = 403;
+        HttpStatusCodes.NotFound = 404;
+        HttpStatusCodes.TooManyRequests = 429;
+        HttpStatusCodes.InternalServerError = 500;
+        HttpStatusCodes.BadGateway = 502;
+        HttpStatusCodes.ServiceUnavailable = 503;
+        HttpStatusCodes.GatewayTimeout = 504;
+        HttpStatusCodes.RetryableStatusCodes = [
+            HttpStatusCodes.TooManyRequests,
+            HttpStatusCodes.InternalServerError,
+            HttpStatusCodes.BadGateway,
+            HttpStatusCodes.ServiceUnavailable,
+            HttpStatusCodes.GatewayTimeout
+        ];
+        return HttpStatusCodes;
+    }());
+    exports.HttpStatusCodes = HttpStatusCodes;
+    var Urls = /** @class */ (function () {
+        function Urls() {
+        }
+        Urls.feedbackEmail = "https://aka.ms/cosmosdbfeedback?subject=Cosmos%20DB%20Data%20Explorer%20Feedback";
+        return Urls;
+    }());
+    exports.Urls = Urls;
+    var HashRoutePrefixes = /** @class */ (function () {
+        function HashRoutePrefixes() {
+        }
+        HashRoutePrefixes.databasesWithId = function (databaseId) {
+            return this.databases.replace("{db_id}", databaseId).replace("/", ""); // strip the first slash since hasher adds it
+        };
+        HashRoutePrefixes.collectionsWithIds = function (databaseId, collectionId) {
+            var transformedDatabasePrefix = this.collections.replace("{db_id}", databaseId);
+            return transformedDatabasePrefix.replace("{coll_id}", collectionId).replace("/", ""); // strip the first slash since hasher adds it
+        };
+        HashRoutePrefixes.sprocWithIds = function (databaseId, collectionId, sprocId, stripFirstSlash) {
+            if (stripFirstSlash === void 0) { stripFirstSlash = true; }
+            var transformedDatabasePrefix = this.sprocs.replace("{db_id}", databaseId);
+            var transformedSprocRoute = transformedDatabasePrefix.replace("{coll_id}", collectionId).replace("{sproc_id}", sprocId);
+            if (!!stripFirstSlash) {
+                return transformedSprocRoute.replace("/", ""); // strip the first slash since hasher adds it
+            }
+            return transformedSprocRoute;
+        };
+        HashRoutePrefixes.conflictsWithIds = function (databaseId, collectionId) {
+            var transformedDatabasePrefix = this.conflicts.replace("{db_id}", databaseId);
+            return transformedDatabasePrefix.replace("{coll_id}", collectionId).replace("/", ""); // strip the first slash since hasher adds it;
+        };
+        HashRoutePrefixes.docsWithIds = function (databaseId, collectionId, docId) {
+            var transformedDatabasePrefix = this.docs.replace("{db_id}", databaseId);
+            return transformedDatabasePrefix.replace("{coll_id}", collectionId).replace("{doc_id}", docId).replace("/", ""); // strip the first slash since hasher adds it
+        };
+        HashRoutePrefixes.databases = "/dbs/{db_id}";
+        HashRoutePrefixes.collections = "/dbs/{db_id}/colls/{coll_id}";
+        HashRoutePrefixes.sprocHash = "/sprocs/";
+        HashRoutePrefixes.sprocs = HashRoutePrefixes.collections + HashRoutePrefixes.sprocHash + "{sproc_id}";
+        HashRoutePrefixes.docs = HashRoutePrefixes.collections + "/docs/{doc_id}/";
+        HashRoutePrefixes.conflicts = HashRoutePrefixes.collections + "/conflicts";
+        return HashRoutePrefixes;
+    }());
+    exports.HashRoutePrefixes = HashRoutePrefixes;
+    var ConfigurationOverridesValues = /** @class */ (function () {
+        function ConfigurationOverridesValues() {
+        }
+        ConfigurationOverridesValues.IsBsonSchemaV2 = "true";
+        return ConfigurationOverridesValues;
+    }());
+    exports.ConfigurationOverridesValues = ConfigurationOverridesValues;
+    var KeyCodes = /** @class */ (function () {
+        function KeyCodes() {
+        }
+        KeyCodes.Space = 32;
+        KeyCodes.Enter = 13;
+        KeyCodes.UpArrow = 38;
+        KeyCodes.DownArrow = 40;
+        KeyCodes.LeftArrow = 37;
+        KeyCodes.RightArrow = 39;
+        return KeyCodes;
+    }());
+    exports.KeyCodes = KeyCodes;
+    var TryCosmosExperience = /** @class */ (function () {
+        function TryCosmosExperience() {
+        }
+        TryCosmosExperience.extendUrl = "https://trycosmosdb.azure.com/api/resource/extendportal?userId={0}";
+        TryCosmosExperience.deleteUrl = "https://trycosmosdb.azure.com/api/resource/deleteportal?userId={0}";
+        TryCosmosExperience.collectionsPerMongoAccount = 3;
+        TryCosmosExperience.collectionsPerAccount = 1;
+        TryCosmosExperience.maxRU = 5000;
+        TryCosmosExperience.defaultRU = 3000;
+        return TryCosmosExperience;
+    }());
+    exports.TryCosmosExperience = TryCosmosExperience;
+    var OfferVersions = /** @class */ (function () {
+        function OfferVersions() {
+        }
+        OfferVersions.V1 = "V1";
+        OfferVersions.V2 = "V2";
+        return OfferVersions;
+    }());
+    exports.OfferVersions = OfferVersions;
+    var ConflictOperationType;
+    (function (ConflictOperationType) {
+        ConflictOperationType["Replace"] = "replace";
+        ConflictOperationType["Create"] = "create";
+        ConflictOperationType["Delete"] = "delete";
+    })(ConflictOperationType = exports.ConflictOperationType || (exports.ConflictOperationType = {}));
+    var DataExplorerVersions = /** @class */ (function () {
+        function DataExplorerVersions() {
+        }
+        DataExplorerVersions.v_1_0_0 = "1.0.0";
+        DataExplorerVersions.v_1_0_1 = "1.0.1";
+        return DataExplorerVersions;
+    }());
+    exports.DataExplorerVersions = DataExplorerVersions;
+    var DataExplorerFeatures = /** @class */ (function () {
+        function DataExplorerFeatures() {
+        }
+        DataExplorerFeatures.offerCache = "OfferCache";
+        return DataExplorerFeatures;
+    }());
+    exports.DataExplorerFeatures = DataExplorerFeatures;
+    exports.DataExplorerFeaturesVersions = {
+        "OfferCache": DataExplorerVersions.v_1_0_1
+    };
+});
+©R°¼lú      [Õ¾Æ[Õ¾È?§¶¯[×k9   ;    :https://cosmos.azure.com/built/Common/Constants.js?v=1.0.1 necko:classified 1 strongly-framed 1 security-info FnhllAKWRHGAlo+ESXykKAAAAAAAAAAAwAAAAAAAAEaphjojH6pBabDSgSnsfLHeAAQAAgAAAAAAAAAAAAAAAAAAAAAB4vFIJp5wRkeyPxAQ9RJGKPqbqVvKO0mKuIl8ec8o/uhmCjImkVxP+7sgiYWmMt8FvcOXmlQiTNWFiWlrbpbqgwAAAAAAAAOMMIIDiDCCAnCgAwIBAgIERTJgUjANBgkqhkiG9w0BAQsFADCBijEUMBIGA1UEBhMLUG9ydFN3aWdnZXIxFDASBgNVBAgTC1BvcnRTd2lnZ2VyMRQwEgYDVQQHEwtQb3J0U3dpZ2dlcjEUMBIGA1UEChMLUG9ydFN3aWdnZXIxFzAVBgNVBAsTDlBvcnRTd2lnZ2VyIENBMRcwFQYDVQQDEw5Qb3J0U3dpZ2dlciBDQTAeFw0xNDEwMjgxMzEyMTBaFw0zODEwMjgxMzEyMTBaMGAxFDASBgNVBAYTC1BvcnRTd2lnZ2VyMRQwEgYDVQQKEwtQb3J0U3dpZ2dlcjEXMBUGA1UECxMOUG9ydFN3aWdnZXIgQ0ExGTAXBgNVBAMTEGNvc21vcy5henVyZS5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCKn7emKINsnWqPZ+C/VsqbQf/l4NsmIh34bXBR0xdNg9bfb+xcoghRlmbPjhZ/A26A2gJ6Rrg2d0GGMLpbqA8nTlRRGXEAD39321zk4ye09ElXClvqguGqdqOJpPQ05DPFD6wSOq+KVAEblE5bi+LMqBLipDERzgUe7xzeqVVk0i0ldh9yQOIk3YuzcBR9igSEuw5qladmMYvXKHYM9YZz0R7axMc8xAtadK7C9KfFPfEI5LS2nhmy4vBrTgFyYhfkEvKfmIj6HTX0ISFCAC2llcBLpEDcuiW76tAHp1pXDeWtSeaV36AeOctdleVgrbmsGs3fu6ppuRcWjEZUbjE3AgMBAAGjHzAdMBsGA1UdEQQUMBKCEGNvc21vcy5henVyZS5jb20wDQYJKoZIhvcNAQELBQADggEBABYikT6Y5YgJJ4IVJldlFDF5MKxp26YegXhvT8EmAbgr0yQBIlY2DtKEiHf7Q8wRoJ9y5Ajst1D7HmRba+XLjS6s3IHJ7gtuvc3fZj9MPKpbqSKRfHDB8bDOVIzmjBseg2BqckHTkcYak3b/pTWCTqKHM3LxKsDwN8F3HNQ2pY4d5ma2kR1EtWdTpRiIbir3QxJDcWVp8CgHONZcoMn33NNwnWWjAQMX6d8e1CPuBZi0t+myaYduCqPgKKox9qMXSubF6uifQkAJ5RdLZrZ2pghENA/4r1oz51wqEmpjPsStSUxRPwJ6wJrB4gwGtX7++ZHLjAaNrTSUCGwIOlAT4LnALwEDAAAAAAEBAAAAAA== request-method GET request-Accept-Encoding gzip, deflate, br response-head HTTP/1.1 200 OK
+Content-Length: 24644
+Content-Type: application/x-javascript
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:39:04 GMT
+ original-response-headers Content-Length: 24644
+Content-Type: application/x-javascript
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:39:04 GMT
+Connection: close
+ uncompressed-len 0 net-response-time-onstart 1820 net-response-time-onstop 1820   `D

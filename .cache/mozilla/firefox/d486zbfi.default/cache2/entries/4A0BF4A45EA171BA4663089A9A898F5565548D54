@@ -1,0 +1,243 @@
+var __extends = (this && this.__extends) || (function () {
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    }
+    return function (d, b) {
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
+define(["require", "exports", "knockout", "underscore", "../../Common/Constants", "../../Contracts/ViewModels", "../../Shared/AddCollectionUtility", "./ContextualPaneBase", "../../Utils/PricingUtils", "../../Shared/Constants", "../../Shared/Telemetry/TelemetryConstants", "../../Shared/Telemetry/TelemetryProcessor"], function (require, exports, ko, _, Constants, ViewModels, AddCollectionUtility, ContextualPaneBase_1, PricingUtils, SharedConstants, TelemetryConstants_1, TelemetryProcessor_1) {
+    "use strict";
+    var CassandraAddCollectionPane = /** @class */ (function (_super) {
+        __extends(CassandraAddCollectionPane, _super);
+        function CassandraAddCollectionPane(options) {
+            var _this = _super.call(this, options) || this;
+            _this.defaultFlight = ko.observable(SharedConstants.CollectionCreation.DefaultAddCollectionDefaultFlight);
+            _this.title("Add Table");
+            _this.createTableQuery = ko.observable("CREATE TABLE ");
+            _this.keyspaceId = ko.observable("");
+            _this.maxThroughputRU = ko.observable(AddCollectionUtility.Utilities.getMaxRUForStorageOption(_this.container.subscriptionType(), _this.defaultFlight(), Constants.BackendDefaults.multiPartitionStorageInGb));
+            _this.minThroughputRU = ko.observable(AddCollectionUtility.Utilities.getMinRUForStorageOption(_this.container.subscriptionType(), _this.defaultFlight(), Constants.BackendDefaults.multiPartitionStorageInGb));
+            _this.tableId = ko.observable("");
+            _this.throughput = ko.observable();
+            _this.throughputRangeText = ko.pureComputed(function () {
+                return "Throughput (" + _this.minThroughputRU().toLocaleString() + " - " + _this.maxThroughputRU().toLocaleString() + " RU/s)";
+            });
+            _this.userTableQuery = ko.observable("(userid int, name text, email text, PRIMARY KEY (userid))");
+            _this.keyspaceId.subscribe(function (keyspaceId) {
+                _this.createTableQuery("CREATE TABLE " + keyspaceId + ".");
+            });
+            _this.resetData();
+            _this.defaultFlight.subscribe(function () {
+                _this.resetData();
+            });
+            _this.throughputSpendAckText = ko.observable();
+            _this.throughputSpendAck = ko.observable(false);
+            _this.maxThroughputRUText = ko.pureComputed(function () {
+                return _this.maxThroughputRU().toLocaleString();
+            });
+            _this.requestUnitsUsageCost = ko.pureComputed(function () {
+                var offerThroughput = _this.throughput();
+                var hourlyPrice = PricingUtils.computeRUUsagePriceHourly(_this.container.serverId(), /* RUPM */ false, offerThroughput);
+                var dailyPrice = hourlyPrice * 24;
+                var currency = PricingUtils.getPriceCurrency(_this.container.serverId());
+                _this.throughputSpendAckText("I acknowledge the estimated $" + PricingUtils.calculateEstimateNumber(dailyPrice) + " daily charge for the throughput above.");
+                return "Estimated spend (" + currency + "): $" + PricingUtils.calculateEstimateNumber(hourlyPrice) + " hourly / $" + PricingUtils.calculateEstimateNumber(dailyPrice) + " daily.";
+            });
+            _this.costsVisible = ko.pureComputed(function () {
+                return !_this.container.isEmulator;
+            });
+            _this.canRequestSupport = ko.pureComputed(function () {
+                if (!_this.container.isEmulator && !_this.container.isTryCosmosDBSubscription()) {
+                    var offerThroughput = _this.throughput();
+                    return offerThroughput <= 100000;
+                }
+                return false;
+            });
+            return _this;
+        }
+        CassandraAddCollectionPane.prototype.decreaseThroughput = function () {
+            var offerThroughput = this.throughput();
+            if (offerThroughput > this.minThroughputRU()) {
+                offerThroughput -= 100;
+                this.throughput(offerThroughput);
+            }
+        };
+        CassandraAddCollectionPane.prototype.increaseThroughput = function () {
+            var offerThroughput = this.throughput();
+            if (offerThroughput < this.maxThroughputRU()) {
+                offerThroughput += 100;
+                this.throughput(offerThroughput);
+            }
+        };
+        CassandraAddCollectionPane.prototype.open = function () {
+            _super.prototype.open.call(this);
+            var addCollectionPaneOpenMessage = {
+                databaseAccountName: this.container.databaseAccount().name,
+                defaultExperience: this.container.defaultExperience(),
+                collection: ko.toJS({
+                    id: this.tableId(),
+                    storage: Constants.BackendDefaults.multiPartitionStorageInGb,
+                    offerThroughput: this.throughput(),
+                    partitionKey: "",
+                    databaseId: this.keyspaceId(),
+                    rupm: false
+                }),
+                subscriptionType: ViewModels.SubscriptionType[this.container.subscriptionType()],
+                subscriptionQuotaId: this.container.quotaId(),
+                defaultsCheck: {
+                    storage: "u",
+                    throughput: this.throughput(),
+                    defaultFlight: this.defaultFlight()
+                },
+                dataExplorerArea: Constants.Areas.ContextualPane
+            };
+            TelemetryProcessor_1.default.trace(TelemetryConstants_1.Action.CreateCollection, TelemetryConstants_1.ActionModifiers.Open, addCollectionPaneOpenMessage);
+        };
+        CassandraAddCollectionPane.prototype.submit = function () {
+            var _this = this;
+            if (!this._isValid()) {
+                return;
+            }
+            this.isExecuting(true);
+            var createTableAndKeyspacePromise;
+            var toCreateKeyspace = _.findIndex(this.container.databases(), function (database) { return database.id() === _this.keyspaceId(); }) === -1;
+            var createKeyspaceQuery = "CREATE KEYSPACE " + this.keyspaceId() + " WITH REPLICATION = { 'class' : 'SimpleStrategy', 'replication_factor' : 3 };";
+            var createTableQuery = "" + this.createTableQuery() + this.tableId() + " " + this.userTableQuery() + " WITH cosmosdb_provisioned_throughput=" + this.throughput();
+            var addCollectionPaneStartMessage = {
+                databaseAccountName: this.container.databaseAccount().name,
+                defaultExperience: this.container.defaultExperience(),
+                collection: ko.toJS({
+                    id: this.tableId(),
+                    storage: Constants.BackendDefaults.multiPartitionStorageInGb,
+                    offerThroughput: this.throughput(),
+                    partitionKey: "",
+                    databaseId: this.keyspaceId(),
+                    rupm: false
+                }),
+                subscriptionType: ViewModels.SubscriptionType[this.container.subscriptionType()],
+                subscriptionQuotaId: this.container.quotaId(),
+                defaultsCheck: {
+                    storage: "u",
+                    throughput: this.throughput(),
+                    defaultFlight: this.defaultFlight()
+                },
+                dataExplorerArea: Constants.Areas.ContextualPane,
+                toCreateKeyspace: toCreateKeyspace,
+                createKeyspaceQuery: createKeyspaceQuery,
+                createTableQuery: createTableQuery
+            };
+            var startKey = TelemetryProcessor_1.default.traceStart(TelemetryConstants_1.Action.CreateCollection, addCollectionPaneStartMessage);
+            if (toCreateKeyspace) {
+                createTableAndKeyspacePromise = this.container.tableDataClient.createTableAndKeyspace(this.container.databaseAccount().properties.cassandraEndpoint, this.container.databaseAccount().id, this.container, createTableQuery, createKeyspaceQuery);
+            }
+            else {
+                createTableAndKeyspacePromise = this.container.tableDataClient.createTableAndKeyspace(this.container.databaseAccount().properties.cassandraEndpoint, this.container.databaseAccount().id, this.container, createTableQuery);
+            }
+            createTableAndKeyspacePromise.then(function () {
+                _this.container.refreshAllDatabases();
+                _this.isExecuting(false);
+                _this.close();
+                var addCollectionPaneSuccessMessage = {
+                    databaseAccountName: _this.container.databaseAccount().name,
+                    defaultExperience: _this.container.defaultExperience(),
+                    collection: ko.toJS({
+                        id: _this.tableId(),
+                        storage: Constants.BackendDefaults.multiPartitionStorageInGb,
+                        offerThroughput: _this.throughput(),
+                        partitionKey: "",
+                        databaseId: _this.keyspaceId(),
+                        rupm: false
+                    }),
+                    subscriptionType: ViewModels.SubscriptionType[_this.container.subscriptionType()],
+                    subscriptionQuotaId: _this.container.quotaId(),
+                    defaultsCheck: {
+                        storage: "u",
+                        throughput: _this.throughput(),
+                        defaultFlight: _this.defaultFlight()
+                    },
+                    dataExplorerArea: Constants.Areas.ContextualPane,
+                    toCreateKeyspace: toCreateKeyspace,
+                    createKeyspaceQuery: createKeyspaceQuery,
+                    createTableQuery: createTableQuery
+                };
+                TelemetryProcessor_1.default.traceSuccess(TelemetryConstants_1.Action.CreateCollection, addCollectionPaneSuccessMessage, startKey);
+            }, function (reason) {
+                _this.formErrors(reason.exceptionMessage);
+                _this.isExecuting(false);
+                var addCollectionPaneFailedMessage = {
+                    databaseAccountName: _this.container.databaseAccount().name,
+                    defaultExperience: _this.container.defaultExperience(),
+                    collection: {
+                        id: _this.tableId(),
+                        storage: Constants.BackendDefaults.multiPartitionStorageInGb,
+                        offerThroughput: _this.throughput(),
+                        partitionKey: "",
+                        databaseId: _this.keyspaceId(),
+                        rupm: false
+                    },
+                    subscriptionType: ViewModels.SubscriptionType[_this.container.subscriptionType()],
+                    subscriptionQuotaId: _this.container.quotaId(),
+                    defaultsCheck: {
+                        storage: "u",
+                        throughput: _this.throughput(),
+                        defaultFlight: _this.defaultFlight()
+                    },
+                    dataExplorerArea: Constants.Areas.ContextualPane,
+                    toCreateKeyspace: toCreateKeyspace,
+                    createKeyspaceQuery: createKeyspaceQuery,
+                    createTableQuery: createTableQuery,
+                    error: reason
+                };
+                TelemetryProcessor_1.default.traceFailure(TelemetryConstants_1.Action.CreateCollection, addCollectionPaneFailedMessage, startKey);
+            });
+        };
+        CassandraAddCollectionPane.prototype.resetData = function () {
+            _super.prototype.resetData.call(this);
+            var subscriptionType = this.container.subscriptionType();
+            this.throughput(AddCollectionUtility.Utilities.getDefaultRUs(subscriptionType, this.defaultFlight(), Constants.BackendDefaults.singlePartitionStorageInGb));
+            this.maxThroughputRU(AddCollectionUtility.Utilities.getMaxRUForStorageOption(subscriptionType, this.defaultFlight(), Constants.BackendDefaults.multiPartitionStorageInGb));
+            this.minThroughputRU(AddCollectionUtility.Utilities.getMinRUForStorageOption(subscriptionType, this.defaultFlight(), Constants.BackendDefaults.multiPartitionStorageInGb));
+            this.createTableQuery("CREATE TABLE ");
+            this.userTableQuery("(userid int, name text, email text, PRIMARY KEY (userid))");
+            this.tableId("");
+            this.keyspaceId("");
+        };
+        CassandraAddCollectionPane.prototype._isValid = function () {
+            var throughput = this.throughput();
+            if (throughput > 100000 && !this.throughputSpendAck()) {
+                this.formErrors("Please acknowledge the estimated daily spend.");
+                return false;
+            }
+            return true;
+        };
+        return CassandraAddCollectionPane;
+    }(ContextualPaneBase_1.ContextualPaneBase));
+    return CassandraAddCollectionPane;
+});
+€OÿÓ,Š      [Õ¾Ê[Õ¾Ð?§¶²[×k>   T    :https://cosmos.azure.com/built/Explorer/Panes/CassandraAddCollectionPane.js?v=1.0.1 necko:classified 1 strongly-framed 1 security-info FnhllAKWRHGAlo+ESXykKAAAAAAAAAAAwAAAAAAAAEaphjojH6pBabDSgSnsfLHeAAQAAgAAAAAAAAAAAAAAAAAAAAAB4vFIJp5wRkeyPxAQ9RJGKPqbqVvKO0mKuIl8ec8o/uhmCjImkVxP+7sgiYWmMt8FvcOXmlQiTNWFiWlrbpbqgwAAAAAAAAOMMIIDiDCCAnCgAwIBAgIERTJgUjANBgkqhkiG9w0BAQsFADCBijEUMBIGA1UEBhMLUG9ydFN3aWdnZXIxFDASBgNVBAgTC1BvcnRTd2lnZ2VyMRQwEgYDVQQHEwtQb3J0U3dpZ2dlcjEUMBIGA1UEChMLUG9ydFN3aWdnZXIxFzAVBgNVBAsTDlBvcnRTd2lnZ2VyIENBMRcwFQYDVQQDEw5Qb3J0U3dpZ2dlciBDQTAeFw0xNDEwMjgxMzEyMTBaFw0zODEwMjgxMzEyMTBaMGAxFDASBgNVBAYTC1BvcnRTd2lnZ2VyMRQwEgYDVQQKEwtQb3J0U3dpZ2dlcjEXMBUGA1UECxMOUG9ydFN3aWdnZXIgQ0ExGTAXBgNVBAMTEGNvc21vcy5henVyZS5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCKn7emKINsnWqPZ+C/VsqbQf/l4NsmIh34bXBR0xdNg9bfb+xcoghRlmbPjhZ/A26A2gJ6Rrg2d0GGMLpbqA8nTlRRGXEAD39321zk4ye09ElXClvqguGqdqOJpPQ05DPFD6wSOq+KVAEblE5bi+LMqBLipDERzgUe7xzeqVVk0i0ldh9yQOIk3YuzcBR9igSEuw5qladmMYvXKHYM9YZz0R7axMc8xAtadK7C9KfFPfEI5LS2nhmy4vBrTgFyYhfkEvKfmIj6HTX0ISFCAC2llcBLpEDcuiW76tAHp1pXDeWtSeaV36AeOctdleVgrbmsGs3fu6ppuRcWjEZUbjE3AgMBAAGjHzAdMBsGA1UdEQQUMBKCEGNvc21vcy5henVyZS5jb20wDQYJKoZIhvcNAQELBQADggEBABYikT6Y5YgJJ4IVJldlFDF5MKxp26YegXhvT8EmAbgr0yQBIlY2DtKEiHf7Q8wRoJ9y5Ajst1D7HmRba+XLjS6s3IHJ7gtuvc3fZj9MPKpbqSKRfHDB8bDOVIzmjBseg2BqckHTkcYak3b/pTWCTqKHM3LxKsDwN8F3HNQ2pY4d5ma2kR1EtWdTpRiIbir3QxJDcWVp8CgHONZcoMn33NNwnWWjAQMX6d8e1CPuBZi0t+myaYduCqPgKKox9qMXSubF6uifQkAJ5RdLZrZ2pghENA/4r1oz51wqEmpjPsStSUxRPwJ6wJrB4gwGtX7++ZHLjAaNrTSUCGwIOlAT4LnALwEDAAAAAAEBAAAAAA== request-method GET request-Accept-Encoding gzip, deflate, br response-head HTTP/1.1 200 OK
+Content-Length: 13486
+Content-Type: application/x-javascript
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:39:13 GMT
+ original-response-headers Content-Length: 13486
+Content-Type: application/x-javascript
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:39:13 GMT
+Connection: close
+ uncompressed-len 0 net-response-time-onstart 6347 net-response-time-onstop 6347   4®

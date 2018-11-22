@@ -1,0 +1,297 @@
+define(["require", "exports", "underscore", "../Common/Constants", "../Contracts/ViewModels", "crossroads", "hasher"], function (require, exports, _, Constants, ViewModels, crossroads, hasher) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    var TabRouteHandler = /** @class */ (function () {
+        function TabRouteHandler() {
+        }
+        TabRouteHandler.prototype.initRouteHandler = function (onMatch) {
+            var _this = this;
+            this._initRouter();
+            var parseHash = function (newHash, oldHash) { return _this._tabRouter.parse(newHash); };
+            var defaultRoutedCallback = function (request, data) { console.log(request); };
+            this._tabRouter.routed.add(onMatch || defaultRoutedCallback);
+            hasher.initialized.add(parseHash);
+            hasher.changed.add(parseHash);
+            hasher.init();
+        };
+        TabRouteHandler.prototype.parseHash = function (hash) {
+            this._tabRouter.parse(hash);
+        };
+        TabRouteHandler.prototype._initRouter = function () {
+            this._tabRouter = crossroads.create();
+            this._setupTabRoutesForRouter();
+        };
+        TabRouteHandler.prototype._setupTabRoutesForRouter = function () {
+            var _this = this;
+            this._tabRouter.addRoute(Constants.HashRoutePrefixes.collections + "/documents", function (db_id, coll_id) {
+                _this._openDocumentsTabForResource(db_id, coll_id);
+            });
+            this._tabRouter.addRoute(Constants.HashRoutePrefixes.collections + "/entities", function (db_id, coll_id) {
+                _this._openEntitiesTabForResource(db_id, coll_id);
+            });
+            this._tabRouter.addRoute(Constants.HashRoutePrefixes.collections + "/graphs", function (db_id, coll_id) {
+                _this._openGraphTabForResource(db_id, coll_id);
+            });
+            this._tabRouter.addRoute(Constants.HashRoutePrefixes.collections + "/mongoDocuments", function (db_id, coll_id) {
+                _this._openMongoDocumentsTabForResource(db_id, coll_id);
+            });
+            this._tabRouter.addRoute(Constants.HashRoutePrefixes.collections + "/mongoQuery", function (db_id, coll_id) {
+                _this._openMongoQueryTabForResource(db_id, coll_id);
+            });
+            this._tabRouter.addRoute(Constants.HashRoutePrefixes.collections + "/mongoShell", function (db_id, coll_id) {
+                _this._openMongoShellTabForResource(db_id, coll_id);
+            });
+            this._tabRouter.addRoute(Constants.HashRoutePrefixes.collections + "/query", function (db_id, coll_id) {
+                _this._openQueryTabForResource(db_id, coll_id);
+            });
+            this._tabRouter.addRoute(Constants.HashRoutePrefixes.databases + "/settings", function (db_id) {
+                _this._openDatabaseSettingsTabForResource(db_id);
+            });
+            this._tabRouter.addRoute(Constants.HashRoutePrefixes.collections + "/settings", function (db_id, coll_id) {
+                _this._openSettingsTabForResource(db_id, coll_id);
+            });
+            this._tabRouter.addRoute(Constants.HashRoutePrefixes.collections + "/sproc", function (db_id, coll_id) {
+                _this._openNewSprocTabForResource(db_id, coll_id);
+            });
+            this._tabRouter.addRoute(Constants.HashRoutePrefixes.collections + "/sprocs/{sproc_id}", function (db_id, coll_id, sproc_id) {
+                _this._openSprocTabForResource(db_id, coll_id, sproc_id);
+            });
+            this._tabRouter.addRoute(Constants.HashRoutePrefixes.collections + "/trigger", function (db_id, coll_id) {
+                _this._openNewTriggerTabForResource(db_id, coll_id);
+            });
+            this._tabRouter.addRoute(Constants.HashRoutePrefixes.collections + "/triggers/{trigger_id}", function (db_id, coll_id, trigger_id) {
+                _this._openTriggerTabForResource(db_id, coll_id, trigger_id);
+            });
+            this._tabRouter.addRoute(Constants.HashRoutePrefixes.collections + "/udf", function (db_id, coll_id) {
+                _this._openNewUserDefinedFunctionTabForResource(db_id, coll_id);
+            });
+            this._tabRouter.addRoute(Constants.HashRoutePrefixes.collections + "/udfs/{udf_id}", function (db_id, coll_id, udf_id) {
+                _this._openUserDefinedFunctionTabForResource(db_id, coll_id, udf_id);
+            });
+            this._tabRouter.addRoute(Constants.HashRoutePrefixes.collections + "/conflicts", function (db_id, coll_id) {
+                _this._openConflictsTabForResource(db_id, coll_id);
+            });
+        };
+        TabRouteHandler.prototype._openDocumentsTabForResource = function (databaseId, collectionId) {
+            var _this = this;
+            this._executeActionHelper(function () {
+                var collection = _this._findAndExpandMatchingCollectionForResource(databaseId, collectionId);
+                collection && collection.container && collection.container.isPreferredApiDocumentDB() && collection.onDocumentDBDocumentsClick();
+            });
+        };
+        TabRouteHandler.prototype._openEntitiesTabForResource = function (databaseId, collectionId) {
+            var _this = this;
+            this._executeActionHelper(function () {
+                var collection = _this._findAndExpandMatchingCollectionForResource(databaseId, collectionId);
+                collection && collection.container && (collection.container.isPreferredApiTable() || collection.container.isPreferredApiCassandra()) && collection.onTableEntitiesClick();
+            });
+        };
+        TabRouteHandler.prototype._openGraphTabForResource = function (databaseId, collectionId) {
+            var _this = this;
+            this._executeActionHelper(function () {
+                var collection = _this._findAndExpandMatchingCollectionForResource(databaseId, collectionId);
+                collection && collection.container && collection.container.isPreferredApiGraph() && collection.onGraphDocumentsClick();
+            });
+        };
+        TabRouteHandler.prototype._openMongoDocumentsTabForResource = function (databaseId, collectionId) {
+            var _this = this;
+            this._executeActionHelper(function () {
+                var collection = _this._findAndExpandMatchingCollectionForResource(databaseId, collectionId);
+                collection && collection.container && collection.container.isPreferredApiMongoDB() && collection.onMongoDBDocumentsClick();
+            });
+        };
+        TabRouteHandler.prototype._openQueryTabForResource = function (databaseId, collectionId) {
+            var _this = this;
+            this._executeActionHelper(function () {
+                var explorer = window.dataExplorer;
+                var collection = _this._findAndExpandMatchingCollectionForResource(databaseId, collectionId);
+                var matchingTab = _this._findMatchingTabByTabKind(databaseId, collectionId, ViewModels.CollectionTabKind.Query);
+                if (!!matchingTab) {
+                    matchingTab.onTabClick();
+                }
+                else {
+                    collection && collection.onNewQueryClick(collection, null);
+                }
+            });
+        };
+        TabRouteHandler.prototype._openMongoQueryTabForResource = function (databaseId, collectionId) {
+            var _this = this;
+            this._executeActionHelper(function () {
+                var explorer = window.dataExplorer;
+                var collection = _this._findAndExpandMatchingCollectionForResource(databaseId, collectionId);
+                var matchingTab = _this._findMatchingTabByTabKind(databaseId, collectionId, ViewModels.CollectionTabKind.Query);
+                if (!!matchingTab) {
+                    matchingTab.onTabClick();
+                }
+                else {
+                    collection && collection.container && collection.container.isPreferredApiMongoDB() && collection.onNewMongoQueryClick(collection, null);
+                }
+            });
+        };
+        TabRouteHandler.prototype._openMongoShellTabForResource = function (databaseId, collectionId) {
+            var _this = this;
+            this._executeActionHelper(function () {
+                var explorer = window.dataExplorer;
+                var collection = _this._findAndExpandMatchingCollectionForResource(databaseId, collectionId);
+                var matchingTab = _this._findMatchingTabByTabKind(databaseId, collectionId, ViewModels.CollectionTabKind.MongoShell);
+                if (!!matchingTab) {
+                    matchingTab.onTabClick();
+                }
+                else {
+                    collection && collection.container && collection.container.isPreferredApiMongoDB() && collection.onNewMongoShellClick();
+                }
+            });
+        };
+        TabRouteHandler.prototype._openDatabaseSettingsTabForResource = function (databaseId) {
+            this._executeActionHelper(function () {
+                var explorer = window.dataExplorer;
+                var database = _.find(explorer.databases(), function (database) { return database.id() === databaseId; });
+                database && database.onSettingsClick();
+            });
+        };
+        TabRouteHandler.prototype._openSettingsTabForResource = function (databaseId, collectionId) {
+            var _this = this;
+            this._executeActionHelper(function () {
+                var collection = _this._findAndExpandMatchingCollectionForResource(databaseId, collectionId);
+                collection && collection.onSettingsClick();
+            });
+        };
+        TabRouteHandler.prototype._openNewSprocTabForResource = function (databaseId, collectionId) {
+            var _this = this;
+            this._executeActionHelper(function () {
+                var explorer = window.dataExplorer;
+                var collection = _this._findAndExpandMatchingCollectionForResource(databaseId, collectionId);
+                var matchingTab = _this._findMatchingTabByTabKind(databaseId, collectionId, ViewModels.CollectionTabKind.StoredProcedures, true);
+                if (!!matchingTab) {
+                    matchingTab.onTabClick();
+                }
+                else {
+                    collection && collection.onNewStoredProcedureClick(collection, null);
+                }
+            });
+        };
+        TabRouteHandler.prototype._openSprocTabForResource = function (databaseId, collectionId, sprocId) {
+            var _this = this;
+            this._executeActionHelper(function () {
+                var collection = _this._findMatchingCollectionForResource(databaseId, collectionId);
+                collection && collection.expandCollection().then(function () {
+                    var storedProcedure = collection && collection.findStoredProcedureWithId(sprocId);
+                    storedProcedure && storedProcedure.open();
+                });
+            });
+        };
+        TabRouteHandler.prototype._openNewTriggerTabForResource = function (databaseId, collectionId) {
+            var _this = this;
+            this._executeActionHelper(function () {
+                var explorer = window.dataExplorer;
+                var collection = _this._findAndExpandMatchingCollectionForResource(databaseId, collectionId);
+                var matchingTab = _this._findMatchingTabByTabKind(databaseId, collectionId, ViewModels.CollectionTabKind.Triggers, true);
+                if (!!matchingTab) {
+                    matchingTab.onTabClick();
+                }
+                else {
+                    collection && collection.onNewTriggerClick(collection, null);
+                }
+            });
+        };
+        TabRouteHandler.prototype._openTriggerTabForResource = function (databaseId, collectionId, triggerId) {
+            var _this = this;
+            this._executeActionHelper(function () {
+                var collection = _this._findMatchingCollectionForResource(databaseId, collectionId);
+                collection && collection.expandCollection().then(function () {
+                    var trigger = collection && collection.findTriggerWithId(triggerId);
+                    trigger && trigger.open();
+                });
+            });
+        };
+        TabRouteHandler.prototype._openNewUserDefinedFunctionTabForResource = function (databaseId, collectionId) {
+            var _this = this;
+            this._executeActionHelper(function () {
+                var explorer = window.dataExplorer;
+                var collection = _this._findAndExpandMatchingCollectionForResource(databaseId, collectionId);
+                var matchingTab = _this._findMatchingTabByTabKind(databaseId, collectionId, ViewModels.CollectionTabKind.UserDefinedFunctions, true);
+                if (!!matchingTab) {
+                    matchingTab.onTabClick();
+                }
+                else {
+                    collection && collection.onNewUserDefinedFunctionClick(collection, null);
+                }
+            });
+        };
+        TabRouteHandler.prototype._openUserDefinedFunctionTabForResource = function (databaseId, collectionId, udfId) {
+            var _this = this;
+            this._executeActionHelper(function () {
+                var collection = _this._findMatchingCollectionForResource(databaseId, collectionId);
+                collection && collection.expandCollection().then(function () {
+                    var userDefinedFunction = collection && collection.findUserDefinedFunctionWithId(udfId);
+                    userDefinedFunction && userDefinedFunction.open();
+                });
+            });
+        };
+        TabRouteHandler.prototype._openConflictsTabForResource = function (databaseId, collectionId) {
+            var _this = this;
+            this._executeActionHelper(function () {
+                var collection = _this._findAndExpandMatchingCollectionForResource(databaseId, collectionId);
+                collection && collection.container && collection.onConflictsClick();
+            });
+        };
+        TabRouteHandler.prototype._findAndExpandMatchingCollectionForResource = function (databaseId, collectionId) {
+            var matchedCollection = this._findMatchingCollectionForResource(databaseId, collectionId);
+            matchedCollection && matchedCollection.expandCollection();
+            return matchedCollection;
+        };
+        TabRouteHandler.prototype._findMatchingTabByTabKind = function (databaseId, collectionId, tabKind, isNewScriptTab) {
+            var explorer = window.dataExplorer;
+            return _.find(explorer.openedTabs(), function (tab) {
+                var isMatchingTabKind = tab.collection.database.id() === databaseId && tab.collection.id() === collectionId && tab.tabKind === tabKind;
+                if (isNewScriptTab) {
+                    return isMatchingTabKind && tab.isNew();
+                }
+                return isMatchingTabKind;
+            });
+        };
+        TabRouteHandler.prototype._findMatchingCollectionForResource = function (databaseId, collectionId) {
+            var explorer = window.dataExplorer;
+            var matchedDatabase = explorer.findDatabaseWithId(databaseId);
+            var matchedCollection = matchedDatabase && matchedDatabase.findCollectionWithId(collectionId);
+            return matchedCollection;
+        };
+        TabRouteHandler.prototype._executeActionHelper = function (action) {
+            var explorer = window.dataExplorer;
+            if (!!explorer && (explorer.isRefreshingExplorer() || !explorer.isAccountReady())) {
+                var refreshSubscription_1 = explorer.isRefreshingExplorer.subscribe(function (isRefreshing) {
+                    if (!isRefreshing) {
+                        action();
+                        refreshSubscription_1.dispose();
+                    }
+                });
+            }
+            else {
+                action();
+            }
+        };
+        return TabRouteHandler;
+    }());
+    exports.TabRouteHandler = TabRouteHandler;
+});
+Õ9i²e”      [Õ¾Û[Õ¾î?§¶½[×kR   H    :https://cosmos.azure.com/built/RouteHandlers/TabRouteHandler.js?v=1.0.1 necko:classified 1 strongly-framed 1 security-info FnhllAKWRHGAlo+ESXykKAAAAAAAAAAAwAAAAAAAAEaphjojH6pBabDSgSnsfLHeAAQAAgAAAAAAAAAAAAAAAAAAAAAB4vFIJp5wRkeyPxAQ9RJGKPqbqVvKO0mKuIl8ec8o/uhmCjImkVxP+7sgiYWmMt8FvcOXmlQiTNWFiWlrbpbqgwAAAAAAAAOMMIIDiDCCAnCgAwIBAgIERTJgUjANBgkqhkiG9w0BAQsFADCBijEUMBIGA1UEBhMLUG9ydFN3aWdnZXIxFDASBgNVBAgTC1BvcnRTd2lnZ2VyMRQwEgYDVQQHEwtQb3J0U3dpZ2dlcjEUMBIGA1UEChMLUG9ydFN3aWdnZXIxFzAVBgNVBAsTDlBvcnRTd2lnZ2VyIENBMRcwFQYDVQQDEw5Qb3J0U3dpZ2dlciBDQTAeFw0xNDEwMjgxMzEyMTBaFw0zODEwMjgxMzEyMTBaMGAxFDASBgNVBAYTC1BvcnRTd2lnZ2VyMRQwEgYDVQQKEwtQb3J0U3dpZ2dlcjEXMBUGA1UECxMOUG9ydFN3aWdnZXIgQ0ExGTAXBgNVBAMTEGNvc21vcy5henVyZS5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCKn7emKINsnWqPZ+C/VsqbQf/l4NsmIh34bXBR0xdNg9bfb+xcoghRlmbPjhZ/A26A2gJ6Rrg2d0GGMLpbqA8nTlRRGXEAD39321zk4ye09ElXClvqguGqdqOJpPQ05DPFD6wSOq+KVAEblE5bi+LMqBLipDERzgUe7xzeqVVk0i0ldh9yQOIk3YuzcBR9igSEuw5qladmMYvXKHYM9YZz0R7axMc8xAtadK7C9KfFPfEI5LS2nhmy4vBrTgFyYhfkEvKfmIj6HTX0ISFCAC2llcBLpEDcuiW76tAHp1pXDeWtSeaV36AeOctdleVgrbmsGs3fu6ppuRcWjEZUbjE3AgMBAAGjHzAdMBsGA1UdEQQUMBKCEGNvc21vcy5henVyZS5jb20wDQYJKoZIhvcNAQELBQADggEBABYikT6Y5YgJJ4IVJldlFDF5MKxp26YegXhvT8EmAbgr0yQBIlY2DtKEiHf7Q8wRoJ9y5Ajst1D7HmRba+XLjS6s3IHJ7gtuvc3fZj9MPKpbqSKRfHDB8bDOVIzmjBseg2BqckHTkcYak3b/pTWCTqKHM3LxKsDwN8F3HNQ2pY4d5ma2kR1EtWdTpRiIbir3QxJDcWVp8CgHONZcoMn33NNwnWWjAQMX6d8e1CPuBZi0t+myaYduCqPgKKox9qMXSubF6uifQkAJ5RdLZrZ2pghENA/4r1oz51wqEmpjPsStSUxRPwJ6wJrB4gwGtX7++ZHLjAaNrTSUCGwIOlAT4LnALwEDAAAAAAEBAAAAAA== request-method GET request-Accept-Encoding gzip, deflate, br response-head HTTP/1.1 200 OK
+Content-Length: 16070
+Content-Type: application/x-javascript
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:39:40 GMT
+ original-response-headers Content-Length: 16070
+Content-Type: application/x-javascript
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:39:40 GMT
+Connection: close
+ uncompressed-len 0 net-response-time-onstart 18829 net-response-time-onstop 18829   >Æ

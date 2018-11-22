@@ -1,0 +1,616 @@
+/******************************************************************************
+                                FONTS
+/******************************************************************************/
+@font-face {
+  font-family: wf_segoe-ui_normal;
+  src: url('../fonts/segoe-ui/west-european/normal/latest.woff');
+}
+/******************************************************************************
+                                COLORS
+/******************************************************************************/
+/******************************************************************************
+                                METRICS
+/******************************************************************************/
+/**********************************************************************************
+                              Common Flex Property
+/**********************************************************************************/
+/*************************************************************************************
+                                 High contrast mode active
+**************************************************************************************/
+@media all and (-ms-high-contrast: none), (-ms-high-contrast: active) {
+  .selectedRadio,
+  .selectedRadio:hover,
+  .selectedRadio:active,
+  .selectedRadio.dirty,
+  .tab [type=radio]:checked ~ label,
+  .tab [type=radio]:checked ~ label:hover {
+    -ms-high-contrast-adjust: none;
+    -webkit-text-fill-color: HighlightText;
+    color: HighlightText;
+    border-color: HighlightText;
+    background-color: Highlight;
+  }
+  .queryMetricsSummaryTuple th:nth-child(2),
+  .queryMetricsSummaryTuple td:nth-child(2) {
+    width: 650px;
+  }
+  .queryMetricsSummaryTuple th:nth-child(3),
+  .queryMetricsSummaryTuple td:nth-child(3) {
+    width: 50%;
+  }
+}
+/********************************************************************************************
+                            Common Hover and Active color
+*********************************************************************************************/
+/************************************************************************************************
+                               Common Toggle Switch
+*************************************************************************************************/
+/********************************************************************************************************
+                             Common Data Explorer Icons
+*********************************************************************************************************/
+/*********************************************************************************************************
+                            Info Tooltip
+**********************************************************************************************************/
+/*********************************************************************************************************
+                          Media Queries
+**********************************************************************************************************/
+@media only screen and (max-width: 1920px) {
+  .staticCommandExpand {
+    display: none;
+  }
+}
+@media only screen and (min-width: 1039px) and (max-width: 1112px) {
+  .visibleCommands command-button:nth-child(n+9) {
+    display: none;
+  }
+  .hiddenCommands command-button:not(:nth-child(n+3)) {
+    display: none;
+  }
+  .staticCommandExpand {
+    display: block;
+  }
+}
+@media only screen and (min-width: 874px) and (max-width: 1038px) {
+  .visibleCommands command-button:nth-child(n+8) {
+    display: none;
+  }
+  .hiddenCommands command-button:not(:nth-child(n+2)) {
+    display: none;
+  }
+  .staticCommandExpand {
+    display: block;
+  }
+}
+@media only screen and (min-width: 723px) and (max-width: 873px) {
+  .visibleCommands command-button:nth-child(n+7) {
+    display: none;
+  }
+  .hiddenCommands command-button:not(:nth-child(n+1)) {
+    display: none;
+  }
+  .staticCommandExpand {
+    display: block;
+  }
+}
+@media only screen and (max-width: 722px) {
+  .visibleCommands command-button:nth-child(n+7) {
+    display: none;
+  }
+  .hiddenCommands command-button:not(:nth-child(n+1)) {
+    display: none;
+  }
+  .staticCommandExpand {
+    display: block;
+  }
+}
+html {
+  font-family: wf_segoe-ui_normal, "Segoe UI", "Segoe WP", Tahoma, Arial, sans-serif;
+  padding: 0px;
+  margin: 0px;
+  border: 0px;
+  overflow: hidden;
+  position: fixed;
+  width: 100%;
+  height: 100%;
+}
+body {
+  font-family: wf_segoe-ui_normal, "Segoe UI", "Segoe WP", Tahoma, Arial, sans-serif;
+  padding: 0px;
+  margin: 0px;
+  border: 0px;
+  overflow: hidden;
+  /************* Refactor below styles to avoid redundancy ****************/
+}
+body header {
+  font-size: 14px;
+  background-color: #000000;
+  height: 40px;
+  width: 100%;
+  white-space: nowrap;
+}
+body header .items {
+  display: -webkit-flex;
+  display: -ms-flexbox;
+  display: -ms-flex;
+  display: flex;
+  align-items: stretch;
+  height: 100%;
+}
+body header .items .cosmosDBTitle {
+  display: -webkit-flex;
+  display: -ms-flexbox;
+  display: -ms-flex;
+  display: flex;
+  padding: 0px 4px;
+}
+body header .items .cosmosDBTitle img {
+  width: 24px;
+  height: 24px;
+  margin-top: 2px;
+}
+body header .items .cosmosDBTitle .title {
+  color: #55B3FF;
+  font-size: 20px;
+  padding: 4px 16px;
+}
+body header .items .cosmosDBTitle .title:hover {
+  background-color: #393939;
+  cursor: pointer;
+}
+body header .items .cosmosDBTitle .chevronRight {
+  width: 10px;
+  height: 10px;
+  margin: auto 14px;
+}
+body header .items .cosmosDBTitle .serviceTitle {
+  color: #FFFFFF;
+  font-size: 16px;
+  padding: 8px 0px;
+}
+body header .items .cosmosDBTitle .accontSplitter {
+  border-right: 1px solid #393939;
+  margin-right: 16px;
+}
+body header .items .cosmosDBTitle .accountNameHeader {
+  font-size: 16px;
+  color: #FFFFFF;
+  padding-top: 8px;
+}
+body header .items .feedbackConnectSettingIcons {
+  margin: 6px 0px 0px auto;
+}
+body header .items .feedbackConnectSettingIcons a {
+  vertical-align: middle;
+  cursor: pointer;
+  padding: 8px 8px 16px 12px;
+}
+body header .items .feedbackConnectSettingIcons a:last-child {
+  padding-right: 12px;
+}
+body header .items .feedbackConnectSettingIcons a:hover {
+  background-color: #393939;
+}
+body header .items .feedbackConnectSettingIcons a img {
+  width: 20px;
+  height: 20px;
+  margin-top: 4px;
+}
+body .fixedleftpane {
+  background: #F2F2F2;
+  height: 100vh;
+  width: 48px;
+  float: left;
+}
+body .fixedleftpane .fixedLeftPaneIcons {
+  padding: 12px 8px;
+  text-align: center;
+  cursor: pointer;
+}
+body .fixedleftpane .fixedLeftPaneIcons:hover {
+  background-color: #E6E6E6;
+}
+body .fixedleftpane .fixedLeftPaneIcons:active {
+  background-color: #E6E6E6;
+}
+body .fixedleftpane .fixedLeftPaneIcons img {
+  width: 24px;
+  height: 24px;
+}
+body .fixedleftpane .topSelected {
+  background: #E6E6E6;
+}
+body .fixedleftpane .topSelected:hover {
+  color: #000000;
+  background: #E6E6E6;
+  cursor: default;
+}
+body .fixedleftpane .feedbackstyle,
+body .fixedleftpane .settingstyle {
+  text-align: center;
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+body .fixedleftpane .feedbackstyle:hover,
+body .fixedleftpane .settingstyle:hover {
+  color: #000000;
+  background: #E6E6E6;
+  cursor: pointer;
+}
+body img {
+  vertical-align: middle;
+}
+body .iframe {
+  border: 0px;
+  padding: 0px;
+  margin: 0px;
+  overflow: hidden;
+  width: 100%;
+  height: calc(100vh - 40px);
+}
+body .iframe .main {
+  width: 100%;
+  transition: all 0s ease-in-out;
+  -ms-transition: all 0s ease-in-out;
+  -webkit-transition: all 0s ease-in-out;
+  -moz-transition: all 0s ease-in-out;
+  height: 100vh;
+  background-color: #FFFFFF;
+}
+body .mini {
+  width: 0%;
+  float: left;
+  transition: all 0.4s ease-in-out;
+  -webkit-transition: all 0.4s ease-in-out;
+  -moz-transition: all 0.4s ease-in-out;
+  height: 100vh;
+  background-color: white;
+  border-right: solid 1px lightgray;
+}
+body #sidebar-wrapper {
+  z-index: 1000;
+  position: fixed;
+  left: 250px;
+  width: 0;
+  height: 100%;
+  margin-left: -250px;
+  overflow-y: auto;
+  background: white;
+  -webkit-transition: all 0.5s ease;
+  -moz-transition: all 0.5s ease;
+  -o-transition: all 0.5s ease;
+  transition: all 0.5s ease;
+}
+body .toggle-left {
+  width: 0%;
+  overflow: hidden;
+}
+body .toggle-minicontent {
+  width: 100%;
+}
+body .toggle-maincontent {
+  width: 100%;
+}
+body .toggle-mini {
+  width: 50px;
+}
+body .toggle-main {
+  width: 100%;
+}
+body .activepartitionmode {
+  background-color: #0058AD;
+}
+body .paddingpartition {
+  color: white;
+  padding-left: 15px;
+  padding-top: 25px;
+}
+body .paddingspan2 {
+  padding-top: 20px;
+  color: white;
+  padding-left: 15px;
+}
+body .paddingspan4 {
+  padding-top: 20px;
+  padding-bottom: 20px;
+  color: white;
+  padding-left: 15px;
+}
+body .whitegroove {
+  width: 344px;
+  border: groove;
+}
+body .dropdownbtn {
+  color: white;
+  width: 340px;
+  background: #262626;
+}
+body .queryclr {
+  color: white;
+  background: #262626;
+}
+body .pointer {
+  cursor: pointer;
+}
+body .gridRowSelected {
+  background-color: #c5e5f5;
+}
+body .gridRowSelected:hover {
+  background-color: #c5e5f5!important;
+  cursor: initial;
+}
+body .collectionNodeSelected {
+  background-color: #c5e5f5;
+}
+body .collectionNodeSelected:hover {
+  background-color: #c5e5f5!important;
+  cursor: default!important;
+}
+body .btncreatecoll1 {
+  border-color: #969696;
+  background-color: #1ebbee;
+  color: white;
+  padding: 2px 30px;
+  cursor: pointer;
+  font-size: 12px;
+}
+body .btnpricepad {
+  margin-left: 24px;
+}
+body .collid {
+  color: white;
+  background: #000000;
+  width: calc(100% - 20px);
+}
+body .textfontclr {
+  color: white;
+}
+body .firstdivbg {
+  height: 90px;
+  padding-left: 20px;
+  padding-top: 40px;
+}
+body .seconddivbg {
+  height: 100vh;
+}
+body .pricingtierimg {
+  padding-left: 20px;
+  padding-top: 10px;
+  padding-bottom: 20px;
+}
+body .headerline {
+  color: #000000;
+  font-size: 16px;
+  border-bottom: 1px solid #CCCCCC;
+  padding-bottom: 20px;
+}
+body .partitionkeystyle {
+  font-size: 10px;
+}
+body .arrowprice {
+  margin-left: 230px;
+}
+body .paddingspan {
+  padding: 20px;
+  color: white;
+  font-size: 14px;
+}
+body input::-webkit-calendar-picker-indicator {
+  opacity: 100;
+}
+body .paddingspan3 {
+  padding-top: 20px;
+  padding-left: 20px;
+  color: white;
+  font-size: 14px;
+  position: absolute;
+  width: 100%;
+  height: 100px;
+  bottom: 150px;
+}
+body .paddingspan4 {
+  padding-top: 20px;
+  padding-left: 20px;
+  color: white;
+  font-size: 14px;
+}
+body .closebtnn {
+  float: right;
+  padding: 0 10px;
+  cursor: pointer;
+}
+body label {
+  white-space: nowrap;
+  font: 12px "Segoe UI";
+}
+body .Introlines {
+  padding-top: 27px;
+  padding-left: 40px;
+}
+body .Introline1 {
+  font-size: 16px;
+}
+body .Introline2 {
+  font-size: 14px;
+  padding-top: 10px;
+}
+body .datalist-arrow {
+  position: relative;
+}
+body .datalist-arrow:hover:after {
+  background: #969696;
+}
+body .datalist-arrow:focus:after,
+body .datalist-arrow:active:after {
+  background: #1EBBEE;
+}
+body input::-webkit-calendar-picker-indicator::after {
+  content: '\276F';
+  right: 0;
+  top: -8%;
+  display: block;
+  width: 27px;
+  height: 25px;
+  line-height: 25px;
+  color: #fff;
+  text-align: center;
+  pointer-events: none;
+  transform: rotate(90deg);
+}
+body .datalist-arrow:after:hover {
+  content: '\276F';
+  position: absolute;
+  right: 1px;
+  top: 6%;
+  transform: rotate(90deg);
+  display: block;
+  width: 27px;
+  height: 25px;
+  line-height: 25px;
+  color: #fff;
+  text-align: center;
+  pointer-events: none;
+  background-color: #1EBBEE;
+}
+body .Introline3 {
+  padding-top: 10px;
+  font-size: 14px;
+  font-weight: 1000;
+}
+body .nav > li > a {
+  color: black;
+  font-weight: 400;
+}
+body .qslevel {
+  padding-top: 10px;
+  border: none;
+}
+body .qslevel > li > a {
+  border: none !important;
+}
+body .qslevel > li.active {
+  border-bottom: 4px solid #767676;
+}
+body .qslevel > li.active > a,
+body .qslevel > li > a:focus,
+body .nav.nav-tabs.qslevel > li > a:hover {
+  border: none;
+  border-radius: 0;
+  background-color: transparent !important;
+  border-color: transparent;
+}
+body .numbersize {
+  font-size: 60px;
+  display: inline;
+}
+body .numberheading {
+  display: inline;
+  position: absolute;
+  padding-top: 20px;
+  font-size: 16px;
+  padding-left: 20px;
+}
+body .numberheading > p {
+  padding-top: 10px;
+  font-size: 12px !important;
+}
+body .numberheading > ul {
+  padding-top: 10px;
+}
+body .numberheading > ul > li > a {
+  font-size: 12px !important;
+}
+body .step1 {
+  padding-bottom: 60px;
+}
+body .step1 > input {
+  font-size: 12px;
+}
+body .btncreatecoll {
+  background: #0058AD;
+  color: #fff;
+  padding: 0 20px;
+  cursor: pointer;
+  font-size: 12px;
+  border: 1px solid #0058AD;
+}
+body .btncreatecoll:active {
+  background: #0072c6;
+  border: 1px solid #0072c6;
+}
+body .btncreatecoll:hover {
+  background: #0058AD;
+  color: #fff;
+  border-color: #0058AD;
+  cursor: pointer;
+  font-size: 12px;
+}
+body .hrline {
+  color: #d6d7d8;
+}
+body .atags:focus {
+  color: #0058AD;
+}
+body .atags {
+  color: #0058AD;
+  font-weight: 400;
+  cursor: pointer;
+}
+body ul {
+  list-style-type: none;
+  padding-left: 0px;
+}
+body .qsmenuicons {
+  width: 25px;
+  height: 25px;
+  margin-right: 5px;
+}
+body .HeaderBg {
+  background-color: #000000;
+  height: 40px;
+  width: 100%;
+  min-width: 960px;
+  white-space: nowrap;
+}
+body .DocDBicon {
+  padding-bottom: 10px;
+  width: 24px;
+  height: 24px;
+}
+body .divmenuquickstartpadding {
+  padding-left: 24px;
+  padding-bottom: 8px;
+}
+body .rightarrowimg {
+  padding-left: 5px;
+  padding-bottom: 2px;
+}
+body a:hover,
+body a:visited,
+body a:active,
+body a:link {
+  text-decoration: none;
+}
+òq›¥Õ      [Õ¾©[Õ¾ª?§¶›[×k   0    :https://cosmos.azure.com/css/hostedExplorer.css necko:classified 1 strongly-framed 1 security-info FnhllAKWRHGAlo+ESXykKAAAAAAAAAAAwAAAAAAAAEaphjojH6pBabDSgSnsfLHeAAQAAgAAAAAAAAAAAAAAAAAAAAAB4vFIJp5wRkeyPxAQ9RJGKPqbqVvKO0mKuIl8ec8o/uhmCjImkVxP+7sgiYWmMt8FvcOXmlQiTNWFiWlrbpbqgwAAAAAAAAOMMIIDiDCCAnCgAwIBAgIERTJgUjANBgkqhkiG9w0BAQsFADCBijEUMBIGA1UEBhMLUG9ydFN3aWdnZXIxFDASBgNVBAgTC1BvcnRTd2lnZ2VyMRQwEgYDVQQHEwtQb3J0U3dpZ2dlcjEUMBIGA1UEChMLUG9ydFN3aWdnZXIxFzAVBgNVBAsTDlBvcnRTd2lnZ2VyIENBMRcwFQYDVQQDEw5Qb3J0U3dpZ2dlciBDQTAeFw0xNDEwMjgxMzEyMTBaFw0zODEwMjgxMzEyMTBaMGAxFDASBgNVBAYTC1BvcnRTd2lnZ2VyMRQwEgYDVQQKEwtQb3J0U3dpZ2dlcjEXMBUGA1UECxMOUG9ydFN3aWdnZXIgQ0ExGTAXBgNVBAMTEGNvc21vcy5henVyZS5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCKn7emKINsnWqPZ+C/VsqbQf/l4NsmIh34bXBR0xdNg9bfb+xcoghRlmbPjhZ/A26A2gJ6Rrg2d0GGMLpbqA8nTlRRGXEAD39321zk4ye09ElXClvqguGqdqOJpPQ05DPFD6wSOq+KVAEblE5bi+LMqBLipDERzgUe7xzeqVVk0i0ldh9yQOIk3YuzcBR9igSEuw5qladmMYvXKHYM9YZz0R7axMc8xAtadK7C9KfFPfEI5LS2nhmy4vBrTgFyYhfkEvKfmIj6HTX0ISFCAC2llcBLpEDcuiW76tAHp1pXDeWtSeaV36AeOctdleVgrbmsGs3fu6ppuRcWjEZUbjE3AgMBAAGjHzAdMBsGA1UdEQQUMBKCEGNvc21vcy5henVyZS5jb20wDQYJKoZIhvcNAQELBQADggEBABYikT6Y5YgJJ4IVJldlFDF5MKxp26YegXhvT8EmAbgr0yQBIlY2DtKEiHf7Q8wRoJ9y5Ajst1D7HmRba+XLjS6s3IHJ7gtuvc3fZj9MPKpbqSKRfHDB8bDOVIzmjBseg2BqckHTkcYak3b/pTWCTqKHM3LxKsDwN8F3HNQ2pY4d5ma2kR1EtWdTpRiIbir3QxJDcWVp8CgHONZcoMn33NNwnWWjAQMX6d8e1CPuBZi0t+myaYduCqPgKKox9qMXSubF6uifQkAJ5RdLZrZ2pghENA/4r1oz51wqEmpjPsStSUxRPwJ6wJrB4gwGtX7++ZHLjAaNrTSUCGwIOlAT4LnALwEDAAAAAAEBAAAAAA== request-method GET request-Accept-Encoding gzip, deflate, br response-head HTTP/1.1 200 OK
+Content-Length: 13602
+Content-Type: text/css
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:38:34 GMT
+ original-response-headers Content-Length: 13602
+Content-Type: text/css
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:38:34 GMT
+Connection: close
+ uncompressed-len 0 net-response-time-onstart 1411 net-response-time-onstop 1411   5"

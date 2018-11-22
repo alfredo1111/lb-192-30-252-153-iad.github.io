@@ -1,0 +1,403 @@
+
+<html>
+<head>
+<meta charset="utf-8">
+<title>Easy Create Azure Java Website</title>
+<meta name="description" content="">
+<meta name="viewport" content="width=device-width">
+<link rel="stylesheet" href="styles/vendor-c2769e81fe.css">
+<link rel="stylesheet" href="styles/app-e19e6fabc0.css">
+</head>
+<style>
+@media (max-width: 994px) {
+	br + br {
+		display:none;
+		}
+	}
+	
+	.appservice-container.box-container {
+		cursor: pointer;
+	}
+</style>
+<body>
+	<script src="https://code.jquery.com/jquery-2.2.0.min.js"></script>
+	<header data-tag-area="header" data-tag-group="header" style="margin: 0 auto; position: relative ">
+
+		<div class="wa-content">
+			<a href="https://azure.microsoft.com/en-us/" class="logo"><svg
+					x="0px" y="0px" width="165px" height="20px" viewbox="0 0 165 20">
+					<path fill="#29A5DE"
+						d="M18,19H16V7.1C16,6.2,16,5,16.1,3.7h0c-0.2,0.8-0.4,1.4-0.5,1.7L9.5,19h-1l-6-13.5c-0.2-0.4-0.3-1-0.5-1.8 h0C2,4.4,2,5.5,2,7.1V19H0V1.3h2.7l5.4,12.3c0.4,0.9,0.7,1.7,0.8,2.1H9c0.4-1,0.6-1.7,0.9-2.2l5.5-12.3H18V19z"></path>
+					<path fill="#29A5DE"
+						d="M22.8,3.1c-0.4,0-0.7-0.1-0.9-0.4s-0.4-0.6-0.4-0.9s0.1-0.7,0.4-0.9c0.3-0.3,0.6-0.4,0.9-0.4 c0.4,0,0.7,0.1,0.9,0.4c0.3,0.3,0.4,0.6,0.4,0.9c0,0.4-0.1,0.7-0.4,0.9C23.5,3,23.2,3.1,22.8,3.1z M23.8,19h-2V6.3h2V19z"></path>
+					<path fill="#29A5DE"
+						d="M35.8,18.4c-1,0.6-2.1,0.9-3.5,0.9c-1.8,0-3.3-0.6-4.4-1.8c-1.1-1.2-1.7-2.7-1.7-4.6c0-2.1,0.6-3.7,1.8-5 C29.4,6.7,30.9,6,32.9,6C34,6,35,6.2,35.9,6.7v2.1c-0.9-0.7-1.9-1-3-1c-1.3,0-2.3,0.5-3.2,1.4c-0.8,0.9-1.2,2.1-1.2,3.6 c0,1.5,0.4,2.6,1.2,3.5c0.8,0.9,1.8,1.3,3.1,1.3c1.1,0,2.1-0.4,3.1-1.1V18.4z"></path>
+					<path fill="#29A5DE"
+						d="M44.9,8.4C44.5,8.1,44,8,43.3,8c-0.9,0-1.6,0.4-2.2,1.2c-0.6,0.8-0.9,1.9-0.9,3.3V19h-2V6.3h2v2.6h0 c0.3-0.9,0.7-1.6,1.3-2.1c0.6-0.5,1.3-0.7,2-0.7c0.5,0,0.9,0.1,1.2,0.2V8.4z"></path>
+					<path fill="#29A5DE"
+						d="M51.4,19.3c-1.9,0-3.4-0.6-4.5-1.8c-1.1-1.2-1.7-2.7-1.7-4.7c0-2.1,0.6-3.8,1.7-5S49.7,6,51.7,6 c1.9,0,3.4,0.6,4.4,1.7c1.1,1.2,1.6,2.8,1.6,4.8c0,2-0.6,3.6-1.7,4.8C54.8,18.6,53.3,19.3,51.4,19.3z M51.5,7.7 c-1.3,0-2.3,0.4-3.1,1.3c-0.8,0.9-1.1,2.1-1.1,3.7c0,1.5,0.4,2.7,1.1,3.5c0.8,0.9,1.8,1.3,3.1,1.3c1.3,0,2.3-0.4,3-1.3 c0.7-0.8,1.1-2,1.1-3.6c0-1.6-0.4-2.8-1.1-3.6C53.8,8.2,52.8,7.7,51.5,7.7z"></path>
+					<path fill="#29A5DE"
+						d="M59.5,18.5v-2.2c1.1,0.8,2.3,1.2,3.6,1.2c1.8,0,2.7-0.6,2.7-1.8c0-0.3-0.1-0.6-0.2-0.9 c-0.2-0.2-0.4-0.4-0.6-0.6c-0.3-0.2-0.6-0.3-0.9-0.5c-0.3-0.1-0.7-0.3-1.1-0.4c-0.6-0.2-1-0.4-1.5-0.7c-0.4-0.2-0.8-0.5-1.1-0.8 c-0.3-0.3-0.5-0.6-0.6-1c-0.1-0.4-0.2-0.8-0.2-1.3c0-0.6,0.1-1.1,0.4-1.6C60.2,7.7,60.5,7.3,61,7c0.5-0.3,1-0.5,1.5-0.7 C63.1,6.1,63.7,6,64.3,6c1.1,0,2.1,0.2,2.9,0.6v2c-0.9-0.6-2-0.9-3.2-0.9c-0.4,0-0.7,0-1,0.1c-0.3,0.1-0.6,0.2-0.8,0.4 c-0.2,0.2-0.4,0.3-0.5,0.6c-0.1,0.2-0.2,0.5-0.2,0.7c0,0.3,0.1,0.6,0.2,0.8c0.1,0.2,0.3,0.4,0.5,0.6c0.2,0.2,0.5,0.3,0.8,0.5 c0.3,0.1,0.7,0.3,1.1,0.5c0.6,0.2,1.1,0.4,1.5,0.7c0.4,0.2,0.8,0.5,1.1,0.8c0.3,0.3,0.6,0.6,0.7,1c0.2,0.4,0.3,0.8,0.3,1.3 c0,0.6-0.1,1.2-0.4,1.6c-0.3,0.5-0.6,0.8-1.1,1.1c-0.5,0.3-1,0.5-1.6,0.7c-0.6,0.1-1.2,0.2-1.9,0.2C61.6,19.3,60.4,19,59.5,18.5z"></path>
+					<path fill="#29A5DE"
+						d="M75.6,19.3c-1.9,0-3.4-0.6-4.5-1.8c-1.1-1.2-1.7-2.7-1.7-4.7c0-2.1,0.6-3.8,1.7-5C72.4,6.6,73.9,6,75.9,6 c1.9,0,3.4,0.6,4.4,1.7c1.1,1.2,1.6,2.8,1.6,4.8c0,2-0.6,3.6-1.7,4.8C79,18.6,77.5,19.3,75.6,19.3z M75.7,7.7 c-1.3,0-2.3,0.4-3.1,1.3c-0.8,0.9-1.1,2.1-1.1,3.7c0,1.5,0.4,2.7,1.1,3.5c0.8,0.9,1.8,1.3,3.1,1.3c1.3,0,2.3-0.4,3-1.3 c0.7-0.8,1.1-2,1.1-3.6c0-1.6-0.4-2.8-1.1-3.6C78.1,8.2,77,7.7,75.7,7.7z"></path>
+					<path fill="#29A5DE"
+						d="M97.6,8.1V6.3h-3.2V2.6l-2,0.7v3.1h-2.6h-1.5h-1.4V4.4c0-1.8,0.7-2.7,2.1-2.7c0.5,0,0.9,0.1,1.3,0.3V0.2 C89.9,0.1,89.4,0,88.8,0c-1.1,0-2.1,0.4-2.9,1.2c-0.8,0.8-1.1,1.8-1.1,3.1v2h-2.2v1.7h2.2V19h2V8.1h1.4h1.5h2.6v7.5 c0,2.5,1.1,3.7,3.3,3.7c0.8,0,1.4-0.1,1.9-0.4v-1.7c-0.4,0.3-0.8,0.4-1.3,0.4c-0.7,0-1.1-0.2-1.4-0.5c-0.3-0.4-0.4-1-0.4-1.8V8.1 H97.6z"></path>
+					<path fill="#29A5DE"
+						d="M119.9,19h-2.3l-1.9-5h-7.5l-1.8,5h-2.3L111,1.3h2.1L119.9,19z M115.1,12.1l-2.8-7.5 c-0.1-0.2-0.2-0.6-0.3-1.2h0c-0.1,0.5-0.2,0.9-0.3,1.2l-2.7,7.5H115.1z"></path>
+					<path fill="#29A5DE"
+						d="M130.4,6.9l-7.5,10.3h7.4V19H120v-0.6l7.5-10.3h-6.8V6.3h9.7V6.9z"></path>
+					<path fill="#29A5DE"
+						d="M142.6,19h-2v-2h0c-0.8,1.5-2.1,2.3-3.9,2.3c-3,0-4.5-1.8-4.5-5.4V6.3h2v7.2c0,2.7,1,4,3.1,4 c1,0,1.8-0.4,2.4-1.1c0.6-0.7,1-1.7,1-2.9V6.3h2V19z"></path>
+					<path fill="#29A5DE"
+						d="M152.6,8.4c-0.4-0.3-0.9-0.4-1.5-0.4c-0.9,0-1.6,0.4-2.2,1.2c-0.6,0.8-0.9,1.9-0.9,3.3V19h-2V6.3h2v2.6h0 c0.3-0.9,0.7-1.6,1.3-2.1c0.6-0.5,1.3-0.7,2-0.7c0.5,0,0.9,0.1,1.2,0.2V8.4z"></path>
+					<path fill="#29A5DE"
+						d="M164,13.1h-8.9c0,1.4,0.4,2.5,1.1,3.3c0.7,0.8,1.7,1.1,3,1.1c1.4,0,2.7-0.5,3.9-1.4V18 c-1.1,0.8-2.6,1.2-4.4,1.2c-1.8,0-3.2-0.6-4.2-1.7c-1-1.1-1.5-2.8-1.5-4.8c0-2,0.6-3.6,1.7-4.8c1.1-1.2,2.5-1.9,4.1-1.9 s2.9,0.5,3.8,1.6s1.4,2.6,1.4,4.4V13.1z M161.9,11.4c0-1.2-0.3-2.1-0.8-2.7c-0.6-0.6-1.3-1-2.3-1c-1,0-1.8,0.3-2.4,1 c-0.7,0.7-1.1,1.6-1.2,2.7H161.9z"></path></svg></a>
+			<ul class="menu-tools">
+				<li class="sales"><a href="/en-us/overview/sales-number/"
+					ms.pgarea="header" ms.cmpgrp="header" ms.cmptyp="link"
+					ms.cmpnm="Sales 1-800-867-1389" ms.title="Sales" km.title="Sales"
+					ms.interactiontype="1">Sales <span data-control="geophone">1-800-867-1389</span></a>
+					<span class="slider-sales-tooltip"><span><p>Questions
+								about Azure? Contact our sales team.</p>
+							<p>
+								<span data-control="geocountry"
+									style="text-transform: capitalize;">united states</span>: <span
+									data-control="geophone">1-800-867-1389</span><br>
+								<span data-control="united-states-sales-phone"
+									style="display: none;">United States: 1-800-867-1389</span>
+							</p>
+							<a href="https://azure.microsoft.com/en-us/overview/sales-number/"
+							class="wa-arrowLink wa-arrowLink-blue" ms.pgarea="header"
+							ms.cmpgrp="header" ms.cmptyp="link"
+							ms.cmpnm="Find a local number or submit query form" ms.title=""
+							km.title="" ms.interactiontype="1">Find a local number or
+								submit query form</a></span></span></li>
+				<li><a href="https://azure.microsoft.com/en-us/account/" ms.pgarea="header"
+					ms.cmpgrp="header" ms.cmptyp="link" ms.cmpnm="My Account"
+					ms.title="My Account" km.title="My Account" ms.interactiontype="1">My
+						Account</a></li>
+				<li><a href="https://portal.azure.com/" ms.pgarea="header"
+					ms.cmpgrp="header" ms.cmptyp="link" ms.cmpnm="Portal"
+					ms.title="Portal" km.title="Portal" ms.interactiontype="1">Portal</a></li>
+				<li><a href="/logout" ms.pgarea="header"
+					ms.cmpgrp="header" ms.cmptyp="link" ms.cmpnm="Sign Out"
+					ms.title="Sign Out" km.title="Sign Out" ms.interactiontype="1">Sign Out</a></li>
+			</ul>
+		</div>
+		<div class="nav-end"></div>
+	</header>
+	<div class="wa-container javavmcreation" data-tag-area="content"
+		data-tag-group="body" style="padding-top: 0px;">
+		<section id="titleSection"
+			class="wa-section wa-section-mini wa-section-blue javavm-hero">
+			<div class="wa-content">
+				<div class="container-fluid">
+					<h1>Deploy a Java web app on a Linux VM</h1>
+				</div>
+			</div>
+		</section>
+		<div class="wa-content wa-content-4up wa-content-divided ng-scope"
+			style="padding-top: 20px">
+			<h5>Create a Linux VM running Tomcat in a few clicks!</h5>
+			<h5>This service automatically creates a Linux VM on Microsoft Azure running 
+			Tomcat ready for your Java code deployment.</h5>
+			<h5>FTP/SCP/SSH is set up automatically.</h5>
+			<div class="appservices-div"/>
+				<div class="appservice-container box-container ng-scope">
+					<div class="sprite-WebApp" onclick="goToStartPage('linuxVM')"><p>Ubuntu</p><p>
+						<strong>Linux VM</strong></p>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div class="wa-content"></div>
+		<footer data-tag-area="footer" data-tag-group="footer">
+			<div class="wa-content wa-content-4up">
+				<div class="wa-spacer">
+					<h6>Go Social</h6>
+					<ul class="wa-linkList wa-linkList-social">
+						<li class="facebook"><a
+							href="https://www.facebook.com/microsoftazure" ms.pgarea="footer"
+							ms.cmpgrp="footer" ms.cmptyp="social"
+							ms.cmpnm="Go Social | Facebook" ms.title="" km.title=""
+							ms.interactiontype="1" ms.index="0">Facebook</a></li>
+						<li class="twitter"><a href="https://twitter.com/azure"
+							ms.pgarea="footer" ms.cmpgrp="footer" ms.cmptyp="social"
+							ms.cmpnm="Go Social | Twitter" ms.title="" km.title=""
+							ms.interactiontype="1" ms.index="1">Twitter</a></li>
+						<li class="rss"><a
+							href="https://azure.microsoft.com/en-us/blog/feed/"
+							ms.pgarea="footer" ms.cmpgrp="footer" ms.cmptyp="link list link"
+							ms.cmpnm="Go Social | Rss" ms.title="" km.title=""
+							ms.interactiontype="1" ms.index="2">Rss</a></li>
+						<li class="newsletter"><a
+							href="https://azure.microsoft.com/en-us/community/newsletter/"
+							ms.pgarea="footer" ms.cmpgrp="footer" ms.cmptyp="link list link"
+							ms.cmpnm="Go Social | Newsletter" ms.title="" km.title=""
+							ms.interactiontype="1" ms.index="3">Newsletter</a></li>
+					</ul>
+				</div>
+				<div class="wa-spacer">
+					<div class="" data-control="toggle">
+						<h6 class="toggler">
+							<a href="https://azure.microsoft.com/en-us/" ms.pgarea="footer"
+								ms.cmpgrp="footer" ms.cmptyp="link" ms.cmpnm="Microsoft Azure"
+								ms.title="" km.title="" ms.interactiontype="1">Microsoft
+								Azure</a>
+						</h6>
+						<ul class="wa-linkList toggled">
+							<li><a href="https://azure.microsoft.com/en-us/services/"
+								ms.pgarea="footer" ms.cmpgrp="footer" ms.cmptyp="link list link"
+								ms.cmpnm="Microsoft Azure | Services" ms.title="" km.title=""
+								ms.interactiontype="1" ms.index="0">Services</a></li>
+							<li><a href="https://azure.microsoft.com/en-us/regions/"
+								ms.pgarea="footer" ms.cmpgrp="footer" ms.cmptyp="link list link"
+								ms.cmpnm="Microsoft Azure | Regions" ms.title="" km.title=""
+								ms.interactiontype="1" ms.index="1">Regions</a></li>
+							<li><a
+								href="https://azure.microsoft.com/en-us/case-studies/"
+								ms.pgarea="footer" ms.cmpgrp="footer" ms.cmptyp="link list link"
+								ms.cmpnm="Microsoft Azure | Case Studies" ms.title=""
+								km.title="" ms.interactiontype="1" ms.index="2">Case Studies</a></li>
+							<li><a href="https://azure.microsoft.com/en-us/pricing/"
+								ms.pgarea="footer" ms.cmpgrp="footer" ms.cmptyp="link list link"
+								ms.cmpnm="Microsoft Azure | Pricing" ms.title="" km.title=""
+								ms.interactiontype="1" ms.index="3">Pricing</a></li>
+							<li><a
+								href="https://azure.microsoft.com/en-us/pricing/member-offers/"
+								ms.pgarea="footer" ms.cmpgrp="footer" ms.cmptyp="link list link"
+								ms.cmpnm="Microsoft Azure | Member Offers" ms.title=""
+								km.title="" ms.interactiontype="1" ms.index="4">Member
+									Offers</a></li>
+							<li><a
+								href="https://azure.microsoft.com/en-us/pricing/calculator/"
+								ms.pgarea="footer" ms.cmpgrp="footer" ms.cmptyp="link list link"
+								ms.cmpnm="Microsoft Azure | Calculator" ms.title="" km.title=""
+								ms.interactiontype="1" ms.index="5">Calculator</a></li>
+							<li><a
+								href="https://azure.microsoft.com/en-us/documentation/"
+								ms.pgarea="footer" ms.cmpgrp="footer" ms.cmptyp="link list link"
+								ms.cmpnm="Microsoft Azure | Documentation" ms.title=""
+								km.title="" ms.interactiontype="1" ms.index="6">Documentation</a></li>
+							<li><a
+								href="https://azure.microsoft.com/en-us/downloads/?sdk=net"
+								ms.pgarea="footer" ms.cmpgrp="footer" ms.cmptyp="link list link"
+								ms.cmpnm="Microsoft Azure | Downloads" ms.title="" km.title=""
+								ms.interactiontype="1" ms.index="7">Downloads</a></li>
+							<li><a
+								href="https://azure.microsoft.com/en-us/documentation/samples/"
+								ms.pgarea="footer" ms.cmpgrp="footer" ms.cmptyp="link list link"
+								ms.cmpnm="Microsoft Azure | Samples" ms.title="" km.title=""
+								ms.interactiontype="1" ms.index="8">Samples</a></li>
+							<li><a href="https://azure.microsoft.com/en-us/marketplace/"
+								ms.pgarea="footer" ms.cmpgrp="footer" ms.cmptyp="link list link"
+								ms.cmpnm="Microsoft Azure | Marketplace" ms.title="" km.title=""
+								ms.interactiontype="1" ms.index="9">Marketplace</a></li>
+							<li><a href="http://www.windowsazure.cn/zh-cn/"
+								ms.pgarea="footer" ms.cmpgrp="footer" ms.cmptyp="link list link"
+								ms.cmpnm="Microsoft Azure | Azure in China" ms.title=""
+								km.title="" ms.interactiontype="1" ms.index="10">Azure in
+									China</a></li>
+							<li><a
+								href="https://azure.microsoft.com/en-us/features/gov/"
+								ms.pgarea="footer" ms.cmpgrp="footer" ms.cmptyp="link list link"
+								ms.cmpnm="Microsoft Azure | Azure Government" ms.title=""
+								km.title="" ms.interactiontype="1" ms.index="11">Azure
+									Government</a></li>
+						</ul>
+					</div>
+				</div>
+				<div class="wa-spacer">
+					<div class="" data-control="toggle">
+						<h6 class="toggler">
+							<a href="https://azure.microsoft.com/en-us/blog/"
+								ms.pgarea="footer" ms.cmpgrp="footer" ms.cmptyp="link"
+								ms.cmpnm="Community" ms.title="" km.title=""
+								ms.interactiontype="1">Community</a>
+						</h6>
+						<ul class="wa-linkList toggled">
+							<li><a href="https://azure.microsoft.com/en-us/blog/"
+								target="_blank" ms.pgarea="footer" ms.cmpgrp="footer"
+								ms.cmptyp="link list link" ms.cmpnm="Community | Blog"
+								ms.title="" km.title="" ms.interactiontype="1" ms.index="0">Blog</a></li>
+							<li><a href="https://azure.microsoft.com/en-us/updates/"
+								ms.pgarea="footer" ms.cmpgrp="footer" ms.cmptyp="link list link"
+								ms.cmpnm="Community | Service Updates" ms.title="" km.title=""
+								ms.interactiontype="1" ms.index="1">Service Updates</a></li>
+							<li><a
+								href="https://azure.microsoft.com/en-us/support/forums/"
+								ms.pgarea="footer" ms.cmpgrp="footer" ms.cmptyp="link list link"
+								ms.cmpnm="Community | Forums" ms.title="" km.title=""
+								ms.interactiontype="1" ms.index="2">Forums</a></li>
+							<li><a
+								href="https://azure.microsoft.com/en-us/community/events/"
+								ms.pgarea="footer" ms.cmpgrp="footer" ms.cmptyp="link list link"
+								ms.cmpnm="Community | Events" ms.title="" km.title=""
+								ms.interactiontype="1" ms.index="3">Events</a></li>
+							<li><a
+								href="http://news.microsoft.com/features/azure/?wt.mc_id=azuremktg_hp_careers"
+								ms.pgarea="footer" ms.cmpgrp="footer" ms.cmptyp="link list link"
+								ms.cmpnm="Community | Careers" ms.title="" km.title=""
+								ms.interactiontype="1" ms.index="4">Careers</a></li>
+						</ul>
+					</div>
+					<div class="" data-control="toggle">
+						<h6 class="toggler">
+							<a href="https://azure.microsoft.com/en-us/support/options/"
+								ms.pgarea="footer" ms.cmpgrp="footer" ms.cmptyp="link"
+								ms.cmpnm="Support" ms.title="" km.title=""
+								ms.interactiontype="1">Support</a>
+						</h6>
+						<ul class="wa-linkList toggled">
+							<li><a
+								href="https://azure.microsoft.com/en-us/support/forums/"
+								ms.pgarea="footer" ms.cmpgrp="footer" ms.cmptyp="link list link"
+								ms.cmpnm="Support | Forums" ms.title="" km.title=""
+								ms.interactiontype="1" ms.index="0">Forums</a></li>
+							<li><a href="https://azure.microsoft.com/en-us/status/"
+								ms.pgarea="footer" ms.cmpgrp="footer" ms.cmptyp="link list link"
+								ms.cmpnm="Support | Azure Status Dashboard" ms.title=""
+								km.title="" ms.interactiontype="1" ms.index="1">Azure Status
+									Dashboard</a></li>
+							<li><a
+								href="https://azure.microsoft.com/en-us/support/options/"
+								ms.pgarea="footer" ms.cmpgrp="footer" ms.cmptyp="link list link"
+								ms.cmpnm="Support | Support" ms.title="" km.title=""
+								ms.interactiontype="1" ms.index="2">Support</a></li>
+						</ul>
+					</div>
+				</div>
+				<div class="wa-spacer">
+					<div class="" data-control="toggle">
+						<h6 class="toggler">
+							<a href="https://account.windowsazure.com/Home/Index"
+								ms.pgarea="footer" ms.cmpgrp="footer" ms.cmptyp="link"
+								ms.cmpnm="Account" ms.title="" km.title=""
+								ms.interactiontype="1">Account</a>
+						</h6>
+						<ul class="wa-linkList toggled">
+							<li><a
+								href="https://account.windowsazure.com/subscriptions/"
+								ms.pgarea="footer" ms.cmpgrp="footer" ms.cmptyp="link list link"
+								ms.cmpnm="Account | Subscriptions" ms.title="" km.title=""
+								ms.interactiontype="1" ms.index="0">Subscriptions</a></li>
+							<li><a href="https://account.windowsazure.com/profile/"
+								ms.pgarea="footer" ms.cmpgrp="footer" ms.cmptyp="link list link"
+								ms.cmpnm="Account | Profile" ms.title="" km.title=""
+								ms.interactiontype="1" ms.index="1">Profile</a></li>
+							<li><a
+								href="https://azure.microsoft.com/en-us/services/preview/"
+								ms.pgarea="footer" ms.cmpgrp="footer" ms.cmptyp="link list link"
+								ms.cmpnm="Account | Preview Features" ms.title="" km.title=""
+								ms.interactiontype="1" ms.index="2">Preview Features</a></li>
+							<li><a href="https://portal.azure.com/" ms.pgarea="footer"
+								ms.cmpgrp="footer" ms.cmptyp="link list link"
+								ms.cmpnm="Account | Microsoft Azure portal" ms.title=""
+								km.title="" ms.interactiontype="1" ms.index="3">Microsoft
+									Azure portal</a></li>
+						</ul>
+					</div>
+					<div class="" data-control="toggle">
+						<h6 class="toggler">
+							<a href="https://azure.microsoft.com/en-us/support/trust-center/"
+								ms.pgarea="footer" ms.cmpgrp="footer" ms.cmptyp="link"
+								ms.cmpnm="Trust Center" ms.title="" km.title=""
+								ms.interactiontype="1">Trust Center</a>
+						</h6>
+						<ul class="wa-linkList toggled">
+							<li><a
+								href="https://azure.microsoft.com/en-us/support/trust-center/security/"
+								ms.pgarea="footer" ms.cmpgrp="footer" ms.cmptyp="link list link"
+								ms.cmpnm="Trust Center | Security" ms.title="" km.title=""
+								ms.interactiontype="1" ms.index="0">Security</a></li>
+							<li><a
+								href="https://azure.microsoft.com/en-us/support/trust-center/privacy/"
+								ms.pgarea="footer" ms.cmpgrp="footer" ms.cmptyp="link list link"
+								ms.cmpnm="Trust Center | Privacy" ms.title="" km.title=""
+								ms.interactiontype="1" ms.index="1">Privacy</a></li>
+							<li><a
+								href="https://azure.microsoft.com/en-us/support/trust-center/compliance/"
+								ms.pgarea="footer" ms.cmpgrp="footer" ms.cmptyp="link list link"
+								ms.cmpnm="Trust Center | Compliance" ms.title="" km.title=""
+								ms.interactiontype="1" ms.index="2">Compliance</a></li>
+						</ul>
+					</div>
+				</div>
+			</div>
+			<div
+				class="wa-content wa-content-10up wa-content-divided footer-bottom">
+				<div class="wa-spacer hello"></div>
+				<div class="wa-spacer preferences"></div>
+				<div class="wa-spacer wa-spacer-4down">
+					<ul class="wa-linkList wa-linkList-legal">
+						<li class="german-legal"><a
+							href="http://www.microsoft.com/de-de/rechtliche-hinweise/nutzungsbedingungen.aspx"
+							ms.pgarea="footer" ms.cmpgrp="footer" ms.cmptyp="link list link"
+							ms.cmpnm="| Nutzungsbedingungen" ms.title="" km.title=""
+							ms.interactiontype="1" ms.index="0">Nutzungsbedingungen</a></li>
+						<li class="german-legal"><a
+							href="http://www.microsoft.com/de-de/rechtliche-hinweise/impressum.aspx"
+							ms.pgarea="footer" ms.cmpgrp="footer" ms.cmptyp="link list link"
+							ms.cmpnm="| Impressum" ms.title="" km.title=""
+							ms.interactiontype="1" ms.index="1">Impressum</a></li>
+						<li><a
+							href="https://azure.microsoft.com/en-us/overview/contact-us/"
+							ms.pgarea="footer" ms.cmpgrp="footer" ms.cmptyp="link list link"
+							ms.cmpnm="| Contact Us" ms.title="" km.title=""
+							ms.interactiontype="1" ms.index="2">Contact Us</a></li>
+						<li class="feedback"><a
+							href="https://feedback.azure.com/forums/34192--general-feedback"
+							ms.pgarea="footer" ms.cmpgrp="footer" ms.cmptyp="link list link"
+							ms.cmpnm="| Feedback" ms.title="" km.title=""
+							ms.interactiontype="1" ms.index="3">Feedback</a></li>
+						<li><a href="http://go.microsoft.com/fwlink/p/?linkid=222682"
+							ms.pgarea="footer" ms.cmpgrp="footer" ms.cmptyp="link list link"
+							ms.cmpnm="| Trademarks" ms.title="" km.title=""
+							ms.interactiontype="1" ms.index="4">Trademarks</a></li>
+						<li><a href="http://go.microsoft.com/fwlink/?LinkId=248681"
+							ms.pgarea="footer" ms.cmpgrp="footer" ms.cmptyp="link list link"
+							ms.cmpnm="| Privacy &amp; Cookies" ms.title="" km.title=""
+							ms.interactiontype="1" ms.index="5">Privacy &amp; Cookies</a></li>
+					</ul>
+				</div>
+				<div class="wa-spacer">
+					<div class="footer-copyright">
+						<a href="http://www.microsoft.com" class="logo-microsoft"
+							ms.pgarea="footer" ms.cmpgrp="footer" ms.cmptyp="link"
+							ms.cmpnm="Microsoft" ms.title="" km.title=""
+							ms.interactiontype="1">Microsoft</a> <span>¬© 2016
+							Microsoft</span>
+					</div>
+				</div>
+			</div>
+			<script type="text/javascript">
+			    var varAutoFirePV = 1;
+			    var varClickTracking = 1;
+			    var varCustomerTracking = 1;
+			    var Route = "20043";
+			    document.write("<script type='text/javascript' src='" + (window.location.protocol) + "//c.microsoft.com/ms.js'" + "'><\/script>");
+			</script>‚Äã			
+		</footer>
+	</div>
+	<script type="text/javascript">
+	function goToStartPage(type) {
+		window.location.href = 'https://easycreate.azure.com/' + type;
+	}
+	</script>
+</body>
+</html>ô·ê,      [÷™[÷±?ßÈ5           :https://easycreate.azure.com/ necko:classified 1 strongly-framed 1 security-info FnhllAKWRHGAlo+ESXykKAAAAAAAAAAAwAAAAAAAAEaphjojH6pBabDSgSnsfLHeAAQAAgAAAAAAAAAAAAAAAAAAAAAB4vFIJp5wRkeyPxAQ9RJGKPqbqVvKO0mKuIl8ec8o/uhmCjImkVxP+7sgiYWmMt8FvcOXmlQiTNWFiWlrbpbqgwAAAAAAAAOUMIIDkDCCAnigAwIBAgIERTJgLTANBgkqhkiG9w0BAQsFADCBijEUMBIGA1UEBhMLUG9ydFN3aWdnZXIxFDASBgNVBAgTC1BvcnRTd2lnZ2VyMRQwEgYDVQQHEwtQb3J0U3dpZ2dlcjEUMBIGA1UEChMLUG9ydFN3aWdnZXIxFzAVBgNVBAsTDlBvcnRTd2lnZ2VyIENBMRcwFQYDVQQDEw5Qb3J0U3dpZ2dlciBDQTAeFw0xNDEwMjgxMzEyMTBaFw0zODEwMjgxMzEyMTBaMGQxFDASBgNVBAYTC1BvcnRTd2lnZ2VyMRQwEgYDVQQKEwtQb3J0U3dpZ2dlcjEXMBUGA1UECxMOUG9ydFN3aWdnZXIgQ0ExHTAbBgNVBAMTFGVhc3ljcmVhdGUuYXp1cmUuY29tMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAip+3piiDbJ1qj2fgv1bKm0H/5eDbJiId+G1wUdMXTYPW32/sXKIIUZZmz44WfwNugNoCeka4NndBhjC6W6gPJ05UURlxAA9/d9tc5OMntPRJVwpb6oLhqnajiaT0NOQzxQ+sEjqvilQBG5ROW4vizKgS4qQxEc4FHu8c3qlVZNItJXYfckDiJN2Ls3AUfYoEhLsOapWnZjGL1yh2DPWGc9Ee2sTHPMQLWnSuwvSnxT3xCOS0tp4ZsuLwa04BcmIX5BLyn5iI+h019CEhQgAtpZXAS6RA3Lolu+rQB6daVw3lrUnmld+gHjnLXZXlYK25rBrN37uqabkXFoxGVG4xNwIDAQABoyMwITAfBgNVHREEGDAWghRlYXN5Y3JlYXRlLmF6dXJlLmNvbTANBgkqhkiG9w0BAQsFAAOCAQEAA5tnAPsEXzLHVF8PVkB0UBeGjCQyDF/ewgnGK69tOX/gKKb5O3TV47OTAfyfiyF6gMSAQLgo7uIMZWH7Qiz4IQFTRJ0BUdZctmuYD6tvi2+nrakAxUPorLL3KjLW/Hq3iAR1NN8uSDskv4GJa04BV0KMCGPXLwYptf0Nl9L4l40Sv8AxL4KsLXGryRac1PCtaBxU0faVZ9eRdgsFj+TEU01ZrzixCr26aVR9IYMSXRHv3NJrKyiNq0Yzog8Y6ck5N8cC8I3P1+lfH1kyGEi7tVt28RQJWozBHdgIM+bHFfQqardQdqAkQoVB1zZxqRz6Nr72dcmCZF5Akh9HpQcn8MAvAQMAAAAAAQEAAAAA request-method GET request-Accept-Encoding gzip, deflate, br response-head HTTP/1.1 200 OK
+Content-Type: text/html;charset=UTF-8
+Vary: Accept-Encoding
+Server: Apache-Coyote/1.1
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 19:02:01 GMT
+Content-Length: 21682
+ original-response-headers Content-Type: text/html;charset=UTF-8
+Vary: Accept-Encoding
+Server: Apache-Coyote/1.1
+Set-Cookie: JSESSIONID=B7C4F445A4CDF7F8F9119115D71CC62D; Path=/; Secure; HttpOnly
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 19:02:01 GMT
+Connection: close
+Content-Length: 21682
+ uncompressed-len 0 net-response-time-onstart 734 net-response-time-onstop 788 predictor::resource-count 5 predictor::https://easycreate.azure.com/styles/vendor-c2769e81fe.css 1,1,1540753322,4096 predictor::https://easycreate.azure.com/styles/app-e19e6fabc0.css 1,1,1540753322,4096 predictor::https://code.jquery.com/jquery-2.2.0.min.js 1,1,1540753322,4096 predictor::https://c.microsoft.com/ms.js 1,1,1540753322,4096 predictor::https://easycreate.azure.com/assets/images/javavm-hero.svg 1,1,1540753322,4096   T≤

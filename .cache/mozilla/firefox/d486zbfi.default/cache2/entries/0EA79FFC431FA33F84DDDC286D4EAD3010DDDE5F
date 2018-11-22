@@ -1,0 +1,306 @@
+var __extends = (this && this.__extends) || (function () {
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    }
+    return function (d, b) {
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
+define(["require", "exports", "knockout", "q", "../../Contracts/ViewModels", "../../Shared/Telemetry/TelemetryConstants", "../../Common/Constants", "../../Common/ErrorParserUtility", "../../Common/EditableUtility", "../../Utils/PricingUtils", "../../Shared/Constants", "./TabsBase", "../Menus/CommandBar/CommandBarOptions", "../../Shared/Telemetry/TelemetryProcessor", "../../PlatformType"], function (require, exports, ko, Q, ViewModels, TelemetryConstants_1, Constants, ErrorParserUtility, editable, PricingUtils, SharedConstants, TabsBase, CommandBarOptions_1, TelemetryProcessor_1, PlatformType_1) {
+    "use strict";
+    var DocumentDB = window.DocumentDB;
+    var updateThroughputBeyondLimitWarningMessage = 'You are about to request an increase in throughput beyond the pre-allocated capacity. The service will scale out and increase throughput for the selected database. This operation will take 1-3 business days to complete. You can track the status of this request in Notifications.';
+    var updateThroughputDelayedApplyWarningMessage = 'You are about to request an increase in throughput beyond the pre-allocated capacity. This operation will take some time to complete.';
+    var throughputApplyDelayedMessage = function (throughput, databaseName) { return "The request to increase the throughput has successfully been submitted. This operation will take 1-3 business days to complete. View the latest status in Notifications.<br />Database: " + databaseName + ", Throughput: " + throughput + " RU/s"; };
+    var throughputApplyShortDelayMessage = function (throughput, databaseName) { return "A request to increase the throughput is currently in progress. This operation will take some time to complete.<br />Database: " + databaseName + ", Throughput: " + throughput + " RU/s"; };
+    var throughputApplyLongDelayMessage = function (throughput, databaseName) { return "A request to increase the throughput is currently in progress. This operation will take 1-3 business days to complete. View the latest status in Notifications.<br />Database: " + databaseName + ", Throughput: " + throughput + " RU/s"; };
+    var DatabaseSettingsTab = /** @class */ (function (_super) {
+        __extends(DatabaseSettingsTab, _super);
+        function DatabaseSettingsTab(options) {
+            var _this = _super.call(this, options) || this;
+            _this.throughputIncreaseFactor = Constants.ClientDefaults.databaseThroughputIncreaseFactor;
+            _this.commandBarOptions = {};
+            _this.onSaveClick = function () {
+                var promises = [];
+                _this.isExecutionError(false);
+                _this.isExecuting(true);
+                var startKey = TelemetryProcessor_1.default.traceStart(TelemetryConstants_1.Action.UpdateSettings, {
+                    databaseAccountName: _this.container.databaseAccount().name,
+                    defaultExperience: _this.container.defaultExperience(),
+                    dataExplorerArea: Constants.Areas.Tab,
+                    tabTitle: _this.tabTitle()
+                });
+                if (_this.throughput.editableIsDirty()) {
+                    var offer = _this.database.offer();
+                    var originalThroughputValue_1 = _this.throughput.getEditableOriginalValue();
+                    var newThroughput_1 = _this.throughput();
+                    if (_this.canThroughputExceedMaximumValue() && (_this.maxRUs() <= Constants.BackendDefaults.multiplePartitionMaxThroughputElastic) && (_this.throughput() > Constants.BackendDefaults.multiplePartitionMaxThroughputElastic)) {
+                        var requestPayload = {
+                            subscriptionId: DocumentDB.RequestHandler._subscriptionId(),
+                            databaseAccountName: DocumentDB.RequestHandler._databaseAccount().name,
+                            resourceGroup: DocumentDB.RequestHandler._resourceGroup(),
+                            databaseName: _this.database.id(),
+                            collectionName: undefined,
+                            throughput: newThroughput_1,
+                            offerIsRUPerMinuteThroughputEnabled: false
+                        };
+                        var updateOfferBeyondLimitPromise = _this.documentClientUtility.updateOfferThroughputBeyondLimit(requestPayload, null /** options **/).then(function () {
+                            _this.database.offer().content.offerThroughput = originalThroughputValue_1;
+                            _this.throughput(originalThroughputValue_1);
+                            _this.notificationStatusInfo(throughputApplyDelayedMessage(newThroughput_1, _this.database.id()));
+                            _this.throughput.valueHasMutated(); // force component re-render
+                        }, function (error) {
+                            TelemetryProcessor_1.default.traceFailure(TelemetryConstants_1.Action.UpdateSettings, {
+                                databaseAccountName: _this.container.databaseAccount().name,
+                                databaseName: _this.database && _this.database.id(),
+                                defaultExperience: _this.container.defaultExperience(),
+                                dataExplorerArea: Constants.Areas.Tab,
+                                tabTitle: _this.tabTitle(),
+                                error: error
+                            }, startKey);
+                        });
+                        promises.push(updateOfferBeyondLimitPromise);
+                    }
+                    else {
+                        var newOffer = {
+                            content: {
+                                offerThroughput: newThroughput_1,
+                                offerIsRUPerMinuteThroughputEnabled: false
+                            },
+                            _etag: undefined,
+                            _ts: undefined,
+                            _rid: offer._rid,
+                            _self: offer._self,
+                            id: offer.id,
+                            offerResourceId: offer.offerResourceId,
+                            offerVersion: offer.offerVersion,
+                            offerType: offer.offerType,
+                            resource: offer.resource
+                        };
+                        var updateOfferPromise = _this.container.documentClientUtility.updateOffer(_this.database.offer(), newOffer).then(function (updatedOffer) {
+                            _this.database.offer(updatedOffer);
+                            _this.database.offer.valueHasMutated();
+                        });
+                        promises.push(updateOfferPromise);
+                    }
+                }
+                if (promises.length === 0) {
+                    _this.isExecuting(false);
+                }
+                return Q.all(promises).then(function () {
+                    _this.container.isRefreshingExplorer(false);
+                    _this._setBaseline();
+                    _this.database.readSettings();
+                    TelemetryProcessor_1.default.traceSuccess(TelemetryConstants_1.Action.UpdateSettings, {
+                        databaseAccountName: _this.container.databaseAccount().name,
+                        defaultExperience: _this.container.defaultExperience(),
+                        dataExplorerArea: Constants.Areas.Tab,
+                        tabTitle: _this.tabTitle()
+                    }, startKey);
+                }, function (reason) {
+                    _this.container.isRefreshingExplorer(false);
+                    _this.isExecutionError(true);
+                    console.error(reason);
+                    _this.displayedError(ErrorParserUtility.parse(reason)[0].message);
+                    TelemetryProcessor_1.default.traceFailure(TelemetryConstants_1.Action.UpdateSettings, {
+                        databaseAccountName: _this.container.databaseAccount().name,
+                        defaultExperience: _this.container.defaultExperience(),
+                        dataExplorerArea: Constants.Areas.Tab,
+                        tabTitle: _this.tabTitle()
+                    }, startKey);
+                }).finally(function () { return _this.isExecuting(false); });
+            };
+            _this.onRevertClick = function () {
+                _this.throughput.setBaseline(_this.throughput.getEditableOriginalValue());
+                return Q();
+            };
+            _this.container = options.node && options.node.database.container;
+            _this.throughput = editable.observable();
+            _this.sharedThroughputConfiguration = ko.pureComputed(function () {
+                return _this.container && _this.container.sharedThroughputRange();
+            });
+            _this.requestUnitsUsageCost = ko.pureComputed(function () {
+                var offerThroughput = _this.throughput();
+                var hourlyPrice = PricingUtils.computeRUUsagePriceHourly(_this.container.serverId(), false /* rupm */, offerThroughput);
+                var dailyPrice = hourlyPrice * 24;
+                var currency = PricingUtils.getPriceCurrency(_this.container.serverId());
+                return "Estimated spend (" + currency + "): <b>$" + PricingUtils.calculateEstimateNumber(hourlyPrice) + " hourly / $" + PricingUtils.calculateEstimateNumber(dailyPrice) + " daily.</b>";
+            });
+            _this.costsVisible = ko.computed(function () {
+                return !_this.container.isEmulator;
+            });
+            _this.shouldDisplayPortalUsePrompt = ko.pureComputed(function () { return _this.container.getPlatformType() === PlatformType_1.PlatformType.Hosted; });
+            _this.canThroughputExceedMaximumValue = ko.pureComputed(function () { return _this.container.getPlatformType() === PlatformType_1.PlatformType.Portal && !_this.container.isRunningOnNationalCloud(); });
+            _this.canRequestSupport = ko.pureComputed(function () {
+                if (!!_this.container.isEmulator || _this.container.getPlatformType() === PlatformType_1.PlatformType.Hosted || _this.canThroughputExceedMaximumValue()) {
+                    return false;
+                }
+                return true;
+            });
+            _this.minRUs = ko.computed(function () {
+                var collectionThroughputInfo = _this.database && _this.database.offer && _this.database.offer() && _this.database.offer().content && _this.database.offer().content.collectionThroughputInfo;
+                if (collectionThroughputInfo && !!collectionThroughputInfo.minimumRUForCollection) {
+                    return collectionThroughputInfo.minimumRUForCollection;
+                }
+                return _this.sharedThroughputConfiguration().minimumRU;
+            });
+            _this.maxRUs = ko.computed(function () {
+                var collectionThroughputInfo = _this.database && _this.database.offer && _this.database.offer() && _this.database.offer().content && _this.database.offer().content.collectionThroughputInfo;
+                var numPartitions = collectionThroughputInfo && collectionThroughputInfo.numPhysicalPartitions;
+                if (!!numPartitions) {
+                    return SharedConstants.CollectionCreation.MaxRUPerPartition * numPartitions;
+                }
+                return _this.sharedThroughputConfiguration().maximumRU;
+            });
+            _this.maxRUThroughputInputLimit = ko.pureComputed(function () {
+                if (_this.container && (_this.container.getPlatformType() === PlatformType_1.PlatformType.Hosted)) {
+                    return Constants.BackendDefaults.multiplePartitionMaxThroughputElastic;
+                }
+                return _this.maxRUs();
+            });
+            _this.maxRUsText = ko.pureComputed(function () {
+                return Constants.BackendDefaults.multiplePartitionMaxThroughputElastic.toLocaleString();
+            });
+            _this.throughputTitle = ko.pureComputed(function () {
+                return "Throughput ( " + _this.minRUs().toLocaleString() + " - unlimted RU/s)";
+            });
+            _this.pendingNotification = ko.observable();
+            _this._offerReplacePending = ko.pureComputed(function () {
+                var offer = _this.database && _this.database.offer && _this.database.offer();
+                return offer && offer.hasOwnProperty("headers") && !!offer.headers[Constants.HttpHeaders.offerReplacePending];
+            });
+            _this.notificationStatusInfo = ko.observable("");
+            _this.shouldShowNotificationStatusPrompt = ko.computed(function () { return _this.notificationStatusInfo().length > 0; });
+            _this.warningMessage = ko.computed(function () {
+                var offer = _this.database && _this.database.offer && _this.database.offer();
+                if (offer && offer.hasOwnProperty("headers") && !!offer.headers[Constants.HttpHeaders.offerReplacePending]) {
+                    return throughputApplyShortDelayMessage(offer.content.offerThroughput, _this.database.id());
+                }
+                if ((_this.maxRUs() <= Constants.BackendDefaults.multiplePartitionMaxThroughputElastic) && (_this.throughput() > Constants.BackendDefaults.multiplePartitionMaxThroughputElastic) && _this.canThroughputExceedMaximumValue()) {
+                    return updateThroughputBeyondLimitWarningMessage;
+                }
+                if (_this.throughput() > _this.maxRUs()) {
+                    return updateThroughputDelayedApplyWarningMessage;
+                }
+                if (_this.pendingNotification()) {
+                    var matches = _this.pendingNotification().description.match("Throughput update for (.*) RU/s");
+                    var throughput = (matches.length > 1) && Number(matches[1]);
+                    if (throughput) {
+                        return throughputApplyLongDelayMessage(throughput, _this.database.id());
+                    }
+                }
+                return "";
+            });
+            _this.warningMessage.subscribe(function (warning) {
+                if (warning.length > 0) {
+                    _this.notificationStatusInfo("");
+                }
+            });
+            _this.shouldShowStatusBar = ko.computed(function () { return (_this.shouldShowNotificationStatusPrompt() || (_this.warningMessage && (_this.warningMessage().length > 0))); });
+            _this.displayedError = ko.observable("");
+            _this._setBaseline();
+            _this.saveSettingsButton = {
+                enabled: ko.computed(function () {
+                    // TODO: move validations to editables and display validation errors
+                    if (_this._offerReplacePending && _this._offerReplacePending()) {
+                        return false;
+                    }
+                    if (!_this.throughput()) {
+                        return false;
+                    }
+                    if (_this.throughput() < _this.minRUs()) {
+                        return false;
+                    }
+                    if (!_this.canThroughputExceedMaximumValue() && (_this.throughput() > Constants.BackendDefaults.multiplePartitionMaxThroughputElastic)) {
+                        return false;
+                    }
+                    if (_this.throughput.editableIsDirty() && !!_this.throughput()) {
+                        return true;
+                    }
+                    return false;
+                }),
+                visible: ko.computed(function () {
+                    return true;
+                })
+            };
+            _this.discardSettingsChangesButton = {
+                enabled: ko.computed(function () {
+                    if (_this.throughput.editableIsDirty()) {
+                        return true;
+                    }
+                    return false;
+                }),
+                visible: ko.computed(function () {
+                    return true;
+                })
+            };
+            _this.isTemplateReady = ko.observable(false);
+            _this._buildCommandBarOptions();
+            return _this;
+        }
+        DatabaseSettingsTab.prototype.onActivate = function () {
+            var _this = this;
+            return _super.prototype.onActivate.call(this)
+                .then(function () {
+                _this.database.selectedSubnodeKind(ViewModels.CollectionTabKind.DatabaseSettings);
+            });
+        };
+        DatabaseSettingsTab.prototype._setBaseline = function () {
+            var offerThroughput = this.database && this.database.offer && this.database.offer() && this.database.offer().content && this.database.offer().content.offerThroughput;
+            this.throughput.setBaseline(offerThroughput);
+        };
+        DatabaseSettingsTab.prototype._buildCommandBarOptions = function () {
+            var _this = this;
+            var saveSettingsButton = {
+                iconSrc: 'images/save.svg',
+                onCommandClick: this.onSaveClick,
+                commandButtonLabel: 'Save',
+                hasPopup: false,
+                visible: ko.computed(function () { return _this.saveSettingsButton.visible(); }),
+                disabled: ko.computed(function () { return !_this.saveSettingsButton.enabled(); }),
+                tabIndex: ko.computed(function () { return _this.saveSettingsButton.enabled() ? 0 : -1; })
+            };
+            var discardSettingsChangesButton = {
+                iconSrc: 'images/discard.svg',
+                onCommandClick: this.onRevertClick,
+                commandButtonLabel: 'Discard',
+                hasPopup: false,
+                visible: ko.computed(function () { return _this.discardSettingsChangesButton.visible(); }),
+                disabled: ko.computed(function () { return !_this.discardSettingsChangesButton.enabled(); }),
+                tabIndex: ko.computed(function () { return _this.discardSettingsChangesButton.enabled() ? 0 : -1; })
+            };
+            this.commandBarOptions = new CommandBarOptions_1.CommandBarOptions([
+                saveSettingsButton,
+                discardSettingsChangesButton
+            ]);
+        };
+        return DatabaseSettingsTab;
+    }(TabsBase));
+    return DatabaseSettingsTab;
+});
+êÊ‰4ß      [’æ–[’æ·?ß∂∂[◊kE   L    :https://cosmos.azure.com/built/Explorer/Tabs/DatabaseSettingsTab.js?v=1.0.1 necko:classified 1 strongly-framed 1 security-info FnhllAKWRHGAlo+ESXykKAAAAAAAAAAAwAAAAAAAAEaphjojH6pBabDSgSnsfLHeAAQAAgAAAAAAAAAAAAAAAAAAAAAB4vFIJp5wRkeyPxAQ9RJGKPqbqVvKO0mKuIl8ec8o/uhmCjImkVxP+7sgiYWmMt8FvcOXmlQiTNWFiWlrbpbqgwAAAAAAAAOMMIIDiDCCAnCgAwIBAgIERTJgUjANBgkqhkiG9w0BAQsFADCBijEUMBIGA1UEBhMLUG9ydFN3aWdnZXIxFDASBgNVBAgTC1BvcnRTd2lnZ2VyMRQwEgYDVQQHEwtQb3J0U3dpZ2dlcjEUMBIGA1UEChMLUG9ydFN3aWdnZXIxFzAVBgNVBAsTDlBvcnRTd2lnZ2VyIENBMRcwFQYDVQQDEw5Qb3J0U3dpZ2dlciBDQTAeFw0xNDEwMjgxMzEyMTBaFw0zODEwMjgxMzEyMTBaMGAxFDASBgNVBAYTC1BvcnRTd2lnZ2VyMRQwEgYDVQQKEwtQb3J0U3dpZ2dlcjEXMBUGA1UECxMOUG9ydFN3aWdnZXIgQ0ExGTAXBgNVBAMTEGNvc21vcy5henVyZS5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCKn7emKINsnWqPZ+C/VsqbQf/l4NsmIh34bXBR0xdNg9bfb+xcoghRlmbPjhZ/A26A2gJ6Rrg2d0GGMLpbqA8nTlRRGXEAD39321zk4ye09ElXClvqguGqdqOJpPQ05DPFD6wSOq+KVAEblE5bi+LMqBLipDERzgUe7xzeqVVk0i0ldh9yQOIk3YuzcBR9igSEuw5qladmMYvXKHYM9YZz0R7axMc8xAtadK7C9KfFPfEI5LS2nhmy4vBrTgFyYhfkEvKfmIj6HTX0ISFCAC2llcBLpEDcuiW76tAHp1pXDeWtSeaV36AeOctdleVgrbmsGs3fu6ppuRcWjEZUbjE3AgMBAAGjHzAdMBsGA1UdEQQUMBKCEGNvc21vcy5henVyZS5jb20wDQYJKoZIhvcNAQELBQADggEBABYikT6Y5YgJJ4IVJldlFDF5MKxp26YegXhvT8EmAbgr0yQBIlY2DtKEiHf7Q8wRoJ9y5Ajst1D7HmRba+XLjS6s3IHJ7gtuvc3fZj9MPKpbqSKRfHDB8bDOVIzmjBseg2BqckHTkcYak3b/pTWCTqKHM3LxKsDwN8F3HNQ2pY4d5ma2kR1EtWdTpRiIbir3QxJDcWVp8CgHONZcoMn33NNwnWWjAQMX6d8e1CPuBZi0t+myaYduCqPgKKox9qMXSubF6uifQkAJ5RdLZrZ2pghENA/4r1oz51wqEmpjPsStSUxRPwJ6wJrB4gwGtX7++ZHLjAaNrTSUCGwIOlAT4LnALwEDAAAAAAEBAAAAAA== request-method GET request-Accept-Encoding gzip, deflate, br response-head HTTP/1.1 200 OK
+Content-Length: 18807
+Content-Type: application/x-javascript
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:39:28 GMT
+ original-response-headers Content-Length: 18807
+Content-Type: application/x-javascript
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:39:28 GMT
+Connection: close
+ uncompressed-len 0 net-response-time-onstart 16937 net-response-time-onstop 16938   Iw

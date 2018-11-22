@@ -1,0 +1,339 @@
+<html>
+
+    <head>
+        <title>Contributor License Agreement (CLA) - Microsoft Open Source</title>
+
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <base href="/">
+        <link rel="icon" href="https://opensource.microsoft.com/favicon.ico" type="image/x-icon" />
+
+        <!-- COMPONENT SCRIPTS -->
+        <script src="//ajax.aspnetcdn.com/ajax/jQuery/jquery-2.1.3.min.js"></script>
+        <script src="/angular/angular.min.js"></script>
+        <script src="/angular-animate/angular-animate.min.js"></script>
+        <script src="/angular-route/angular-route.js"></script>
+        <script src="/angular-ui-router/release/angular-ui-router.min.js"></script>
+        <script src="/angular-bootstrap/ui-bootstrap-tpls.min.js"></script>
+        <script src="/angular-ui-select/dist/select.min.js"></script>
+        <script src="/angular-ui-utils/ui-utils.min.js"></script>
+        <script src="/angular-sanitize/angular-sanitize.min.js"></script>
+        <script src="/ng-csv/build/ng-csv.min.js"></script>
+        <script src="/angulartics/dist/angulartics.min.js"></script>
+        <script src="/angulartics/dist/angulartics-ga.min.js"></script>
+
+        <script type="text/javascript" charset="utf-8" src="assets/js/edge.5.0.1.min.js"></script>
+        <style>
+            .edgeLoad-EDGE-110781156 {
+                visibility: hidden;
+            }
+        </style>
+
+        <!-- APP -->
+        <script src="app.min.js"></script>
+
+
+        <script>
+            AdobeEdge.loadComposition('assets/js/CLA_signature_MouseOver', 'EDGE-110781156', {
+                scaleToFit: "none",
+                centerStage: "none",
+                minW: "0",
+                maxW: "undefined",
+                width: "550px",
+                height: "400px"
+            }, {
+                dom: []
+            }, {
+                dom: []
+            });
+    </script>
+
+        <!-- COMPONENT STYLESHEETS -->
+        <link href="/components-font-awesome/css/font-awesome.min.css" rel="stylesheet">
+        <link href="/octicons/lib/octicons.css" rel="stylesheet">
+        <!-- APP STYLESHEET -->
+        <link href="/assets/styles/app.css" rel="stylesheet">
+    </head>
+
+<body ng-controller="HomeCtrl">
+    <div style="overflow-x:hidden;">
+
+        <div class="lp-background-main">
+            <div class="lp-row lp-background-overlay"></div>
+        </div>
+
+        <div class="lp-start-view">
+            <!-- Header -->
+            <div class="lp-header">
+                <a class="navbar-brand" href="/">
+                    <img src="https://opensource.microsoft.com/mslogo.png" alt="Microsoft" style="width:80px;height:17px" /><br />
+                    <h4>Contributor License Agreement</h4>
+                </a>
+                <a class="lp-signin" href="" ng-click="logAdminIn()" target="_self">
+                    <b>Sign in</b>
+                </a>
+            </div>
+            <!-- Header -->
+
+            <div class="row lp-premium lp-section">
+                <div style="margin-left:48px;margin-right:48px">
+                    <p>
+                        We appreciate community contributions to code repositories open sourced by Microsoft. By signing a
+                        contributor license agreement, we ensure that the community is free to use your contributions.
+                    </p>
+                    <p style="margin-top:48px">
+                        <small>
+                            <strong>Review the CLA document</strong><br />
+                            The <a href="https://opensource.microsoft.com/pdf/microsoft-contribution-license-agreement.pdf"
+                            style="color:#0072C6">Microsoft Contributor License Agreement (CLA)</a>
+                            document is available for review as a PDF.
+                        </small>
+                    </p>
+                    <p>
+                        <small>
+                            <strong>Sign the CLA</strong><br />
+                            When you contribute to a Microsoft open source project on GitHub with a new pull request,
+                            a bot will evaluate whether you have signed the CLA. If required, the bot will comment on
+                            the pull request, including a link to this system to accept the agreement.
+                        </small>
+                    </p>
+                </div>
+                <!--
+
+
+                <img class="center-block img-responsive" src="/assets/images/CLA_text.svg" style="width:200px">
+                <div class="center-block" style="font-size:25px;font-weight:200;line-height:36px; margin-top:30px;">
+                    <p>Easily handle Contributor License Agreements (CLAs)</p>
+                    <btn class="btn btn-md btn-primary" ng-click="logAdminIn()" style="margin-top:20px; width:195px; font-size: 16px">
+                        <span class="octicon octicon-mark-github"></span>&nbsp;Administrator sign in</btn>
+                </div>
+
+
+                -->
+            </div>
+
+
+        </div>
+        <div style="margin-bottom:50px;display:none">
+
+
+            <div class="row lp-white lp-section" style="font-size: 25px;">
+                <div class="center-block">
+                    <h4>FEATURES</h4>
+                </div>
+                <div class="center-block">
+                    <div class="feature-col center-block">
+                        <div feature id="feature1" icon-src="/assets/images/feature1.svg" header="Authentication" text="Sign in with your GitHub account"
+                            style="display: inline-block; "></div>
+                        <div feature id="feature2" icon-src="/assets/images/feature2.svg" header="Integration" text="CLA assistant notifies you about new contributions via GitHub pull requests"
+                            style="display: inline-block;"></div>
+                        <div feature id="feature3" icon-src="/assets/images/feature3.svg" header="Status updates" text="CLA assistant updates the status of pull requests when a contributor signs your CLA"
+                            style="display: inline-block;"></div>
+                        <div feature id="feature4" icon-src="/assets/images/feature4.svg" header="Review" text="Review and export the list of contributors who have signed your CLA"
+                            style="display: inline-block;"></div>
+                    </div>
+                </div>
+            </div>
+
+
+            <div class="row lp-premium-darker lp-section">
+                <div class="center-block">
+                    <p>Hassle-free CLA signing
+                        <br>
+                    </p>
+                </div>
+                <div id="Stage" class="EDGE-110781156 center-block resize-img"></div>
+                <div class="center-block" style="font-size:18px">
+                    <ol style="padding: 0; list-style-position: inside;">
+                        <li>Create a pull request</li>
+                        <li>Click to accept the repository's CLA</li>
+                    </ol>
+                    <p>That's it, for real!</p>
+                    <!--<btn class="btn btn-md btn-primary" ng-click="logAdminIn()" style="margin-top:20px; width:195px; font-size: 16px"><span class="octicon octicon-mark-github"></span>&nbsp;My signed CLAs</btn> -->
+                </div>
+            </div>
+
+            <div class="row lp-section" style="height: 400px;">
+                <div class="center-block">
+                    <h4 class="lp-premium">ACTIVITY</h4>
+                </div>
+                <div class="col-md-4 col-md-offset-4" text-slider active="active" time='5000' style="text-align: center;  margin-top: 3em">
+                    <p class="lp-textblock" ng-class="{true:'lp-textblock-animate', false:''}[active === 0]">
+                        <img src="/octicons/lib/svg/repo.svg"> {{numberRepos}} registered repositories</p>
+                    <p class="lp-textblock" ng-class="{true:'lp-textblock-animate', false:''}[active === 1]">
+                        <img src="/assets/images/CLA_logo.svg" class="lp-textblock-icon"/> {{numberClas}} signed CLAs</p>
+                    <p class="lp-textblock" ng-class="{true:'lp-textblock-animate', false:''}[active === 2]">
+                        <img src="/octicons/lib/svg/star.svg"> {{numberStars}} GitHub stars</p>
+                </div>
+            </div>
+
+            <div class="row lp-white lp-section">
+                <div class="center-block">
+                    <h4>HOW IT WORKS</h4>
+                    <p>Put your CLA into a
+                        <a href="https://gist.github.com" target="_blank">Gist</a>, and link it to a repository</p>
+                </div>
+
+                <div class="row lp-bottom-space" style=" margin-top: 75px;">
+                    <div class="center-block">
+                        <div class="col-xs-12 col-sm-4 col-md-4 ">
+                            <img class="float-right " src="/assets/images/howto1.svg" style=" height: 150px;">
+                        </div>
+                    </div>
+                    <div class="col-xs-12 col-sm-4 col-md-4">
+                        <div class="how-to-align how-to-align-left" style="font-size: 24px; color:#009245; margin-top:1em;">
+                            SAVE YOUR CLA IN A GIST
+                        </div>
+                        <div class="how-to-align how-to-align-left" style="font-size: 18px;">
+                            At
+                            <a href="https://gist.github.com" target="_blank">gist.github.com</a> enter a title and text for your CLA, and create your Gist.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row lp-bottom-space">
+                    <div class="center-block">
+                        <div class="col-xs-12 col-sm-4 col-sm-push-8 col-md-4 col-md-push-8 ">
+                            <img class="float-left" src="/assets/images/howto2.svg" style="height: 150px;">
+                        </div>
+                    </div>
+                    <div class="col-xs-12 col-sm-4  col-sm-pull-4 col-md-4 col-md-pull-4 col-sm-offset-4 col-md-offset-4">
+                        <div class="how-to-align how-to-align-right" style="font-size: 24px; color:#009245; margin-top:1em;">
+                            SELECT A REPOSITORY
+                        </div>
+                        <div class="how-to-align how-to-align-right" style="font-size: 18px;">
+                            Select a repository where you need to manage contributions with a CLA.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row lp-bottom-space">
+                    <div class="center-block">
+                        <div class="col-xs-12 col-sm-4 col-md-4">
+                            <img class="float-right" src="/assets/images/howto3.svg" style="height: 150px;">
+                        </div>
+                    </div>
+                    <div class="col-xs-12 col-sm-4 col-md-4">
+                        <div class="how-to-align how-to-align-left" style="font-size: 24px; color:#009245; margin-top:1em;">
+                            LINK THEM
+                        </div>
+                        <div class="how-to-align how-to-align-left" style="font-size: 18px;">
+                            Now just link that repository to your CLA.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row lp-bottom-space">
+                    <div class="center-block">
+                        <div class="col-xs-12 col-sm-4 col-sm-push-8 col-md-4 col-md-push-8 ">
+                            <img class=" float-left" src="/assets/images/howto4.svg" style="height: 150px;">
+                        </div>
+                    </div>
+                    <div class="col-xs-12 col-sm-4  col-sm-pull-4 col-md-4 col-md-pull-4 col-sm-offset-4 col-md-offset-4">
+                        <div class="how-to-align how-to-align-right" style="font-size: 24px; color:#009245; margin-top:1em;">
+                            YAY!
+                        </div>
+                        <div class="how-to-align how-to-align-right" style="font-size: 18px; ">
+                            That's it.
+                            <br>CLA assistant will do the rest for you.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row lp-premium-darker lp-section">
+                <div class="center-block">
+                    <h4>PREVIEW</h4>
+                </div>
+                <div class="center-block" style="margin-bottom:40px;">
+                    <img src="/assets/images/browser.svg" class="center-block preview-browser" />
+                    <img src="/assets/images/preview.gif" class="center-block" />
+                </div>
+            </div>
+
+            <div class="row lp-white lp-section">
+                <div class="center-block">
+                    <h4>YOUR FEEDBACK</h4>
+                    <p style="font-size: 18px;">Do you have any feedback (bug reports, enhancements) or do you even want to contribute?
+                        <br>You are very welcome to provide your feedback, please check out our
+                        <a href="https://github.com/cla-assistant/cla-assistant/blob/master/CONTRIBUTING.md" target="_blank" style="text-decoration: underline;">contribution guidelines.</a>
+                    </p>
+                </div>
+            </div>
+
+            <div class="row lp-premium lp-section center-block">
+                <div class="center-block">
+                    <btn class="btn btn-md btn-primary" ng-click="logAdminIn()" style="margin-top:20px; width:195px; font-size: 16px">
+                        <img src="/octicons/lib/svg/mark-github.svg">&nbsp;Sign in with GitHub</btn>
+                </div>
+            </div>
+        </div>
+
+        <div class="navbar navbar-default navbar-fixed-bottom">
+            <div class="navbar-top-border">
+                <div class="container-fluid">
+                    <div class="center-block">
+                        <div class="navbar-text navbar-left">
+                            <p style="margin-bottom:0px">Â© 2017 Microsoft Corporation</p>
+                        </div>
+                    </div>
+                    <div class="navbar-text navbar-center" style="z-index:-1;">
+                        <p class="hidden-xs hidden-sm">
+                            <a href="https://github.com/cla-assistant/cla-assistant">CLA Assistant</a> made with <img src="/octicons/lib/svg/heart.svg"> from the GitHub team at SAP
+                        </p>
+                    </div>
+                <!--
+                <div class="center-block">
+                    <div class="navbar-text navbar-right">
+                        <a href="https://github.com/cla-assistant/cla-assistant/issues/new" target="space">
+                            <span class="octicon octicon-mark-github"></span> Open an issue
+                        </a>
+                    </div>
+                </div>
+                -->
+                    <div class="center-block">
+                        <div class="navbar-text navbar-right">
+                            <a href="https://go.microsoft.com/fwlink/?LinkId=521839" target="space" style="margin-right: 10px">
+                                Privacy &amp; cookies
+                            </a>
+                            <a href="https://go.microsoft.com/fwlink/?LinkID=206977" target="space" style="margin-right: 10px">
+                                Terms of use
+                            </a>
+                            <a href="https://www.microsoft.com/trademarks" target="space" style="margin-right: 10px">
+                                Trademarks
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>Sõ©Aû      [Õ´å[Õ´í?§¯Ö       &    :https://cla.opensource.microsoft.com/ necko:classified 1 strongly-framed 1 security-info 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 request-method GET response-head HTTP/1.1 200 OK
+Server: nginx/1.15.2
+Date: Sun, 28 Oct 2018 13:08:54 GMT
+Content-Type: text/html; charset=UTF-8
+Content-Length: 16039
+request-context: appId=cid-v1:4a14dc06-af47-4cd0-8634-f312252a1314
+X-Powered-By: Express
+X-Frame-Options: Deny
+X-Content-Type-Options: nosniff
+Last-Modified: Sun, 28 Oct 2018 13:08:54 GMT
+Accept-Ranges: bytes
+Cache-Control: public, max-age=0
+Etag: W/"3ea7-1656352cf00"
+ original-response-headers Server: nginx/1.15.2
+Date: Sun, 28 Oct 2018 13:08:54 GMT
+Content-Type: text/html; charset=UTF-8
+Content-Length: 16039
+Connection: keep-alive
+request-context: appId=cid-v1:4a14dc06-af47-4cd0-8634-f312252a1314
+X-Powered-By: Express
+X-Frame-Options: Deny
+X-Content-Type-Options: nosniff
+Last-Modified: Sun, 28 Oct 2018 13:08:54 GMT
+Accept-Ranges: bytes
+Cache-Control: public, max-age=0
+Etag: W/"3ea7-1656352cf00"
+Set-Cookie: connect.sid=s%3A1rFt9P94mWt9UQphQik4fLvIZdeCg5Py.4QIT1he8ebKu0tPdO6U3S2IHPRRawjyBvIfVtGZUDSg; Path=/; Expires=Sun, 28 Oct 2018 14:08:54 GMT; HttpOnly; Secure
+ uncompressed-len 0 net-response-time-onstart 1759 net-response-time-onstop 1760 predictor::resource-count 39 predictor::https://ajax.aspnetcdn.com/ajax/jQuery/jquery-2.1.3.min.js 1,1,1540732133,4096 predictor::https://cla.opensource.microsoft.com/angular/angular.min.js 1,1,1540732133,4096 predictor::https://cla.opensource.microsoft.com/angular-animate/angular-animate.min.js 1,1,1540732133,4096 predictor::https://cla.opensource.microsoft.com/angular-route/angular-route.js 1,1,1540732133,4096 predictor::https://cla.opensource.microsoft.com/angular-ui-router/release/angular-ui-router.min.js 1,1,1540732133,4096 predictor::https://cla.opensource.microsoft.com/angular-bootstrap/ui-bootstrap-tpls.min.js 1,1,1540732133,4096 predictor::https://cla.opensource.microsoft.com/angular-ui-select/dist/select.min.js 1,1,1540732133,4096 predictor::https://cla.opensource.microsoft.com/angular-ui-utils/ui-utils.min.js 1,1,1540732133,4096 predictor::https://cla.opensource.microsoft.com/angular-sanitize/angular-sanitize.min.js 1,1,1540732133,4096 predictor::https://cla.opensource.microsoft.com/ng-csv/build/ng-csv.min.js 1,1,1540732133,4096 predictor::https://cla.opensource.microsoft.com/angulartics/dist/angulartics.min.js 1,1,1540732133,4096 predictor::https://cla.opensource.microsoft.com/angulartics/dist/angulartics-ga.min.js 1,1,1540732133,4096 predictor::https://cla.opensource.microsoft.com/assets/js/edge.5.0.1.min.js 1,1,1540732133,4096 predictor::https://cla.opensource.microsoft.com/app.min.js 1,1,1540732133,4096 predictor::https://cla.opensource.microsoft.com/components-font-awesome/css/font-awesome.min.css 1,1,1540732133,4096 predictor::https://cla.opensource.microsoft.com/octicons/lib/octicons.css 1,1,1540732133,4096 predictor::https://cla.opensource.microsoft.com/assets/styles/app.css 1,1,1540732133,4096 predictor::https://opensource.microsoft.com/mslogo.png 1,1,1540732133,4096 predictor::https://cla.opensource.microsoft.com/octicons/lib/svg/repo.svg 1,1,1540732133,4096 predictor::https://cla.opensource.microsoft.com/assets/images/CLA_logo.svg 1,1,1540732133,4096 predictor::https://cla.opensource.microsoft.com/octicons/lib/svg/star.svg 1,1,1540732133,4096 predictor::https://cla.opensource.microsoft.com/assets/images/howto1.svg 1,1,1540732133,4096 predictor::https://cla.opensource.microsoft.com/assets/images/howto2.svg 1,1,1540732133,4096 predictor::https://cla.opensource.microsoft.com/assets/images/howto3.svg 1,1,1540732133,4096 predictor::https://cla.opensource.microsoft.com/assets/images/howto4.svg 1,1,1540732133,4096 predictor::https://cla.opensource.microsoft.com/assets/images/browser.svg 1,1,1540732133,4096 predictor::https://cla.opensource.microsoft.com/assets/images/preview.gif 1,1,1540732133,4096 predictor::https://cla.opensource.microsoft.com/octicons/lib/svg/mark-github.svg 1,1,1540732133,4096 predictor::https://cla.opensource.microsoft.com/octicons/lib/svg/heart.svg 1,1,1540732133,4096 predictor::https://cla.opensource.microsoft.com/%7B%7BiconSrc%7D%7D 1,1,1540732133,4096 predictor::https://cla.opensource.microsoft.com/assets/images/feature1.svg 1,1,1540732133,4096 predictor::https://cla.opensource.microsoft.com/assets/images/feature2.svg 1,1,1540732133,4096 predictor::https://cla.opensource.microsoft.com/assets/images/feature3.svg 1,1,1540732133,4096 predictor::https://cla.opensource.microsoft.com/assets/images/feature4.svg 1,1,1540732133,4096 predictor::https://cla.opensource.microsoft.com/assets/js/CLA_signature_MouseOver_edge.js 1,1,1540732133,4096 predictor::https://cla.opensource.microsoft.com/assets/js/CLA_signature_MouseOver_edgeActions.js 1,1,1540732133,4096 predictor::https://cla.opensource.microsoft.com/assets/images/CLA_sign/CLA_screen-32.svg 1,1,1540732133,4096 predictor::https://cla.opensource.microsoft.com/assets/images/CLA_sign/CLA_new_signature.svg 1,1,1540732133,4096 predictor::https://cla.opensource.microsoft.com/assets/images/CLA_sign/CLA_new_pen.svg 1,1,1540732133,4096   >§

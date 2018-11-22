@@ -1,0 +1,158 @@
+/**
+ * Graph React component
+ * Editor for neighbors (targets or sources)
+ */
+var __extends = (this && this.__extends) || (function () {
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    }
+    return function (d, b) {
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
+define(["require", "exports", "react", "./GraphUtil", "../../Controls/InputTypeahead/InputTypeaheadReact"], function (require, exports, React, GraphUtil_1, InputTypeahead) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    var EditorNeighbors = /** @class */ (function (_super) {
+        __extends(EditorNeighbors, _super);
+        function EditorNeighbors(props) {
+            var _this = _super.call(this, props) || this;
+            _this.addNewEdgeToNeighbor = (_this.props.isSource) ? _this.addNewEdgeToSource : _this.addNewEdgeToTarget;
+            return _this;
+        }
+        EditorNeighbors.prototype.componentDidMount = function () {
+            // Show empty text boxes by default if no neighbor for convenience
+            if (this.props.editedNeighbors.currentNeighbors.length === 0) {
+                if (this.props.isSource) {
+                    this.addNewEdgeToSource(this.props.editedNeighbors.vertexId);
+                }
+                else {
+                    this.addNewEdgeToTarget(this.props.editedNeighbors.vertexId);
+                }
+            }
+        };
+        EditorNeighbors.prototype.removeCurrentNeighborEdge = function (index) {
+            var sources = this.props.editedNeighbors.currentNeighbors;
+            var id = sources[index].edgeId;
+            sources.splice(index, 1);
+            var droppedIds = this.props.editedNeighbors.droppedIds;
+            droppedIds.push(id);
+            this.props.onUpdateEdges(this.props.editedNeighbors, this.props.isSource);
+        };
+        EditorNeighbors.prototype.removeAddedEdgeToNeighbor = function (index) {
+            this.props.editedNeighbors.addedEdges.splice(index, 1);
+            this.props.onUpdateEdges(this.props.editedNeighbors, this.props.isSource);
+        };
+        EditorNeighbors.prototype.addNewEdgeToSource = function (inV) {
+            this.props.editedNeighbors.addedEdges.push({
+                inputInV: inV,
+                selectedInV: { caption: inV, value: inV },
+                inputOutV: null,
+                selectedOutV: null,
+                label: null
+            });
+            this.props.onUpdateEdges(this.props.editedNeighbors, this.props.isSource);
+        };
+        EditorNeighbors.prototype.addNewEdgeToTarget = function (outV) {
+            this.props.editedNeighbors.addedEdges.push({
+                inputInV: null,
+                selectedInV: null,
+                inputOutV: outV,
+                selectedOutV: { caption: outV, value: outV },
+                label: null
+            });
+            this.props.onUpdateEdges(this.props.editedNeighbors, this.props.isSource);
+        };
+        EditorNeighbors.prototype.getTypeaheadElement = function (_edge) {
+            var showSearchButton = false;
+            if (this.props.isSource) {
+                return React.createElement(InputTypeahead.InputTypeahead, { defaultValue: _edge.inputOutV, choices: this.props.possibleVertices, onSelected: function (newValue) { _edge.selectedOutV = newValue; }, onNewValue: function (newValue) { _edge.inputOutV = newValue; }, placeholder: EditorNeighbors.ENTER_SOURCE, typeaheadOverrideOptions: { dynamic: false }, submitFct: function (inputValue, selection) {
+                        _edge.inputOutV = inputValue;
+                        _edge.selectedOutV = selection;
+                    }, showSearchButton: showSearchButton });
+            }
+            else {
+                return React.createElement(InputTypeahead.InputTypeahead, { defaultValue: _edge.inputInV, choices: this.props.possibleVertices, onSelected: function (newValue) { _edge.selectedInV = newValue; }, onNewValue: function (newValue) { _edge.inputInV = newValue; }, placeholder: EditorNeighbors.ENTER_TARGET, typeaheadOverrideOptions: { dynamic: false }, submitFct: function (inputValue, selection) {
+                        _edge.inputInV = inputValue;
+                        _edge.selectedInV = selection;
+                    }, showSearchButton: showSearchButton });
+            }
+        };
+        EditorNeighbors.prototype.getCurrentNeighborsFragment = function () {
+            var _this = this;
+            return React.createElement(React.Fragment, null, this.props.editedNeighbors.currentNeighbors.map(function (_neighbor, index) {
+                return React.createElement("tr", { key: index + "_" + _neighbor.id + "_" + _neighbor.edgeLabel },
+                    React.createElement("td", null,
+                        React.createElement("span", { title: GraphUtil_1.GraphUtil.getNeighborTitle(_neighbor) }, _neighbor.name)),
+                    React.createElement("td", { className: "labelCol" },
+                        React.createElement("span", { className: "editSeeInPadding" }, _neighbor.edgeLabel)),
+                    React.createElement("td", { className: "actionCol" },
+                        React.createElement("span", { className: "rightPaneTrashIcon rightPaneBtns", onClick: _this.removeCurrentNeighborEdge.bind(_this, index) },
+                            React.createElement("img", { src: "images/delete.svg" }))));
+            }));
+        };
+        EditorNeighbors.prototype.getAddedEdges = function () {
+            var _this = this;
+            return React.createElement(React.Fragment, null, this.props.editedNeighbors.addedEdges.map(function (_edge, index) {
+                return React.createElement("tr", { key: _edge.inputInV + "-" + _edge.inputOutV + "-" + index },
+                    React.createElement("td", { className: "valueCol" }, _this.getTypeaheadElement(_edge)),
+                    React.createElement("td", { className: "labelCol" },
+                        React.createElement(InputTypeahead.InputTypeahead, { defaultValue: _edge.label, choices: _this.props.possibleEdgeLabels, onNewValue: function (newValue) { _edge.label = newValue; }, placeholder: 'Label', typeaheadOverrideOptions: { dynamic: false }, showSearchButton: false })),
+                    React.createElement("td", { className: "actionCol" },
+                        React.createElement("span", { className: "rightPaneTrashIcon rightPaneBtns" },
+                            React.createElement("img", { src: "images/delete.svg", onClick: function (e) { return _this.removeAddedEdgeToNeighbor(index); } }))));
+            }));
+        };
+        EditorNeighbors.prototype.render = function () {
+            var neighborTitle = (this.props.isSource) ? EditorNeighbors.SOURCE_TITLE : EditorNeighbors.TARGET_TITLE;
+            return React.createElement("table", { className: "edgesTable" },
+                React.createElement("thead", { className: "propertyTableHeader" },
+                    React.createElement("tr", null,
+                        React.createElement("td", null, neighborTitle),
+                        React.createElement("td", null, "Edge label"))),
+                React.createElement("tbody", null,
+                    this.getCurrentNeighborsFragment(),
+                    this.getAddedEdges(),
+                    React.createElement("tr", null,
+                        React.createElement("td", { colSpan: 2, className: "rightPaneAddPropertyBtnPadding" },
+                            React.createElement("span", { className: "rightPaneAddPropertyBtn rightPaneBtns", onClick: this.addNewEdgeToNeighbor.bind(this, this.props.editedNeighbors.vertexId) },
+                                React.createElement("img", { src: "images/Add-property.svg" }),
+                                " ",
+                                (this.props.isSource) ? EditorNeighbors.ADD_SOURCE : EditorNeighbors.ADD_TARGET)))));
+        };
+        EditorNeighbors.SOURCE_TITLE = 'Source';
+        EditorNeighbors.TARGET_TITLE = 'Target';
+        EditorNeighbors.ADD_SOURCE = 'Add Source';
+        EditorNeighbors.ADD_TARGET = 'Add Target';
+        EditorNeighbors.ENTER_SOURCE = 'Enter Source';
+        EditorNeighbors.ENTER_TARGET = 'Enter target';
+        return EditorNeighbors;
+    }(React.Component));
+    exports.EditorNeighbors = EditorNeighbors;
+});
+¼ü®œF      [Ö[Ö‚?§å [×®÷   `    :https://cosmos.azure.com/built/Explorer/Graph/GraphExplorerComponent/EditorNeighbors.js?v=1.0.1 necko:classified 1 strongly-framed 1 security-info FnhllAKWRHGAlo+ESXykKAAAAAAAAAAAwAAAAAAAAEaphjojH6pBabDSgSnsfLHeAAQAAgAAAAAAAAAAAAAAAAAAAAAB4vFIJp5wRkeyPxAQ9RJGKPqbqVvKO0mKuIl8ec8o/uhmCjImkVxP+7sgiYWmMt8FvcOXmlQiTNWFiWlrbpbqgwAAAAAAAAOMMIIDiDCCAnCgAwIBAgIERTJgUjANBgkqhkiG9w0BAQsFADCBijEUMBIGA1UEBhMLUG9ydFN3aWdnZXIxFDASBgNVBAgTC1BvcnRTd2lnZ2VyMRQwEgYDVQQHEwtQb3J0U3dpZ2dlcjEUMBIGA1UEChMLUG9ydFN3aWdnZXIxFzAVBgNVBAsTDlBvcnRTd2lnZ2VyIENBMRcwFQYDVQQDEw5Qb3J0U3dpZ2dlciBDQTAeFw0xNDEwMjgxMzEyMTBaFw0zODEwMjgxMzEyMTBaMGAxFDASBgNVBAYTC1BvcnRTd2lnZ2VyMRQwEgYDVQQKEwtQb3J0U3dpZ2dlcjEXMBUGA1UECxMOUG9ydFN3aWdnZXIgQ0ExGTAXBgNVBAMTEGNvc21vcy5henVyZS5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCKn7emKINsnWqPZ+C/VsqbQf/l4NsmIh34bXBR0xdNg9bfb+xcoghRlmbPjhZ/A26A2gJ6Rrg2d0GGMLpbqA8nTlRRGXEAD39321zk4ye09ElXClvqguGqdqOJpPQ05DPFD6wSOq+KVAEblE5bi+LMqBLipDERzgUe7xzeqVVk0i0ldh9yQOIk3YuzcBR9igSEuw5qladmMYvXKHYM9YZz0R7axMc8xAtadK7C9KfFPfEI5LS2nhmy4vBrTgFyYhfkEvKfmIj6HTX0ISFCAC2llcBLpEDcuiW76tAHp1pXDeWtSeaV36AeOctdleVgrbmsGs3fu6ppuRcWjEZUbjE3AgMBAAGjHzAdMBsGA1UdEQQUMBKCEGNvc21vcy5henVyZS5jb20wDQYJKoZIhvcNAQELBQADggEBABYikT6Y5YgJJ4IVJldlFDF5MKxp26YegXhvT8EmAbgr0yQBIlY2DtKEiHf7Q8wRoJ9y5Ajst1D7HmRba+XLjS6s3IHJ7gtuvc3fZj9MPKpbqSKRfHDB8bDOVIzmjBseg2BqckHTkcYak3b/pTWCTqKHM3LxKsDwN8F3HNQ2pY4d5ma2kR1EtWdTpRiIbir3QxJDcWVp8CgHONZcoMn33NNwnWWjAQMX6d8e1CPuBZi0t+myaYduCqPgKKox9qMXSubF6uifQkAJ5RdLZrZ2pghENA/4r1oz51wqEmpjPsStSUxRPwJ6wJrB4gwGtX7++ZHLjAaNrTSUCGwIOlAT4LnALwEDAAAAAAEBAAAAAA== request-method GET request-Accept-Encoding gzip, deflate, br response-head HTTP/1.1 200 OK
+Content-Length: 8708
+Content-Type: application/x-javascript
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:40:01 GMT
+ original-response-headers Content-Length: 8708
+Content-Type: application/x-javascript
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:40:01 GMT
+Connection: close
+ uncompressed-len 0 net-response-time-onstart 2914 net-response-time-onstop 2914   "

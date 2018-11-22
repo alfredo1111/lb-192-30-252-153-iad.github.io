@@ -1,0 +1,581 @@
+var __extends = (this && this.__extends) || (function () {
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    }
+    return function (d, b) {
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
+define(["require", "exports", "knockout", "q", "../../Common/Constants", "../../Contracts/ViewModels", "../../Shared/Telemetry/TelemetryConstants", "../Tree/AccessibleVerticalList", "../../Common/ErrorParserUtility", "../Tree/ConflictId", "../../Common/EditableUtility", "../../Common/HeadersUtility", "./TabsBase", "../Menus/CommandBar/CommandBarOptions", "../../Common/Constants", "../../Common/Splitter", "../../Shared/Telemetry/TelemetryProcessor", "../../Common/ThemeUtility"], function (require, exports, ko, Q, Constants, ViewModels, TelemetryConstants_1, AccessibleVerticalList_1, ErrorParserUtility, ConflictId, editable, HeadersUtility, TabsBase, CommandBarOptions_1, Constants_1, Splitter_1, TelemetryProcessor_1, ThemeUtility_1) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    var ConflictsTab = /** @class */ (function (_super) {
+        __extends(ConflictsTab, _super);
+        function ConflictsTab(options) {
+            var _this = _super.call(this, options) || this;
+            _this.commandBarOptions = {};
+            _this.toolbarViewModel = ko.observable();
+            _this.loadingConflictData = ko.observable(false);
+            _this.conflictOperation = ko.observable();
+            _this._acceptButtonLabel = ko.observable("Save");
+            _this.onAcceptChangesClick = function () {
+                if (_this.isEditorDirty() && !_this._isIgnoreDirtyEditor()) {
+                    return Q();
+                }
+                _this.daytonaContext && _this.daytonaContext.telemetry.sendEvent("StorageExplorer." + ViewModels.CollectionTabKind[_this.tabKind] + ".AcceptChanges");
+                _this.isExecutionError(false);
+                _this.isExecuting(true);
+                var selectedConflict = _this.selectedConflictId();
+                var startKey = TelemetryProcessor_1.default.traceStart(TelemetryConstants_1.Action.ResolveConflict, {
+                    databaseAccountName: _this._container.databaseAccount().name,
+                    defaultExperience: _this._container.defaultExperience(),
+                    dataExplorerArea: Constants.Areas.Tab,
+                    tabTitle: _this.tabTitle(),
+                    conflictResourceType: selectedConflict.resourceType,
+                    conflictOperationType: selectedConflict.operationType,
+                    conflictResourceId: selectedConflict.resourceId
+                });
+                var operationPromise = Q();
+                if (selectedConflict.operationType === Constants.ConflictOperationType.Replace) {
+                    var documentContent = JSON.parse(_this.selectedConflictContent());
+                    operationPromise = _this._container.documentClientUtility.updateDocument(selectedConflict.buildDocumentIdFromConflict(documentContent[selectedConflict.partitionKeyProperty]), documentContent, null /*options*/);
+                }
+                if (selectedConflict.operationType === Constants.ConflictOperationType.Create) {
+                    var documentContent = JSON.parse(_this.selectedConflictContent());
+                    operationPromise = _this._container.documentClientUtility.createDocument({
+                        self: _this.collection.self,
+                        resourceName: _this.collection && _this.collection.id(),
+                        rid: _this.collection && _this.collection.rid
+                    }, documentContent, null /*options*/);
+                }
+                if (selectedConflict.operationType === Constants.ConflictOperationType.Delete && !!_this.selectedConflictContent()) {
+                    var documentContent = JSON.parse(_this.selectedConflictContent());
+                    operationPromise = _this._container.documentClientUtility.deleteDocument(selectedConflict.buildDocumentIdFromConflict(documentContent[selectedConflict.partitionKeyProperty]), null /*options*/);
+                }
+                return operationPromise.then(function () {
+                    return _this._container.documentClientUtility.deleteConflict(selectedConflict, null /* options */).then(function () {
+                        _this.conflictIds.remove(function (conflictId) { return (conflictId.rid === selectedConflict.rid); });
+                        _this.selectedConflictContent("");
+                        _this.selectedConflictCurrent("");
+                        _this.selectedConflictId(null);
+                        _this.editorState(ViewModels.DocumentExplorerState.noDocumentSelected);
+                        TelemetryProcessor_1.default.traceSuccess(TelemetryConstants_1.Action.ResolveConflict, {
+                            databaseAccountName: _this.collection && _this.collection.container.databaseAccount().name,
+                            defaultExperience: _this.collection && _this.collection.container.defaultExperience(),
+                            dataExplorerArea: Constants.Areas.Tab,
+                            tabTitle: _this.tabTitle(),
+                            conflictResourceType: selectedConflict.resourceType,
+                            conflictOperationType: selectedConflict.operationType,
+                            conflictResourceId: selectedConflict.resourceId
+                        }, startKey, _this.isRunningOnDaytona);
+                    });
+                }, function (reason) {
+                    _this.isExecutionError(true);
+                    var message = ErrorParserUtility.parse(reason)[0].message;
+                    if (!_this.isRunningOnDaytona) {
+                        window.alert(message);
+                        TelemetryProcessor_1.default.traceFailure(TelemetryConstants_1.Action.ResolveConflict, {
+                            databaseAccountName: _this.collection && _this.collection.container.databaseAccount().name,
+                            defaultExperience: _this.collection && _this.collection.container.defaultExperience(),
+                            dataExplorerArea: Constants.Areas.Tab,
+                            tabTitle: _this.tabTitle(),
+                            conflictResourceType: selectedConflict.resourceType,
+                            conflictOperationType: selectedConflict.operationType,
+                            conflictResourceId: selectedConflict.resourceId
+                        }, startKey);
+                    }
+                    else {
+                        _this.daytonaContext && _this.daytonaContext.hostProxy.executeProviderOperation("CloudExplorer.Actions.Dialog.promptOK", {
+                            title: "Error",
+                            message: message + ".",
+                            messageBoxType: "error"
+                        });
+                    }
+                }).finally(function () { return _this.isExecuting(false); });
+            };
+            _this.onDeleteClick = function () {
+                _this.daytonaContext && _this.daytonaContext.telemetry.sendEvent("StorageExplorer." + ViewModels.CollectionTabKind[_this.tabKind] + ".Delete");
+                _this.isExecutionError(false);
+                _this.isExecuting(true);
+                var selectedConflict = _this.selectedConflictId();
+                var startKey = TelemetryProcessor_1.default.traceStart(TelemetryConstants_1.Action.DeleteConflict, {
+                    databaseAccountName: _this._container.databaseAccount().name,
+                    defaultExperience: _this._container.defaultExperience(),
+                    dataExplorerArea: Constants.Areas.Tab,
+                    tabTitle: _this.tabTitle(),
+                    conflictResourceType: selectedConflict.resourceType,
+                    conflictOperationType: selectedConflict.operationType,
+                    conflictResourceId: selectedConflict.resourceId
+                });
+                return _this._container.documentClientUtility.deleteConflict(selectedConflict, null /* options */).then(function () {
+                    _this.conflictIds.remove(function (conflictId) { return (conflictId.rid === selectedConflict.rid); });
+                    _this.selectedConflictContent("");
+                    _this.selectedConflictCurrent("");
+                    _this.selectedConflictId(null);
+                    _this.editorState(ViewModels.DocumentExplorerState.noDocumentSelected);
+                    TelemetryProcessor_1.default.traceSuccess(TelemetryConstants_1.Action.DeleteConflict, {
+                        databaseAccountName: _this.collection && _this.collection.container.databaseAccount().name,
+                        defaultExperience: _this.collection && _this.collection.container.defaultExperience(),
+                        dataExplorerArea: Constants.Areas.Tab,
+                        tabTitle: _this.tabTitle(),
+                        conflictResourceType: selectedConflict.resourceType,
+                        conflictOperationType: selectedConflict.operationType,
+                        conflictResourceId: selectedConflict.resourceId
+                    }, startKey, _this.isRunningOnDaytona);
+                }, function (reason) {
+                    _this.isExecutionError(true);
+                    var message = ErrorParserUtility.parse(reason)[0].message;
+                    if (!_this.isRunningOnDaytona) {
+                        window.alert(message);
+                        TelemetryProcessor_1.default.traceFailure(TelemetryConstants_1.Action.DeleteConflict, {
+                            databaseAccountName: _this.collection && _this.collection.container.databaseAccount().name,
+                            defaultExperience: _this.collection && _this.collection.container.defaultExperience(),
+                            dataExplorerArea: Constants.Areas.Tab,
+                            tabTitle: _this.tabTitle(),
+                            conflictResourceType: selectedConflict.resourceType,
+                            conflictOperationType: selectedConflict.operationType,
+                            conflictResourceId: selectedConflict.resourceId
+                        }, startKey);
+                    }
+                    else {
+                        _this.daytonaContext && _this.daytonaContext.hostProxy.executeProviderOperation("CloudExplorer.Actions.Dialog.promptOK", {
+                            title: "Error",
+                            message: message + ".",
+                            messageBoxType: "error"
+                        });
+                    }
+                }).finally(function () { return _this.isExecuting(false); });
+            };
+            _this.onDiscardClick = function () {
+                _this.daytonaContext && _this.daytonaContext.telemetry.sendEvent("StorageExplorer." + ViewModels.CollectionTabKind[_this.tabKind] + ".Discard");
+                _this.selectedConflictContent(_this.selectedConflictContent.getEditableOriginalValue());
+                _this.editorState(ViewModels.DocumentExplorerState.exisitingDocumentNoEdits);
+                return Q();
+            };
+            _this.onLoadMoreKeyInput = function (source, event) {
+                if (event.keyCode === Constants.KeyCodes.Space || event.keyCode === Constants.KeyCodes.Enter) {
+                    _this.loadNextPage();
+                    document.getElementById(_this.documentContentsGridId).focus();
+                    event.stopPropagation();
+                }
+            };
+            _this._isIgnoreDirtyEditor = function () {
+                var msg = "Changes will be lost. Do you want to continue?";
+                if (_this.isRunningOnDaytona) {
+                    return true;
+                }
+                else {
+                    return window.confirm(msg);
+                }
+            };
+            _this._container = options.collection && options.collection.container;
+            if (_this.isRunningOnDaytona) {
+                _this.daytonaContext && _this.daytonaContext.hostProxy.onThemeChange(function (newTheme) {
+                    var newTheme = ThemeUtility_1.default.getMonacoTheme(newTheme);
+                    if (newTheme !== _this._theme) {
+                        _this._theme = newTheme;
+                        monaco.editor.setTheme(newTheme);
+                    }
+                });
+                window.host = _this.daytonaContext && _this.daytonaContext.hostProxy;
+            }
+            _this.documentContentsGridId = "conflictsContentsGrid" + _this.tabId;
+            _this.documentContentsContainerId = "conflictsContentsContainer" + _this.tabId;
+            _this.editorState = ko.observable(ViewModels.DocumentExplorerState.noDocumentSelected);
+            _this.selectedConflictId = ko.observable();
+            _this.selectedConflictContent = editable.observable("");
+            _this.selectedConflictCurrent = editable.observable("");
+            _this.partitionKey = options.partitionKey || (_this.collection && _this.collection.partitionKey);
+            _this.conflictIds = options.conflictIds;
+            _this._selfLink = options.selfLink || (_this.collection && _this.collection.self);
+            _this.partitionKeyPropertyHeader = (_this.collection && _this.collection.partitionKeyPropertyHeader) || _this._getPartitionKeyPropertyHeader();
+            _this.partitionKeyProperty = !!_this.partitionKeyPropertyHeader ? _this.partitionKeyPropertyHeader.replace(/[/]+/g, ".").substr(1).replace(/[']+/g, '') : null;
+            _this.dataContentsGridScrollHeight = ko.observable(null);
+            // initialize splitter only after template has been loaded so dom elements are accessible
+            _super.prototype.onTemplateReady.call(_this, function (isTemplateReady) {
+                if (isTemplateReady) {
+                    var tabContainer = document.getElementById("content");
+                    var splitterBounds = { min: (Constants.DocumentsGridMetrics.DocumentEditorMinWidthRatio * tabContainer.clientWidth), max: (Constants.DocumentsGridMetrics.DocumentEditorMaxWidthRatio * tabContainer.clientWidth) };
+                    _this.splitter = new Splitter_1.Splitter({
+                        splitterId: "h_splitter2",
+                        leftId: _this.documentContentsContainerId,
+                        bounds: splitterBounds,
+                        direction: Splitter_1.SplitterDirection.Vertical
+                    });
+                }
+            });
+            _this.accessibleDocumentList = new AccessibleVerticalList_1.AccessibleVerticalList(_this.conflictIds());
+            _this.accessibleDocumentList.setOnSelect(function (selectedDocument) { return selectedDocument && selectedDocument.click(); });
+            _this.selectedConflictId.subscribe(function (newSelectedDocumentId) {
+                _this.accessibleDocumentList.updateCurrentItem(newSelectedDocumentId);
+                _this.conflictOperation(newSelectedDocumentId && newSelectedDocumentId.operationType);
+            });
+            _this.conflictIds.subscribe(function (newDocuments) {
+                _this.accessibleDocumentList.updateItemList(newDocuments);
+                _this.dataContentsGridScrollHeight((newDocuments.length * Constants_1.DocumentsGridMetrics.IndividualRowHeight + Constants_1.DocumentsGridMetrics.BufferHeight) + "px");
+            });
+            _this.isEditorDirty = ko.computed(function () {
+                switch (_this.editorState()) {
+                    case ViewModels.DocumentExplorerState.noDocumentSelected:
+                    case ViewModels.DocumentExplorerState.exisitingDocumentNoEdits:
+                        return false;
+                    case ViewModels.DocumentExplorerState.newDocumentValid:
+                    case ViewModels.DocumentExplorerState.newDocumentInvalid:
+                    case ViewModels.DocumentExplorerState.exisitingDocumentDirtyInvalid:
+                        return true;
+                    case ViewModels.DocumentExplorerState.exisitingDocumentDirtyValid:
+                        return _this.selectedConflictCurrent.getEditableOriginalValue() !== _this.selectedConflictCurrent.getEditableCurrentValue();
+                    default:
+                        return false;
+                }
+            });
+            _this.acceptChangesButton = {
+                enabled: ko.computed(function () {
+                    switch (_this.editorState()) {
+                        case ViewModels.DocumentExplorerState.exisitingDocumentDirtyValid:
+                        case ViewModels.DocumentExplorerState.exisitingDocumentNoEdits:
+                            return true;
+                    }
+                    return false;
+                }),
+                visible: ko.computed(function () {
+                    return _this.conflictOperation() !== Constants.ConflictOperationType.Delete || !!_this.selectedConflictContent();
+                })
+            };
+            _this.discardButton = {
+                enabled: ko.computed(function () {
+                    switch (_this.editorState()) {
+                        case ViewModels.DocumentExplorerState.exisitingDocumentDirtyValid:
+                        case ViewModels.DocumentExplorerState.exisitingDocumentDirtyInvalid:
+                            return true;
+                    }
+                    return false;
+                }),
+                visible: ko.computed(function () {
+                    return _this.conflictOperation() !== Constants.ConflictOperationType.Delete || !!_this.selectedConflictContent();
+                })
+            };
+            _this.deleteButton = {
+                enabled: ko.computed(function () {
+                    switch (_this.editorState()) {
+                        case ViewModels.DocumentExplorerState.exisitingDocumentDirtyValid:
+                        case ViewModels.DocumentExplorerState.exisitingDocumentNoEdits:
+                            return true;
+                    }
+                    return false;
+                }),
+                visible: ko.computed(function () {
+                    return true;
+                })
+            };
+            _this.buildCommandBarOptions();
+            _this.shouldShowDiffEditor = ko.pureComputed(function () {
+                var documentHasContent = _this.selectedConflictContent() != null && _this.selectedConflictContent().length > 0;
+                var operationIsReplace = _this.conflictOperation() === Constants.ConflictOperationType.Replace;
+                var isLoadingData = _this.loadingConflictData();
+                return documentHasContent && operationIsReplace && !isLoadingData;
+            });
+            _this.shouldShowEditor = ko.pureComputed(function () {
+                var documentHasContent = _this.selectedConflictContent() != null && _this.selectedConflictContent().length > 0;
+                var operationIsInsert = _this.conflictOperation() === Constants.ConflictOperationType.Create;
+                var operationIsDelete = _this.conflictOperation() === Constants.ConflictOperationType.Delete;
+                var isLoadingData = _this.loadingConflictData();
+                return documentHasContent && (operationIsInsert || operationIsDelete) && !isLoadingData;
+            });
+            _this.shouldShowWatermark = ko.pureComputed(function () { return !_this.shouldShowDiffEditor() && !_this.shouldShowEditor(); });
+            _this.isEditorReadOnly = ko.pureComputed(function () {
+                var operationIsDelete = _this.conflictOperation() === Constants.ConflictOperationType.Delete;
+                var operationIsReplace = _this.conflictOperation() === Constants.ConflictOperationType.Replace;
+                return operationIsDelete || operationIsReplace;
+            });
+            _this.selectedConflictContent.subscribe(function (newContent) { return _this._onEditorContentChange(newContent); });
+            _this.conflictOperation.subscribe(function (newOperationType) {
+                var operationLabel = "Save";
+                if (newOperationType === Constants.ConflictOperationType.Replace) {
+                    operationLabel = "Update";
+                }
+                _this._acceptButtonLabel(operationLabel);
+            });
+            if (_this.isRunningOnDaytona) {
+                _this.onRefreshClick();
+            }
+            return _this;
+        }
+        ConflictsTab.prototype.refreshDocumentsGrid = function () {
+            var _this = this;
+            // clear documents grid
+            this.conflictIds([]);
+            return this.createIterator()
+                .then(
+            // reset iterator
+            function (iterator) {
+                _this._documentsIterator = iterator;
+            })
+                .then(
+            // load documents
+            function () {
+                return _this.loadNextPage();
+            })
+                .then(function () {
+                // collapse filter
+                _this.isRunningOnDaytona && $(".filterDocExpanded").removeClass("active");
+                _this.isRunningOnDaytona && $("#content").removeClass("active");
+            }).catch(function (reason) {
+                var message = ErrorParserUtility.parse(reason)[0].message;
+                if (!_this.isRunningOnDaytona) {
+                    window.alert(message);
+                }
+                else {
+                    _this.daytonaContext && _this.daytonaContext.hostProxy.executeProviderOperation("CloudExplorer.Actions.Dialog.promptOK", {
+                        title: "Error",
+                        message: message + "\r\nPlease revise your SQL query predicate.",
+                        messageBoxType: "error"
+                    });
+                }
+            });
+        };
+        ConflictsTab.prototype.onConflictIdClick = function (clickedDocumentId) {
+            if (this.editorState() !== ViewModels.DocumentExplorerState.noDocumentSelected) {
+                return Q();
+            }
+            this.editorState(ViewModels.DocumentExplorerState.exisitingDocumentNoEdits);
+            return Q();
+        };
+        ConflictsTab.prototype.onValidDocumentEdit = function () {
+            this.editorState(ViewModels.DocumentExplorerState.exisitingDocumentDirtyValid);
+            return Q();
+        };
+        ConflictsTab.prototype.onInvalidDocumentEdit = function () {
+            if (this.editorState() === ViewModels.DocumentExplorerState.exisitingDocumentNoEdits || this.editorState() === ViewModels.DocumentExplorerState.exisitingDocumentDirtyValid) {
+                this.editorState(ViewModels.DocumentExplorerState.exisitingDocumentDirtyInvalid);
+                return Q();
+            }
+            return Q();
+        };
+        ConflictsTab.prototype.onTabClick = function () {
+            var _this = this;
+            return _super.prototype.onTabClick.call(this).then(function () {
+                _this.collection && _this.collection.selectedSubnodeKind(ViewModels.CollectionTabKind.Conflicts);
+            });
+        };
+        ConflictsTab.prototype.onActivate = function () {
+            var _this = this;
+            return _super.prototype.onActivate.call(this).then(function () {
+                if (_this._documentsIterator) {
+                    return Q.resolve(_this._documentsIterator);
+                }
+                return _this.createIterator().then(function (iterator) {
+                    _this._documentsIterator = iterator;
+                    return _this.loadNextPage();
+                }, function (error) {
+                    if (_this.onLoadStartKey != null && _this.onLoadStartKey != undefined) {
+                        TelemetryProcessor_1.default.traceFailure(TelemetryConstants_1.Action.Tab, {
+                            databaseAccountName: _this.collection.container.databaseAccount().name,
+                            databaseName: _this.collection.database.id(),
+                            collectionName: _this.collection.id(),
+                            defaultExperience: _this.collection.container.defaultExperience(),
+                            dataExplorerArea: Constants.Areas.Tab,
+                            tabTitle: _this.tabTitle(),
+                            error: error
+                        }, _this.onLoadStartKey);
+                        _this.onLoadStartKey = null;
+                    }
+                });
+            });
+        };
+        ConflictsTab.prototype.onRefreshClick = function () {
+            var _this = this;
+            this.daytonaContext && this.daytonaContext.telemetry.sendEvent("StorageExplorer." + ViewModels.CollectionTabKind[this.tabKind] + ".Refresh");
+            return this.refreshDocumentsGrid().then(function () {
+                _this.selectedConflictContent("");
+                _this.selectedConflictId(null);
+                _this.editorState(ViewModels.DocumentExplorerState.noDocumentSelected);
+            });
+        };
+        ConflictsTab.prototype.createIterator = function () {
+            // TODO: Conflict Feed does not allow filtering atm
+            var query = undefined;
+            var options = {};
+            options.enableCrossPartitionQuery = HeadersUtility.shouldEnableCrossPartitionKeyForResourceWithPartitionKey(this.partitionKey);
+            return this.documentClientUtility.queryConflicts({ self: this._selfLink, rid: this.collection && this.collection.rid }, query, options);
+        };
+        ConflictsTab.prototype.loadNextPage = function () {
+            var _this = this;
+            this.isExecuting(true);
+            this.isExecutionError(false);
+            return this._loadNextPageInternal().then(function (conflictIdsResponse) {
+                _this.daytonaContext && _this.daytonaContext.telemetry.sendEvent("StorageExplorer." + ViewModels.CollectionTabKind[_this.tabKind] + ".LoadMore");
+                var currentConflicts = _this.conflictIds();
+                var currentDocumentsRids = currentConflicts.map(function (currentConflict) { return currentConflict.rid; });
+                var nextConflictIds = conflictIdsResponse
+                    // filter documents already loaded in observable
+                    .filter(function (d) {
+                    return currentDocumentsRids.indexOf(d._rid) < 0;
+                })
+                    // map raw response to view model
+                    .map(function (rawDocument) {
+                    return new ConflictId(_this, rawDocument);
+                });
+                var merged = currentConflicts.concat(nextConflictIds);
+                _this.conflictIds(merged);
+                if (_this.onLoadStartKey != null && _this.onLoadStartKey != undefined) {
+                    TelemetryProcessor_1.default.traceSuccess(TelemetryConstants_1.Action.Tab, {
+                        databaseAccountName: _this.collection.container.databaseAccount().name,
+                        databaseName: _this.collection.database.id(),
+                        collectionName: _this.collection.id(),
+                        defaultExperience: _this.collection.container.defaultExperience(),
+                        dataExplorerArea: Constants.Areas.Tab,
+                        tabTitle: _this.tabTitle()
+                    }, _this.onLoadStartKey);
+                    _this.onLoadStartKey = null;
+                }
+            }, function (error) {
+                _this.isExecutionError(true);
+                if (_this.onLoadStartKey != null && _this.onLoadStartKey != undefined) {
+                    TelemetryProcessor_1.default.traceFailure(TelemetryConstants_1.Action.Tab, {
+                        databaseAccountName: _this.collection.container.databaseAccount().name,
+                        databaseName: _this.collection.database.id(),
+                        collectionName: _this.collection.id(),
+                        defaultExperience: _this.collection.container.defaultExperience(),
+                        dataExplorerArea: Constants.Areas.Tab,
+                        tabTitle: _this.tabTitle(),
+                        error: error
+                    }, _this.onLoadStartKey);
+                    _this.onLoadStartKey = null;
+                }
+            }).finally(function () { return _this.isExecuting(false); });
+        };
+        ConflictsTab.prototype._loadNextPageInternal = function () {
+            var deferred = Q.defer();
+            this.documentClientUtility.nextIteratorConflict(this._documentsIterator, Constants_1.DocumentsGridMetrics.DocumentsPerPage, [], deferred);
+            return deferred.promise;
+        };
+        ConflictsTab.prototype._onEditorContentChange = function (newContent) {
+            try {
+                var parsed = JSON.parse(newContent);
+                this.onValidDocumentEdit();
+            }
+            catch (e) {
+                this.onInvalidDocumentEdit();
+            }
+        };
+        ConflictsTab.prototype.initDocumentEditorForCreate = function (documentId, documentToInsert) {
+            if (documentId) {
+                var parsedConflictContent = JSON.parse(documentToInsert);
+                var renderedConflictContent = this.renderObjectForEditor(parsedConflictContent, null, 4);
+                this.selectedConflictContent.setBaseline(renderedConflictContent);
+                this.editorState(ViewModels.DocumentExplorerState.exisitingDocumentNoEdits);
+            }
+            return Q();
+        };
+        ConflictsTab.prototype.initDocumentEditorForReplace = function (documentId, conflictContent, currentContent) {
+            if (documentId) {
+                currentContent = ConflictsTab.removeSystemProperties(currentContent);
+                var renderedCurrentContent = this.renderObjectForEditor(currentContent, null, 4);
+                this.selectedConflictCurrent.setBaseline(renderedCurrentContent);
+                var parsedConflictContent = JSON.parse(conflictContent);
+                parsedConflictContent = ConflictsTab.removeSystemProperties(parsedConflictContent);
+                var renderedConflictContent = this.renderObjectForEditor(parsedConflictContent, null, 4);
+                this.selectedConflictContent.setBaseline(renderedConflictContent);
+                this.editorState(ViewModels.DocumentExplorerState.exisitingDocumentNoEdits);
+            }
+            return Q();
+        };
+        ConflictsTab.prototype.initDocumentEditorForDelete = function (documentId, documentToDelete) {
+            if (documentId) {
+                var parsedDocumentToDelete = JSON.parse(documentToDelete);
+                parsedDocumentToDelete = ConflictsTab.removeSystemProperties(parsedDocumentToDelete);
+                var renderedDocumentToDelete = this.renderObjectForEditor(parsedDocumentToDelete, null, 4);
+                this.selectedConflictContent.setBaseline(renderedDocumentToDelete);
+                this.editorState(ViewModels.DocumentExplorerState.exisitingDocumentNoEdits);
+            }
+            return Q();
+        };
+        ConflictsTab.prototype.initDocumentEditorForNoOp = function (documentId) {
+            this.selectedConflictContent(null);
+            this.selectedConflictCurrent(null);
+            this.editorState(ViewModels.DocumentExplorerState.noDocumentSelected);
+            return Q();
+        };
+        ConflictsTab.prototype.buildCommandBarOptions = function () {
+            var _this = this;
+            var acceptChangesButtonOptions = {
+                iconSrc: 'images/save.svg',
+                onCommandClick: this.onAcceptChangesClick,
+                commandButtonLabel: this._acceptButtonLabel,
+                hasPopup: false,
+                visible: ko.computed(function () { return _this.acceptChangesButton.visible(); }),
+                disabled: ko.computed(function () { return !_this.acceptChangesButton.enabled(); }),
+                tabIndex: ko.computed(function () { return _this.acceptChangesButton.enabled() ? 0 : -1; })
+            };
+            var discardChangesButtonOptions = {
+                iconSrc: 'images/discard.svg',
+                onCommandClick: this.onDiscardClick,
+                commandButtonLabel: 'Discard',
+                hasPopup: false,
+                visible: ko.computed(function () { return _this.discardButton.visible(); }),
+                disabled: ko.computed(function () { return !_this.discardButton.enabled(); }),
+                tabIndex: ko.computed(function () { return _this.discardButton.enabled() ? 0 : -1; })
+            };
+            var deleteConflictButtonOptions = {
+                iconSrc: 'images/delete.svg',
+                onCommandClick: this.onDeleteClick,
+                commandButtonLabel: 'Delete',
+                hasPopup: false,
+                visible: ko.computed(function () { return _this.deleteButton.visible(); }),
+                disabled: ko.computed(function () { return !_this.deleteButton.enabled(); }),
+                tabIndex: ko.computed(function () { return _this.deleteButton.enabled() ? 0 : -1; })
+            };
+            this.commandBarOptions = new CommandBarOptions_1.CommandBarOptions([
+                acceptChangesButtonOptions,
+                discardChangesButtonOptions,
+                deleteConflictButtonOptions
+            ]);
+        };
+        /** Remove system properties from the JSON object.
+         * This includes: _etag, _rid, _self, _attachments, _ts
+        */
+        ConflictsTab.removeSystemProperties = function (jsonObject) {
+            if (!jsonObject) {
+                return null;
+            }
+            delete jsonObject["_etag"];
+            delete jsonObject["_ts"];
+            delete jsonObject["_rid"];
+            delete jsonObject["_self"];
+            delete jsonObject["_attachments"];
+            return jsonObject;
+        };
+        ConflictsTab.prototype._getPartitionKeyPropertyHeader = function () {
+            return this.partitionKey && this.partitionKey.paths && this.partitionKey.paths.length > 0 && this.partitionKey.paths[0] || null;
+        };
+        return ConflictsTab;
+    }(TabsBase));
+    exports.ConflictsTab = ConflictsTab;
+});
+¶ënw¦ó      [Õ¾á[Õ¾ô?§¶Á[×kX   E    :https://cosmos.azure.com/built/Explorer/Tabs/ConflictsTab.js?v=1.0.1 necko:classified 1 strongly-framed 1 security-info FnhllAKWRHGAlo+ESXykKAAAAAAAAAAAwAAAAAAAAEaphjojH6pBabDSgSnsfLHeAAQAAgAAAAAAAAAAAAAAAAAAAAAB4vFIJp5wRkeyPxAQ9RJGKPqbqVvKO0mKuIl8ec8o/uhmCjImkVxP+7sgiYWmMt8FvcOXmlQiTNWFiWlrbpbqgwAAAAAAAAOMMIIDiDCCAnCgAwIBAgIERTJgUjANBgkqhkiG9w0BAQsFADCBijEUMBIGA1UEBhMLUG9ydFN3aWdnZXIxFDASBgNVBAgTC1BvcnRTd2lnZ2VyMRQwEgYDVQQHEwtQb3J0U3dpZ2dlcjEUMBIGA1UEChMLUG9ydFN3aWdnZXIxFzAVBgNVBAsTDlBvcnRTd2lnZ2VyIENBMRcwFQYDVQQDEw5Qb3J0U3dpZ2dlciBDQTAeFw0xNDEwMjgxMzEyMTBaFw0zODEwMjgxMzEyMTBaMGAxFDASBgNVBAYTC1BvcnRTd2lnZ2VyMRQwEgYDVQQKEwtQb3J0U3dpZ2dlcjEXMBUGA1UECxMOUG9ydFN3aWdnZXIgQ0ExGTAXBgNVBAMTEGNvc21vcy5henVyZS5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCKn7emKINsnWqPZ+C/VsqbQf/l4NsmIh34bXBR0xdNg9bfb+xcoghRlmbPjhZ/A26A2gJ6Rrg2d0GGMLpbqA8nTlRRGXEAD39321zk4ye09ElXClvqguGqdqOJpPQ05DPFD6wSOq+KVAEblE5bi+LMqBLipDERzgUe7xzeqVVk0i0ldh9yQOIk3YuzcBR9igSEuw5qladmMYvXKHYM9YZz0R7axMc8xAtadK7C9KfFPfEI5LS2nhmy4vBrTgFyYhfkEvKfmIj6HTX0ISFCAC2llcBLpEDcuiW76tAHp1pXDeWtSeaV36AeOctdleVgrbmsGs3fu6ppuRcWjEZUbjE3AgMBAAGjHzAdMBsGA1UdEQQUMBKCEGNvc21vcy5henVyZS5jb20wDQYJKoZIhvcNAQELBQADggEBABYikT6Y5YgJJ4IVJldlFDF5MKxp26YegXhvT8EmAbgr0yQBIlY2DtKEiHf7Q8wRoJ9y5Ajst1D7HmRba+XLjS6s3IHJ7gtuvc3fZj9MPKpbqSKRfHDB8bDOVIzmjBseg2BqckHTkcYak3b/pTWCTqKHM3LxKsDwN8F3HNQ2pY4d5ma2kR1EtWdTpRiIbir3QxJDcWVp8CgHONZcoMn33NNwnWWjAQMX6d8e1CPuBZi0t+myaYduCqPgKKox9qMXSubF6uifQkAJ5RdLZrZ2pghENA/4r1oz51wqEmpjPsStSUxRPwJ6wJrB4gwGtX7++ZHLjAaNrTSUCGwIOlAT4LnALwEDAAAAAAEBAAAAAA== request-method GET request-Accept-Encoding gzip, deflate, br response-head HTTP/1.1 200 OK
+Content-Length: 34561
+Content-Type: application/x-javascript
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:39:48 GMT
+ original-response-headers Content-Length: 34561
+Content-Type: application/x-javascript
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:39:48 GMT
+Connection: close
+ uncompressed-len 0 net-response-time-onstart 18998 net-response-time-onstop 19002   ‡

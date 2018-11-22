@@ -1,0 +1,547 @@
+define(["require", "exports", "q", "./Constants", "../Explorer/Menus/NotificationConsole/NotificationConsole", "./Logger", "../Utils/NotificationConsoleUtils"], function (require, exports, Q, Constants, NotificationConsole_1, Logger_1, NotificationConsoleUtils_1) {
+    "use strict";
+    // TODO: Log all promise resolutions and errors with verbosity levels
+    var DocumentClientUtilityBase = /** @class */ (function () {
+        function DocumentClientUtilityBase(dataAccessUtility) {
+            this._dataAccessUtility = dataAccessUtility;
+        }
+        DocumentClientUtilityBase.prototype.queryDocuments = function (container, query, options) {
+            return this._dataAccessUtility.queryDocuments(container, query, options);
+        };
+        DocumentClientUtilityBase.prototype.nextIteratorItem = function (documentsIterator, pageSize, previousResults, deferred) {
+            deferred.promise.then(function () {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Info, "Fetched " + previousResults.length + " documents");
+            }).catch(function (error) {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Error, "Error while fetching page of documents:\n " + JSON.stringify(error));
+                Logger_1.Logger.logError(JSON.stringify(error), "QueryDocumentsPage", error.code);
+            });
+            return this._dataAccessUtility.nextIteratorItem(documentsIterator, pageSize, previousResults, deferred);
+        };
+        DocumentClientUtilityBase.prototype.queryConflicts = function (container, query, options) {
+            return this._dataAccessUtility.queryConflicts(container, query, options);
+        };
+        DocumentClientUtilityBase.prototype.nextIteratorConflict = function (conflictsIterator, pageSize, previousResults, deferred) {
+            deferred.promise.then(function () {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Info, "Fetched " + previousResults.length + " conflicts");
+            }).catch(function (error) {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Error, "Error while fetching page of conflicts:\n " + JSON.stringify(error));
+                Logger_1.Logger.logError(JSON.stringify(error), "QueryDocumentsPage", error.code);
+            });
+            return this._dataAccessUtility.nextIteratorConflict(conflictsIterator, pageSize, previousResults, deferred);
+        };
+        DocumentClientUtilityBase.prototype.readStoredProcedures = function (collection, options) {
+            var deferred = Q.defer();
+            var id = NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.InProgress, "Querying stored procedures for collection " + collection.id());
+            this._dataAccessUtility.readStoredProcedures(collection, options).then(function (storedProcedures) {
+                deferred.resolve(storedProcedures);
+            }, function (error) {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Error, "Failed to query stored procedures for collection " + collection.id() + ": " + JSON.stringify(error));
+                Logger_1.Logger.logError(JSON.stringify(error), "ReadStoredProcedures", error.code);
+                deferred.reject(error);
+            }).finally(function () {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.clearInProgressMessageWithId(id);
+            });
+            return deferred.promise;
+        };
+        DocumentClientUtilityBase.prototype.readStoredProcedure = function (requestedResource, options) {
+            var deferred = Q.defer();
+            this._dataAccessUtility.readStoredProcedure(requestedResource, options).then(function (storedProcedure) { return deferred.resolve(storedProcedure); }, function (error) { return deferred.reject(error); });
+            return deferred.promise;
+        };
+        DocumentClientUtilityBase.prototype.readUserDefinedFunctions = function (collection, options) {
+            var deferred = Q.defer();
+            var id = NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.InProgress, "Querying user defined functions for collection " + collection.id());
+            this._dataAccessUtility.readUserDefinedFunctions(collection, options).then(function (userDefinedFunctions) {
+                deferred.resolve(userDefinedFunctions);
+            }, function (error) {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Error, "Failed to query user defined functions for collection " + collection.id() + ": " + JSON.stringify(error));
+                Logger_1.Logger.logError(JSON.stringify(error), "ReadUDFs", error.code);
+                deferred.reject(error);
+            }).finally(function () {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.clearInProgressMessageWithId(id);
+            });
+            return deferred.promise;
+        };
+        DocumentClientUtilityBase.prototype.readUserDefinedFunction = function (requestedResource, options) {
+            var deferred = Q.defer();
+            this._dataAccessUtility.readUserDefinedFunction(requestedResource, options).then(function (userDefinedFunction) { return deferred.resolve(userDefinedFunction); }, function (error) { return deferred.reject(error); });
+            return deferred.promise;
+        };
+        DocumentClientUtilityBase.prototype.readTriggers = function (collection, options) {
+            var deferred = Q.defer();
+            var id = NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.InProgress, "Querying triggers for collection " + collection.id());
+            this._dataAccessUtility.readTriggers(collection, options).then(function (triggers) {
+                deferred.resolve(triggers);
+            }, function (error) {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Error, "Failed to query triggers for collection " + collection.id() + ": " + JSON.stringify(error));
+                Logger_1.Logger.logError(JSON.stringify(error), "ReadTriggers", error.code);
+                deferred.reject(error);
+            }).finally(function () {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.clearInProgressMessageWithId(id);
+            });
+            return deferred.promise;
+        };
+        DocumentClientUtilityBase.prototype.readTrigger = function (requestedResource, options) {
+            var deferred = Q.defer();
+            this._dataAccessUtility.readTrigger(requestedResource, options).then(function (trigger) { return deferred.resolve(trigger); }, function (error) { return deferred.reject(error); });
+            return deferred.promise;
+        };
+        DocumentClientUtilityBase.prototype.executeStoredProcedure = function (storedProcedure, params, options) {
+            var deferred = Q.defer();
+            var id = NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.InProgress, "Executing stored procedure " + storedProcedure.id());
+            this._dataAccessUtility.executeStoredProcedure(storedProcedure, params, options).then(function (response) {
+                deferred.resolve(response);
+                NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Info, "Finished executing stored procedure " + storedProcedure.id() + " for collection " + storedProcedure.collection.id());
+            }, function (error) {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Error, "Failed to execute stored procedure " + storedProcedure.id() + " for collection " + storedProcedure.collection.id() + ": " + JSON.stringify(error));
+                Logger_1.Logger.logError(JSON.stringify(error), "ExecuteStoredProcedure", error.code);
+                deferred.reject(error);
+            }).finally(function () {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.clearInProgressMessageWithId(id);
+            });
+            return deferred.promise;
+        };
+        DocumentClientUtilityBase.prototype.extractPartitionKey = function (document, partitionKeyDefinition) {
+            return this._dataAccessUtility.extractPartitionKey(document, partitionKeyDefinition);
+        };
+        DocumentClientUtilityBase.prototype.queryDocumentsPage = function (container, query, documentsIterator, firstItemIndex, options) {
+            var deferred = Q.defer();
+            var id = NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.InProgress, "Querying documents for collection " + container.resourceName);
+            this._dataAccessUtility.queryDocumentsPage(container, query, documentsIterator, firstItemIndex, options).then(function (result) {
+                var itemCount = result.documents && result.documents.length || 0;
+                NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Info, "Successfully fetched " + itemCount + " documents for collection " + container.resourceName);
+                deferred.resolve(result);
+            }, function (error) {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Error, "Failed to query documents for collection " + container.resourceName + ": " + JSON.stringify(error));
+                Logger_1.Logger.logError(JSON.stringify(error), "QueryDocumentsPage", error.code);
+                deferred.reject(error);
+            }).finally(function () {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.clearInProgressMessageWithId(id);
+            });
+            return deferred.promise;
+        };
+        DocumentClientUtilityBase.prototype.readDocument = function (documentId, options) {
+            var deferred = Q.defer();
+            var id = NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.InProgress, "Reading document " + documentId.id());
+            this._dataAccessUtility.readDocument(documentId, options).then(function (document) {
+                deferred.resolve(document);
+            }, function (error) {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Error, "Failed to read document " + documentId.id() + ": " + JSON.stringify(error));
+                Logger_1.Logger.logError(JSON.stringify(error), "ReadDocument", error.code);
+                deferred.reject(error);
+            }).finally(function () {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.clearInProgressMessageWithId(id);
+            });
+            return deferred.promise;
+        };
+        DocumentClientUtilityBase.prototype.getPartitionKeyHeaderForDocument = function (documentId) {
+            return this._dataAccessUtility.getPartitionKeyHeaderForDocument(documentId);
+        };
+        DocumentClientUtilityBase.prototype.getPartitionKeyHeader = function (partitionKeyDefinition, partitionKeyValue) {
+            return this._dataAccessUtility.getPartitionKeyHeader(partitionKeyDefinition, partitionKeyValue);
+        };
+        DocumentClientUtilityBase.prototype.updateCollection = function (container, newCollection, options) {
+            var deferred = Q.defer();
+            var id = NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.InProgress, "Updating collection " + container.resourceName);
+            this._dataAccessUtility.updateCollection(container, newCollection, options).then(function (replacedCollection) {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Info, "Successfully updated collection " + container.resourceName);
+                deferred.resolve(replacedCollection);
+            }, function (error) {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Error, "Failed to update collection " + container.resourceName + ": " + JSON.stringify(error));
+                Logger_1.Logger.logError(JSON.stringify(error), "UpdateCollection", error.code);
+                deferred.reject(error);
+            }).finally(function () {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.clearInProgressMessageWithId(id);
+            });
+            return deferred.promise;
+        };
+        DocumentClientUtilityBase.prototype.updateDocument = function (documentId, newDocument, options) {
+            var deferred = Q.defer();
+            var id = NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.InProgress, "Updating document " + documentId.id());
+            this._dataAccessUtility.updateDocument(documentId, newDocument, options).then(function (updatedDocument) {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Info, "Successfully updated document " + documentId.id());
+                deferred.resolve(updatedDocument);
+            }, function (error) {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Error, "Failed to update document " + documentId.id() + ": " + JSON.stringify(error));
+                Logger_1.Logger.logError(JSON.stringify(error), "UpdateDocument", error.code);
+                deferred.reject(error);
+            }).finally(function () {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.clearInProgressMessageWithId(id);
+            });
+            return deferred.promise;
+        };
+        DocumentClientUtilityBase.prototype.updateOffer = function (offer, newOffer) {
+            var deferred = Q.defer();
+            var id = NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.InProgress, "Updating offer for resource " + offer.resource);
+            this._dataAccessUtility.updateOffer(offer, newOffer).then(function (replacedOffer) {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Info, "Successfully updated offer for resource " + offer.resource);
+                deferred.resolve(replacedOffer);
+            }, function (error) {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Error, "Error updating offer for resource " + offer.resource + ": " + JSON.stringify(error));
+                Logger_1.Logger.logError(JSON.stringify(error), "UpdateOffer", error.code);
+                deferred.reject(error);
+            }).finally(function () {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.clearInProgressMessageWithId(id);
+            });
+            return deferred.promise;
+        };
+        DocumentClientUtilityBase.prototype.updateOfferThroughputBeyondLimit = function (requestPayload, options) {
+            var deferred = Q.defer();
+            var resourceDescriptionInfo = requestPayload.collectionName ? "database " + requestPayload.databaseName + " and collection " + requestPayload.collectionName : "database " + requestPayload.databaseName;
+            var id = NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.InProgress, "Requesting increase in throughput to " + requestPayload.throughput + " for " + resourceDescriptionInfo);
+            this._dataAccessUtility.updateOfferThroughputBeyondLimit(requestPayload, options).then(function () {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Info, "Successfully requested an increase in throughput to " + requestPayload.throughput + " for " + resourceDescriptionInfo);
+                deferred.resolve();
+            }, function (error) {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Error, "Failed to request an increase in throughput for " + requestPayload.throughput + ": " + JSON.stringify(error));
+                deferred.reject(error);
+            }).finally(function () { return NotificationConsoleUtils_1.NotificationConsoleUtils.clearInProgressMessageWithId(id); });
+            return deferred.promise.timeout(Constants.ClientDefaults.requestTimeoutMs);
+        };
+        DocumentClientUtilityBase.prototype.updateStoredProcedure = function (storedProcedure, options) {
+            var deferred = Q.defer();
+            var id = NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.InProgress, "Updating stored procedure " + storedProcedure.id);
+            this._dataAccessUtility.updateStoredProcedure(storedProcedure, options).then(function (updatedStoredProcedure) {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Info, "Successfully updated stored procedure " + storedProcedure.id);
+                deferred.resolve(updatedStoredProcedure);
+            }, function (error) {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Error, "Error while updating stored procedure " + storedProcedure.id + ":\n " + JSON.stringify(error));
+                Logger_1.Logger.logError(JSON.stringify(error), "UpdateStoredProcedure", error.code);
+                deferred.reject(error);
+            }).finally(function () {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.clearInProgressMessageWithId(id);
+            });
+            return deferred.promise;
+        };
+        DocumentClientUtilityBase.prototype.updateUserDefinedFunction = function (userDefinedFunction, options) {
+            var deferred = Q.defer();
+            var id = NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.InProgress, "Updating user defined function " + userDefinedFunction.id);
+            this._dataAccessUtility.updateUserDefinedFunction(userDefinedFunction, options).then(function (updatedUserDefinedFunction) {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Info, "Successfully updated user defined function " + userDefinedFunction.id);
+                deferred.resolve(updatedUserDefinedFunction);
+            }, function (error) {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Error, "Error while updating user defined function " + userDefinedFunction.id + ":\n " + JSON.stringify(error));
+                Logger_1.Logger.logError(JSON.stringify(error), "UpdateUDF", error.code);
+                deferred.reject(error);
+            }).finally(function () {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.clearInProgressMessageWithId(id);
+            });
+            return deferred.promise;
+        };
+        DocumentClientUtilityBase.prototype.updateTrigger = function (trigger, options) {
+            var deferred = Q.defer();
+            var id = NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.InProgress, "Updating trigger " + trigger.id);
+            this._dataAccessUtility.updateTrigger(trigger, options).then(function (updatedTrigger) {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Info, "Updated trigger " + trigger.id);
+                deferred.resolve(updatedTrigger);
+            }, function (error) {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Error, "Error while updating trigger " + trigger.id + ":\n " + JSON.stringify(error));
+                Logger_1.Logger.logError(JSON.stringify(error), "UpdateTrigger", error.code);
+                deferred.reject(error);
+            }).finally(function () {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.clearInProgressMessageWithId(id);
+            });
+            return deferred.promise;
+        };
+        DocumentClientUtilityBase.prototype.createDocument = function (container, newDocument, options) {
+            var deferred = Q.defer();
+            var id = NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.InProgress, "Creating new document for collection " + container.resourceName);
+            this._dataAccessUtility.createDocument(container, newDocument, options).then(function (savedDocument) {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Info, "Successfully created new document for collection " + container.resourceName);
+                deferred.resolve(savedDocument);
+            }, function (error) {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Error, "Error while creating new document for collection " + container.resourceName + ":\n " + JSON.stringify(error));
+                Logger_1.Logger.logError(JSON.stringify(error), "CreateDocument", error.code);
+                deferred.reject(error);
+            }).finally(function () {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.clearInProgressMessageWithId(id);
+            });
+            return deferred.promise;
+        };
+        DocumentClientUtilityBase.prototype.createStoredProcedure = function (container, newStoredProcedure, options) {
+            var deferred = Q.defer();
+            var id = NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.InProgress, "Creating stored procedure for collection " + container.resourceName);
+            this._dataAccessUtility.createStoredProcedure(container, newStoredProcedure, options).then(function (createdStoredProcedure) {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Info, "Successfully created stored procedure for collection " + container.resourceName);
+                deferred.resolve(createdStoredProcedure);
+            }, function (error) {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Error, "Error while creating stored procedure for collection " + container.resourceName + ":\n " + JSON.stringify(error));
+                Logger_1.Logger.logError(JSON.stringify(error), "CreateStoredProcedure", error.code);
+                deferred.reject(error);
+            }).finally(function () {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.clearInProgressMessageWithId(id);
+            });
+            return deferred.promise;
+        };
+        DocumentClientUtilityBase.prototype.createUserDefinedFunction = function (container, newUserDefinedFunction, options) {
+            var deferred = Q.defer();
+            var id = NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.InProgress, "Creating user defined function for collection " + container.resourceName);
+            this._dataAccessUtility.createUserDefinedFunction(container, newUserDefinedFunction, options).then(function (createdUserDefinedFunction) {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Info, "Successfully created user defined function for collection " + container.resourceName);
+                deferred.resolve(createdUserDefinedFunction);
+            }, function (error) {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Error, "Error while creating user defined function for collection " + container.resourceName + ":\n " + JSON.stringify(error));
+                Logger_1.Logger.logError(JSON.stringify(error), "CreateUDF", error.code);
+                deferred.reject(error);
+            }).finally(function () {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.clearInProgressMessageWithId(id);
+            });
+            return deferred.promise;
+        };
+        DocumentClientUtilityBase.prototype.createTrigger = function (container, newTrigger, options) {
+            var deferred = Q.defer();
+            var id = NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.InProgress, "Creating trigger for collection " + container.resourceName);
+            this._dataAccessUtility.createTrigger(container, newTrigger, options).then(function (createdTrigger) {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Info, "Successfully created trigger for collection " + container.resourceName);
+                deferred.resolve(createdTrigger);
+            }, function (error) {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Error, "Error while creating trigger for collection " + container.resourceName + ":\n " + JSON.stringify(error));
+                Logger_1.Logger.logError(JSON.stringify(error), "CreateTrigger", error.code);
+                deferred.reject(error);
+            }).finally(function () {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.clearInProgressMessageWithId(id);
+            });
+            return deferred.promise;
+        };
+        DocumentClientUtilityBase.prototype.deleteDocument = function (documentId, options) {
+            var deferred = Q.defer();
+            var id = NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.InProgress, "Deleting document " + documentId.id());
+            this._dataAccessUtility.deleteDocument(documentId, options).then(function (response) {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Info, "Successfully deleted document " + documentId.id());
+                deferred.resolve(response);
+            }, function (error) {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Error, "Error while deleting document " + documentId.id() + ":\n " + JSON.stringify(error));
+                Logger_1.Logger.logError(JSON.stringify(error), "DeleteDocument", error.code);
+                deferred.reject(error);
+            }).finally(function () {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.clearInProgressMessageWithId(id);
+            });
+            return deferred.promise;
+        };
+        DocumentClientUtilityBase.prototype.deleteConflict = function (conflictId, options) {
+            var deferred = Q.defer();
+            var id = NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.InProgress, "Deleting conflict " + conflictId.id());
+            this._dataAccessUtility.deleteConflict(conflictId, options).then(function (response) {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Info, "Successfully deleted conflict " + conflictId.id());
+                deferred.resolve(response);
+            }, function (error) {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Error, "Error while deleting conflict " + conflictId.id() + ":\n " + JSON.stringify(error));
+                Logger_1.Logger.logError(JSON.stringify(error), "DeleteConflict", error.code);
+                deferred.reject(error);
+            }).finally(function () {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.clearInProgressMessageWithId(id);
+            });
+            return deferred.promise;
+        };
+        DocumentClientUtilityBase.prototype.deleteCollection = function (collection, options) {
+            var deferred = Q.defer();
+            var id = NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.InProgress, "Deleting collection " + collection.id());
+            this._dataAccessUtility.deleteCollection(collection, options).then(function (response) {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Info, "Successfully deleted collection " + collection.id());
+                deferred.resolve(response);
+            }, function (error) {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Error, "Error while deleting collection " + collection.id() + ":\n " + JSON.stringify(error));
+                Logger_1.Logger.logError(JSON.stringify(error), "DeleteCollection", error.code);
+                deferred.reject(error);
+            }).finally(function () {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.clearInProgressMessageWithId(id);
+            });
+            return deferred.promise;
+        };
+        DocumentClientUtilityBase.prototype.deleteDatabase = function (database, options) {
+            var deferred = Q.defer();
+            var id = NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.InProgress, "Deleting database " + database.id());
+            this._dataAccessUtility.deleteDatabase(database, options).then(function (response) {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Info, "Successfully deleted database " + database.id());
+                deferred.resolve(response);
+            }, function (error) {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Error, "Error while deleting database " + database.id() + ":\n " + JSON.stringify(error));
+                Logger_1.Logger.logError(JSON.stringify(error), "DeleteDatabase", error.code);
+                deferred.reject(error);
+            }).finally(function () {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.clearInProgressMessageWithId(id);
+            });
+            return deferred.promise;
+        };
+        DocumentClientUtilityBase.prototype.deleteStoredProcedure = function (storedProcedure, options) {
+            var deferred = Q.defer();
+            var id = NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.InProgress, "Deleting stored procedure " + storedProcedure.id);
+            this._dataAccessUtility.deleteStoredProcedure(storedProcedure, options).then(function (response) {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Info, "Successfully deleted stored procedure " + storedProcedure.id);
+                deferred.resolve(response);
+            }, function (error) {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Error, "Error while deleting stored procedure " + storedProcedure.id + ":\n " + JSON.stringify(error));
+                Logger_1.Logger.logError(JSON.stringify(error), "DeleteStoredProcedure", error.code);
+                deferred.reject(error);
+            }).finally(function () {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.clearInProgressMessageWithId(id);
+            });
+            return deferred.promise;
+        };
+        DocumentClientUtilityBase.prototype.deleteUserDefinedFunction = function (userDefinedFunction, options) {
+            var deferred = Q.defer();
+            var id = NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.InProgress, "Deleting user defined function " + userDefinedFunction.id);
+            this._dataAccessUtility.deleteUserDefinedFunction(userDefinedFunction, options).then(function (response) {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Info, "Successfully deleted user defined function " + userDefinedFunction.id);
+                deferred.resolve(response);
+            }, function (error) {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Error, "Error while deleting user defined function " + userDefinedFunction.id + ":\n " + JSON.stringify(error));
+                Logger_1.Logger.logError(JSON.stringify(error), "DeleteUDF", error.code);
+                deferred.reject(error);
+            }).finally(function () {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.clearInProgressMessageWithId(id);
+            });
+            return deferred.promise;
+        };
+        DocumentClientUtilityBase.prototype.deleteTrigger = function (trigger, options) {
+            var deferred = Q.defer();
+            var id = NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.InProgress, "Deleting trigger " + trigger.id);
+            this._dataAccessUtility.deleteTrigger(trigger, options).then(function (response) {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Info, "Successfully deleted trigger " + trigger.id);
+                deferred.resolve(response);
+            }, function (error) {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Error, "Error while deleting trigger " + trigger.id + ":\n " + JSON.stringify(error));
+                Logger_1.Logger.logError(JSON.stringify(error), "DeleteTrigger", error.code);
+                deferred.reject(error);
+            }).finally(function () {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.clearInProgressMessageWithId(id);
+            });
+            return deferred.promise;
+        };
+        DocumentClientUtilityBase.prototype.refreshCachedResources = function (options) {
+            return this._dataAccessUtility.refreshCachedResources(options);
+        };
+        DocumentClientUtilityBase.prototype.refreshCachedOffers = function (options) {
+            return this._dataAccessUtility.refreshCachedOffers(options);
+        };
+        DocumentClientUtilityBase.prototype.refreshCachedOffer = function (offer, options) {
+            return this._dataAccessUtility.refreshCachedOffer(offer, options);
+        };
+        DocumentClientUtilityBase.prototype.readCollections = function (database, options) {
+            var deferred = Q.defer();
+            var id = NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.InProgress, "Querying collections for database " + database.id());
+            this._dataAccessUtility.readCollections(database, options).then(function (collections) {
+                deferred.resolve(collections);
+            }, function (error) {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Error, "Error while querying collections for database " + database.id() + ":\n " + JSON.stringify(error));
+                Logger_1.Logger.logError(JSON.stringify(error), "ReadCollections", error.code);
+                deferred.reject(error);
+            }).finally(function () {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.clearInProgressMessageWithId(id);
+            });
+            return deferred.promise;
+        };
+        DocumentClientUtilityBase.prototype.readCollectionQuotaInfo = function (collection, options) {
+            var deferred = Q.defer();
+            var id = NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.InProgress, "Querying quota info for collection " + collection.id);
+            this._dataAccessUtility.readCollectionQuotaInfo(collection, options).then(function (quota) {
+                deferred.resolve(quota);
+            }, function (error) {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Error, "Error while querying quota info for collection " + collection.id + ":\n " + JSON.stringify(error));
+                Logger_1.Logger.logError(JSON.stringify(error), "ReadCollectionQuotaInfo", error.code);
+                deferred.reject(error);
+            }).finally(function () {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.clearInProgressMessageWithId(id);
+            });
+            return deferred.promise;
+        };
+        DocumentClientUtilityBase.prototype.readOffers = function (options) {
+            var deferred = Q.defer();
+            var id = NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.InProgress, "Querying offers");
+            this._dataAccessUtility.readOffers(options).then(function (offers) {
+                deferred.resolve(offers);
+            }, function (error) {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Error, "Error while querying offers:\n " + JSON.stringify(error));
+                Logger_1.Logger.logError(JSON.stringify(error), "ReadOffers", error.code);
+                deferred.reject(error);
+            }).finally(function () {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.clearInProgressMessageWithId(id);
+            });
+            return deferred.promise;
+        };
+        DocumentClientUtilityBase.prototype.readOffer = function (requestedResource, options) {
+            var deferred = Q.defer();
+            var id = NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.InProgress, "Querying offer");
+            this._dataAccessUtility.readOffer(requestedResource, options).then(function (offer) {
+                deferred.resolve(offer);
+            }, function (error) {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Error, "Error while querying offer:\n " + JSON.stringify(error));
+                Logger_1.Logger.logError(JSON.stringify(error), "ReadOffer", error.code);
+                deferred.reject(error);
+            }).finally(function () {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.clearInProgressMessageWithId(id);
+            });
+            return deferred.promise;
+        };
+        DocumentClientUtilityBase.prototype.readDatabases = function (options) {
+            var deferred = Q.defer();
+            var id = NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.InProgress, "Querying databases");
+            this._dataAccessUtility.readDatabases(options).then(function (databases) {
+                deferred.resolve(databases);
+            }, function (error) {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Error, "Error while querying databases:\n " + JSON.stringify(error));
+                Logger_1.Logger.logError(JSON.stringify(error), "ReadDatabases", error.code);
+                deferred.reject(error);
+            }).finally(function () {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.clearInProgressMessageWithId(id);
+            });
+            return deferred.promise;
+        };
+        DocumentClientUtilityBase.prototype.getOrCreateDatabaseAndCollection = function (request, options, afterGetOrCreateDatabase) {
+            var deferred = Q.defer();
+            var id = NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.InProgress, "Creating a new collection " + request.collectionId + " for database " + request.databaseId);
+            this._dataAccessUtility.getOrCreateDatabaseAndCollection(request, options, afterGetOrCreateDatabase).then(function (collection) {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Info, "Successfully created collection " + request.collectionId);
+                deferred.resolve(collection);
+            }, function (error) {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Error, "Error while creating collection " + request.collectionId + ":\n " + JSON.stringify(error));
+                deferred.reject(error);
+            }).finally(function () { return NotificationConsoleUtils_1.NotificationConsoleUtils.clearInProgressMessageWithId(id); });
+            return deferred.promise;
+        };
+        DocumentClientUtilityBase.prototype.createDatabase = function (request, options) {
+            var deferred = Q.defer();
+            var id = NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.InProgress, "Creating a new database " + request.databaseId);
+            this._dataAccessUtility.createDatabase(request, options).then(function (database) {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Info, "Successfully created database " + request.databaseId);
+                deferred.resolve(database);
+            }, function (error) {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Error, "Error while creating database " + request.databaseId + ":\n " + JSON.stringify(error));
+                deferred.reject(error);
+            }).finally(function () { return NotificationConsoleUtils_1.NotificationConsoleUtils.clearInProgressMessageWithId(id); });
+            return deferred.promise;
+        };
+        DocumentClientUtilityBase.prototype.readDatabaseAccount = function (options) {
+            return this._dataAccessUtility.readDatabaseAccount(options);
+        };
+        DocumentClientUtilityBase.prototype.readSubscription = function (subscriptionId, options) {
+            return this._dataAccessUtility.readSubscription(subscriptionId, options);
+        };
+        DocumentClientUtilityBase.prototype.readSubscriptionDefaults = function (subscriptionId, quotaId, options) {
+            return this._dataAccessUtility.readSubscriptionDefaults(subscriptionId, quotaId, options);
+        };
+        return DocumentClientUtilityBase;
+    }());
+    return DocumentClientUtilityBase;
+});
+Íþ›Æ‹N      [Õ¾Ê[Õ¾Ý?§¶²[×k?   K    :https://cosmos.azure.com/built/Common/DocumentClientUtilityBase.js?v=1.0.1 necko:classified 1 strongly-framed 1 security-info FnhllAKWRHGAlo+ESXykKAAAAAAAAAAAwAAAAAAAAEaphjojH6pBabDSgSnsfLHeAAQAAgAAAAAAAAAAAAAAAAAAAAAB4vFIJp5wRkeyPxAQ9RJGKPqbqVvKO0mKuIl8ec8o/uhmCjImkVxP+7sgiYWmMt8FvcOXmlQiTNWFiWlrbpbqgwAAAAAAAAOMMIIDiDCCAnCgAwIBAgIERTJgUjANBgkqhkiG9w0BAQsFADCBijEUMBIGA1UEBhMLUG9ydFN3aWdnZXIxFDASBgNVBAgTC1BvcnRTd2lnZ2VyMRQwEgYDVQQHEwtQb3J0U3dpZ2dlcjEUMBIGA1UEChMLUG9ydFN3aWdnZXIxFzAVBgNVBAsTDlBvcnRTd2lnZ2VyIENBMRcwFQYDVQQDEw5Qb3J0U3dpZ2dlciBDQTAeFw0xNDEwMjgxMzEyMTBaFw0zODEwMjgxMzEyMTBaMGAxFDASBgNVBAYTC1BvcnRTd2lnZ2VyMRQwEgYDVQQKEwtQb3J0U3dpZ2dlcjEXMBUGA1UECxMOUG9ydFN3aWdnZXIgQ0ExGTAXBgNVBAMTEGNvc21vcy5henVyZS5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCKn7emKINsnWqPZ+C/VsqbQf/l4NsmIh34bXBR0xdNg9bfb+xcoghRlmbPjhZ/A26A2gJ6Rrg2d0GGMLpbqA8nTlRRGXEAD39321zk4ye09ElXClvqguGqdqOJpPQ05DPFD6wSOq+KVAEblE5bi+LMqBLipDERzgUe7xzeqVVk0i0ldh9yQOIk3YuzcBR9igSEuw5qladmMYvXKHYM9YZz0R7axMc8xAtadK7C9KfFPfEI5LS2nhmy4vBrTgFyYhfkEvKfmIj6HTX0ISFCAC2llcBLpEDcuiW76tAHp1pXDeWtSeaV36AeOctdleVgrbmsGs3fu6ppuRcWjEZUbjE3AgMBAAGjHzAdMBsGA1UdEQQUMBKCEGNvc21vcy5henVyZS5jb20wDQYJKoZIhvcNAQELBQADggEBABYikT6Y5YgJJ4IVJldlFDF5MKxp26YegXhvT8EmAbgr0yQBIlY2DtKEiHf7Q8wRoJ9y5Ajst1D7HmRba+XLjS6s3IHJ7gtuvc3fZj9MPKpbqSKRfHDB8bDOVIzmjBseg2BqckHTkcYak3b/pTWCTqKHM3LxKsDwN8F3HNQ2pY4d5ma2kR1EtWdTpRiIbir3QxJDcWVp8CgHONZcoMn33NNwnWWjAQMX6d8e1CPuBZi0t+myaYduCqPgKKox9qMXSubF6uifQkAJ5RdLZrZ2pghENA/4r1oz51wqEmpjPsStSUxRPwJ6wJrB4gwGtX7++ZHLjAaNrTSUCGwIOlAT4LnALwEDAAAAAAEBAAAAAA== request-method GET request-Accept-Encoding gzip, deflate, br response-head HTTP/1.1 200 OK
+Content-Length: 43993
+Content-Type: application/x-javascript
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:39:25 GMT
+ original-response-headers Content-Length: 43993
+Content-Type: application/x-javascript
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:39:25 GMT
+Connection: close
+ uncompressed-len 0 net-response-time-onstart 18810 net-response-time-onstop 18812   «Ù

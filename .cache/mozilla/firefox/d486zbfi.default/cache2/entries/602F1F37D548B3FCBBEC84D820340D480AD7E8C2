@@ -1,0 +1,1089 @@
+define(["require", "exports", "knockout", "hasher", "q", "../Contracts/ViewModels", "../Common/Constants", "underscore", "../Contracts/ExplorerContracts", "../Platform/Hosted/Authorization", "./Tree/Database", "./Panes/AddDatabasePane", "./Panes/AddCollectionPane", "./Panes/CassandraAddCollectionPane", "../Shared/DefaultExperienceUtility", "../Utils/DatabaseAccountUtils", "./Panes/DeleteCollectionConfirmationPane", "./Panes/DeleteDatabaseConfirmationPane", "./Panes/GraphStylingPane", "./Panes/Tables/AddTableEntityPane", "./Panes/Tables/EditTableEntityPane", "./Panes/Tables/TableColumnOptionsPane", "./Panes/Tables/QuerySelectPane", "./Panes/NewVertexPane", "../Shared/Constants", "./ComponentRegisterer", "./CommandBarButtonFactory", "./OpenActions", "../Bindings/BindingHandlersRegisterer", "../Common/Constants", "./Menus/NotificationConsole/NotificationConsole", "../Common/MessageHandler", "../Utils/NotificationConsoleUtils", "../Common/Splitter", "./Tables/TableDataClient", "../Shared/Telemetry/TelemetryConstants", "../Shared/Telemetry/TelemetryProcessor", "../Api/Apis", "./Panes/SettingsPane", "./Panes/ExecuteSprocParamsPane", "../PlatformType", "./Panes/RenewAdHocAccessPane", "../RouteHandlers/RouteHandler", "./Panes/UploadItemsPane", "../Shared/ExplorerSettings", "jquery-ui"], function (require, exports, ko, hasher, Q, ViewModels, Constants, _, ExplorerContracts_1, AuthHeadersUtil, Database, AddDatabasePane, AddCollectionPane, CassandraAddCollectionPane, DefaultExperienceUtility_1, DatabaseAccountUtils_1, DeleteCollectionConfirmationPane, DeleteDatabaseConfirmationPane, GraphStylingPane, AddTableEntityPane, EditTableEntityPane, TableColumnOptionsPane_1, QuerySelectPane_1, NewVertexPane, SharedConstants, ComponentRegisterer, CommandBarButtonFactory_1, OpenActions_1, BindingHandlersRegisterer_1, Constants_1, NotificationConsole_1, MessageHandler_1, NotificationConsoleUtils_1, Splitter_1, TableDataClient_1, TelemetryConstants_1, TelemetryProcessor_1, Apis_1, SettingsPane_1, ExecuteSprocParamsPane_1, PlatformType_1, RenewAdHocAccessPane_1, RouteHandler_1, UploadItemsPane_1, ExplorerSettings_1) {
+    "use strict";
+    BindingHandlersRegisterer_1.BindingHandlersRegisterer.registerBindingHandlers();
+    // Hold a reference to ComponentRegisterer to prevent transpiler to ignore import
+    var tmp = ComponentRegisterer;
+    var DocumentDB = window.DocumentDB;
+    var Explorer = /** @class */ (function () {
+        function Explorer(options) {
+            var _this = this;
+            this.collapsedResourceTreeWidth = Constants_1.ExplorerMetrics.CollapsedResourceTreeWidth;
+            this.parentFrameDataExplorerVersion = ko.observable("");
+            this.hostedUrlWithQueryString = ko.observable("#");
+            this._panes = [];
+            this._importExplorerConfigComplete = false;
+            this._isSystemDatabasePredicate = function (database) { return false; };
+            this.renewToken = function () {
+                _this.renewTokenError("");
+                var id = NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.InProgress, "Initiating connection to account");
+                _this.renewExplorerShareAccess(_this, _this.tokenForRenewal()).fail(function (error) {
+                    var stringifiedError = JSON.stringify(error);
+                    _this.renewTokenError("Invalid connection string specified");
+                    NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Error, "Failed to initiate connection to account: " + stringifiedError);
+                }).finally(function () { return NotificationConsoleUtils_1.NotificationConsoleUtils.clearInProgressMessageWithId(id); });
+            };
+            this.isReadWriteToggled = function () {
+                return _this.shareAccessToggleState() === 0 /* ReadWrite */;
+            };
+            this.isReadToggled = function () {
+                return _this.shareAccessToggleState() === 1 /* Read */;
+            };
+            this.toggleReadWrite = function (src, event) {
+                _this.shareAccessToggleState(0 /* ReadWrite */);
+            };
+            this.toggleRead = function (src, event) {
+                _this.shareAccessToggleState(1 /* Read */);
+            };
+            this.onToggleKeyDown = function (src, event) {
+                if (event.keyCode === Constants.KeyCodes.LeftArrow) {
+                    _this.toggleReadWrite(src, null);
+                    return false;
+                }
+                else if (event.keyCode === Constants.KeyCodes.RightArrow) {
+                    _this.toggleRead(src, null);
+                    return false;
+                }
+                return true;
+            };
+            this.onRefreshDatabasesKeyPress = function (source, event) {
+                if (event.keyCode === Constants.KeyCodes.Space || event.keyCode === Constants.KeyCodes.Enter) {
+                    _this.onRefreshDatabasesClick(source, null);
+                    return false;
+                }
+                return true;
+            };
+            this.onRefreshDatabasesClick = function (source, event) {
+                var startKey = TelemetryProcessor_1.default.traceStart(TelemetryConstants_1.Action.LoadDatabases, {
+                    description: "Refresh button clicked",
+                    databaseAccountName: _this.databaseAccount() && _this.databaseAccount().name,
+                    defaultExperience: _this.defaultExperience && _this.defaultExperience(),
+                    dataExplorerArea: Constants.Areas.ResourceTree
+                });
+                _this.isRefreshingExplorer(true);
+                _this.documentClientUtility.refreshCachedResources(null /** options **/).then(function () {
+                    TelemetryProcessor_1.default.traceSuccess(TelemetryConstants_1.Action.LoadDatabases, {
+                        description: "Refresh successful",
+                        databaseAccountName: _this.databaseAccount() && _this.databaseAccount().name,
+                        defaultExperience: _this.defaultExperience && _this.defaultExperience(),
+                        dataExplorerArea: Constants.Areas.ResourceTree
+                    }, startKey);
+                    _this.refreshAllDatabases();
+                }, function (error) {
+                    _this.isRefreshingExplorer(false);
+                    NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Error, "Error while refreshing data: " + JSON.stringify(error));
+                    TelemetryProcessor_1.default.traceFailure(TelemetryConstants_1.Action.LoadDatabases, {
+                        description: "Unable to refresh cached resources",
+                        databaseAccountName: _this.databaseAccount() && _this.databaseAccount().name,
+                        defaultExperience: _this.defaultExperience && _this.defaultExperience(),
+                        dataExplorerArea: Constants.Areas.ResourceTree,
+                        error: error
+                    }, startKey);
+                    throw error;
+                });
+                return false;
+            };
+            this.toggleLeftPaneExpandedKeyPress = function (source, event) {
+                if (event.keyCode === Constants.KeyCodes.Space || event.keyCode === Constants.KeyCodes.Enter) {
+                    _this.toggleLeftPaneExpanded();
+                    return false;
+                }
+                return true;
+            };
+            // Facade
+            this.provideFeedbackEmail = function () {
+                window.open(Constants.Urls.feedbackEmail, "_self");
+            };
+            // TODO: Abstract this elsewhere
+            this._openShareDialog = function () {
+                if (!$("#shareDataAccessFlyout").dialog("instance")) {
+                    var accountMetadataInfo_1 = {
+                        databaseAccountName: _this.databaseAccount() && _this.databaseAccount().name,
+                        defaultExperience: _this.defaultExperience && _this.defaultExperience(),
+                        dataExplorerArea: Constants.Areas.ShareDialog
+                    };
+                    var openFullscreenButton = {
+                        text: "Open",
+                        class: 'openFullScreenBtn openFullScreenCancelBtn',
+                        click: function () {
+                            TelemetryProcessor_1.default.trace(TelemetryConstants_1.Action.SelectItem, TelemetryConstants_1.ActionModifiers.Mark, _.extend({}, { description: "Open full screen" }, accountMetadataInfo_1));
+                            var hiddenAnchorElement = document.createElement('a');
+                            hiddenAnchorElement.href = _this.shareAccessUrl();
+                            hiddenAnchorElement.target = "_blank";
+                            $("#shareDataAccessFlyout").dialog("close");
+                            hiddenAnchorElement.click();
+                        }
+                    };
+                    var cancelButton = {
+                        text: "Cancel",
+                        class: 'shareCancelButton openFullScreenCancelBtn',
+                        click: function () {
+                            TelemetryProcessor_1.default.trace(TelemetryConstants_1.Action.SelectItem, TelemetryConstants_1.ActionModifiers.Mark, _.extend({}, { description: "Cancel open full screen" }, accountMetadataInfo_1));
+                            $("#shareDataAccessFlyout").dialog("close");
+                        }
+                    };
+                    $("#shareDataAccessFlyout").dialog({
+                        autoOpen: false,
+                        buttons: [openFullscreenButton, cancelButton],
+                        closeOnEscape: true,
+                        draggable: false,
+                        dialogClass: "no-close",
+                        position: { my: "left top", at: "left bottom", of: $("#commandButton-OpenFullScreen") },
+                        resizable: false,
+                        title: "Open Full Screen",
+                        width: 400,
+                        close: function (event, ui) { return _this.shouldShowShareDialogContents(false); }
+                    });
+                    $("#shareDataAccessFlyout").dialog("option", "classes", {
+                        "ui-widget-content": "shareUrlDialog",
+                        "ui-widget-header": "shareUrlTitle",
+                        "ui-dialog-titlebar-close": "shareClose",
+                        "ui-button": "shareCloseIcon",
+                        "ui-button-icon": "cancelIcon",
+                        "ui-icon": ""
+                    });
+                    $("#shareDataAccessFlyout").dialog("option", "open", function (event, ui) { return $(".openFullScreenBtn").focus(); });
+                }
+                $("#shareDataAccessFlyout").dialog("close");
+                _this.shouldShowShareDialogContents(true);
+                $("#shareDataAccessFlyout").dialog("open");
+            };
+            var startKey = TelemetryProcessor_1.default.traceStart(TelemetryConstants_1.Action.InitializeDataExplorer, { dataExplorerArea: Constants.Areas.ResourceTree });
+            this.addCollectionText = ko.observable("New Collection");
+            this.addDatabaseText = ko.observable("New Database");
+            this.hasWriteAccess = ko.observable(true);
+            this.collectionTitle = ko.observable("Collections");
+            this.collectionTreeNodeAltText = ko.observable("Collection");
+            this.deleteCollectionText = ko.observable("Delete Collection");
+            this.deleteDatabaseText = ko.observable("Delete Database");
+            this.refreshTreeTitle = ko.observable("Refresh collections");
+            this.databaseAccount = ko.observable();
+            this.subscriptionType = ko.observable(SharedConstants.CollectionCreation.DefaultSubscriptionType);
+            this.quotaId = ko.observable("");
+            this.isRefreshingExplorer = ko.observable(true);
+            this.commandBarOptions = ko.observable({
+                alwaysHiddenButtons: ko.observableArray([]),
+                alwaysShownButtons: ko.observableArray([]),
+                overflowButtons: ko.observableArray([])
+            });
+            this.isAccountReady = ko.observable(false);
+            this.isAccountReady.subscribe(function (isAccountReady) {
+                if (isAccountReady) {
+                    _this.refreshAllDatabases(true);
+                    _this.commandBarOptions().alwaysHiddenButtons(CommandBarButtonFactory_1.CommandBarButtonFactory.createAlwaysOverflownCommandButtonOptions(_this));
+                    _this.commandBarOptions().alwaysShownButtons(CommandBarButtonFactory_1.CommandBarButtonFactory.createNonOverflowableCommandBarButtonOptions(_this));
+                    _this.commandBarOptions().overflowButtons(CommandBarButtonFactory_1.CommandBarButtonFactory.createOverflowableCommandBarButtonOptions(_this));
+                    RouteHandler_1.RouteHandler.getInstance().initHandler();
+                }
+            });
+            this.documentClientUtility = options.documentClientUtility;
+            this.notificationsClient = options.notificationsClient;
+            this.isEmulator = options.isEmulator;
+            this.features = ko.observable();
+            this.serverId = ko.observable();
+            this.extensionEndpoint = ko.observable(undefined);
+            this.isTryCosmosDBSubscription = ko.observable(false);
+            this.sharedThroughputRange = ko.observable({
+                defaultRU: Constants.BackendDefaults.databaseLevelDefaultThroughput,
+                maximumRU: Constants.BackendDefaults.databaseLevelMaxThroughput,
+                minimumRU: Constants.BackendDefaults.databaseLevelMinThroughput
+            });
+            this.shareAccessData = ko.observable({
+                readWriteUrl: undefined,
+                readUrl: undefined
+            });
+            this.tokenForRenewal = ko.observable("");
+            this.renewTokenError = ko.observable("");
+            this.shareAccessUrl = ko.observable();
+            this.shareUrlCopyHelperText = ko.observable("Click to copy");
+            this.shareTokenCopyHelperText = ko.observable("Click to copy");
+            this.shareAccessToggleState = ko.observable(0 /* ReadWrite */);
+            this.shareAccessToggleState.subscribe(function (toggleState) {
+                if (toggleState === 0 /* ReadWrite */) {
+                    _this.shareAccessUrl(_this.shareAccessData && _this.shareAccessData().readWriteUrl);
+                }
+                else {
+                    _this.shareAccessUrl(_this.shareAccessData && _this.shareAccessData().readUrl);
+                }
+            });
+            this.shouldShowShareDialogContents = ko.observable(false);
+            this.shouldShowDataAccessExpiryDialog = ko.observable(false);
+            this.shouldShowContextSwitchPrompt = ko.observable(false);
+            this.isGraphsEnabled = ko.computed(function () {
+                return _this.isFeatureEnabled(Constants.Features.graphs);
+            });
+            this.isNotificationConsoleExpanded = ko.observable(false);
+            this.databases = ko.observableArray();
+            this.isLeftPaneExpanded = ko.observable(true);
+            this.selectedNode = ko.observable();
+            this.selectedNode.subscribe(function (nodeSelected) {
+                // Make sure switching tabs restores tabs display
+                _this.isTabsContentExpanded(false);
+            });
+            var splitterBounds = { min: Constants_1.ExplorerMetrics.SplitterMinWidth, max: Constants_1.ExplorerMetrics.SplitterMaxWidth };
+            this.splitter = new Splitter_1.Splitter({
+                splitterId: "h_splitter1",
+                leftId: "resourcetree",
+                bounds: splitterBounds,
+                direction: Splitter_1.SplitterDirection.Vertical
+            });
+            this.notificationConsoleOptions = ko.observable({ consoleData: ko.observableArray([]) });
+            this.defaultExperience = ko.observable();
+            this.databaseAccount.subscribe(function (databaseAccount) {
+                _this.defaultExperience(DefaultExperienceUtility_1.DefaultExperienceUtility.getDefaultExperienceFromDatabaseAccount(databaseAccount));
+                _this.hostedUrlWithQueryString(Constants.Referrers.hostedDataExplorer);
+            });
+            this.isPreferredApiDocumentDB = ko.computed(function () {
+                var defaultExperience = _this.defaultExperience && _this.defaultExperience() || "";
+                return (defaultExperience.toLowerCase() === Constants.DefaultAccountExperience.DocumentDB.toLowerCase());
+            });
+            this.isPreferredApiCassandra = ko.computed(function () {
+                var defaultExperience = _this.defaultExperience && _this.defaultExperience() || "";
+                return (defaultExperience.toLowerCase() === Constants.DefaultAccountExperience.Cassandra.toLowerCase());
+            });
+            this.isPreferredApiGraph = ko.computed(function () {
+                var defaultExperience = _this.defaultExperience && _this.defaultExperience() || "";
+                return (defaultExperience.toLowerCase() === Constants.DefaultAccountExperience.Graph.toLowerCase());
+            });
+            this.isPreferredApiTable = ko.computed(function () {
+                var defaultExperience = _this.defaultExperience && _this.defaultExperience() || "";
+                return (defaultExperience.toLowerCase() === Constants.DefaultAccountExperience.Table.toLowerCase());
+            });
+            this.isPreferredApiMongoDB = ko.computed(function () {
+                var defaultExperience = _this.defaultExperience && _this.defaultExperience() || "";
+                if (defaultExperience.toLowerCase() === Constants.DefaultAccountExperience.MongoDB.toLowerCase()) {
+                    return true;
+                }
+                if (_this.databaseAccount && _this.databaseAccount() && _this.databaseAccount().kind.toLowerCase() === Constants.AccountKind.MongoDB) {
+                    return true;
+                }
+                return false;
+            });
+            this.isHostedDataExplorerEnabled = ko.computed(function () { return _this.getPlatformType() === PlatformType_1.PlatformType.Portal && !_this.isRunningOnNationalCloud() && !_this.isPreferredApiGraph(); });
+            this.defaultExperience.subscribe(function (defaultExperience) {
+                if (defaultExperience && defaultExperience.toLowerCase() === Constants.DefaultAccountExperience.Cassandra.toLowerCase()) {
+                    var api = new Apis_1.CassandraApi();
+                    _this._isSystemDatabasePredicate = api.isSystemDatabasePredicate;
+                }
+            });
+            this.selectedDatabaseId = ko.computed(function () {
+                var selectedNode = _this.selectedNode();
+                if (!selectedNode) {
+                    return "";
+                }
+                switch (selectedNode.nodeKind) {
+                    case "Collection":
+                        return selectedNode.database.id() || "";
+                    case "Database":
+                        return selectedNode.id() || "";
+                    case "DocumentId":
+                    case "StoredProcedure":
+                    case "Trigger":
+                    case "UserDefinedFunction":
+                        return selectedNode.collection.database.id() || "";
+                    default:
+                        return "";
+                }
+            });
+            this.addDatabasePane = new AddDatabasePane({
+                documentClientUtility: this.documentClientUtility,
+                id: "adddatabasepane",
+                visible: ko.observable(false),
+                isRunningOnDaytona: false,
+                container: this
+            });
+            this.addCollectionPane = new AddCollectionPane({
+                isPreferredApiTable: ko.computed(function () { return _this.isPreferredApiTable(); }),
+                documentClientUtility: this.documentClientUtility,
+                id: "addcollectionpane",
+                visible: ko.observable(false),
+                isRunningOnDaytona: false,
+                container: this
+            });
+            this.deleteCollectionConfirmationPane = new DeleteCollectionConfirmationPane({
+                documentClientUtility: this.documentClientUtility,
+                id: "deletecollectionconfirmationpane",
+                visible: ko.observable(false),
+                isRunningOnDaytona: false,
+                container: this
+            });
+            this.deleteDatabaseConfirmationPane = new DeleteDatabaseConfirmationPane({
+                documentClientUtility: this.documentClientUtility,
+                id: "deletedatabaseconfirmationpane",
+                visible: ko.observable(false),
+                isRunningOnDaytona: false,
+                container: this
+            });
+            this.graphStylingPane = new GraphStylingPane({
+                documentClientUtility: this.documentClientUtility,
+                id: "graphstylingpane",
+                visible: ko.observable(false),
+                isRunningOnDaytona: false,
+                container: this
+            });
+            this.addTableEntityPane = new AddTableEntityPane({
+                documentClientUtility: this.documentClientUtility,
+                id: "addtableentitypane",
+                visible: ko.observable(false),
+                isRunningOnDaytona: false,
+                container: this
+            });
+            this.editTableEntityPane = new EditTableEntityPane({
+                documentClientUtility: this.documentClientUtility,
+                id: "edittableentitypane",
+                visible: ko.observable(false),
+                isRunningOnDaytona: false,
+                container: this
+            });
+            this.tableColumnOptionsPane = new TableColumnOptionsPane_1.TableColumnOptionsPane({
+                documentClientUtility: this.documentClientUtility,
+                id: "tablecolumnoptionspane",
+                visible: ko.observable(false),
+                isRunningOnDaytona: false,
+                container: this
+            });
+            this.querySelectPane = new QuerySelectPane_1.QuerySelectPane({
+                documentClientUtility: this.documentClientUtility,
+                id: "queryselectpane",
+                visible: ko.observable(false),
+                isRunningOnDaytona: false,
+                container: this
+            });
+            this.newVertexPane = new NewVertexPane({
+                documentClientUtility: this.documentClientUtility,
+                id: "newvertexpane",
+                visible: ko.observable(false),
+                isRunningOnDaytona: false,
+                container: this
+            });
+            this.cassandraAddCollectionPane = new CassandraAddCollectionPane({
+                documentClientUtility: this.documentClientUtility,
+                id: "cassandraaddcollectionpane",
+                visible: ko.observable(false),
+                isRunningOnDaytona: false,
+                container: this
+            });
+            this.settingsPane = new SettingsPane_1.SettingsPane({
+                documentClientUtility: this.documentClientUtility,
+                id: "settingspane",
+                visible: ko.observable(false),
+                isRunningOnDaytona: false,
+                container: this
+            });
+            this.executeSprocParamsPane = new ExecuteSprocParamsPane_1.ExecuteSprocParamsPane({
+                documentClientUtility: this.documentClientUtility,
+                id: "executesprocparamspane",
+                visible: ko.observable(false),
+                isRunningOnDaytona: false,
+                container: this
+            });
+            this.renewAdHocAccessPane = new RenewAdHocAccessPane_1.RenewAdHocAccessPane({
+                documentClientUtility: this.documentClientUtility,
+                id: "renewadhocaccesspane",
+                visible: ko.observable(false),
+                isRunningOnDaytona: false,
+                container: this
+            });
+            this.uploadItemsPane = new UploadItemsPane_1.UploadItemsPane({
+                documentClientUtility: this.documentClientUtility,
+                id: "uploaditemspane",
+                visible: ko.observable(false),
+                isRunningOnDaytona: false,
+                container: this
+            });
+            this.openedTabs = ko.observableArray([]);
+            this._panes = [
+                this.addDatabasePane,
+                this.addCollectionPane,
+                this.deleteCollectionConfirmationPane,
+                this.deleteDatabaseConfirmationPane,
+                this.graphStylingPane,
+                this.addTableEntityPane,
+                this.editTableEntityPane,
+                this.tableColumnOptionsPane,
+                this.querySelectPane,
+                this.newVertexPane,
+                this.cassandraAddCollectionPane,
+                this.settingsPane,
+                this.executeSprocParamsPane,
+                this.renewAdHocAccessPane,
+                this.uploadItemsPane
+            ];
+            this.addDatabaseText.subscribe(function (addDatabaseText) { return _this.addDatabasePane.title(addDatabaseText); });
+            this.rebindDocumentClientUtility.bind(this);
+            this.isTabsContentExpanded = ko.observable(false);
+            document.addEventListener('contextmenu', function (e) {
+                e.preventDefault();
+            }, false);
+            $(function () {
+                $(document.body).click(function () { return $(".commandDropdownContainer").hide(); });
+            });
+            // TODO move this to API customization class
+            this.defaultExperience.subscribe(function (defaultExperience) {
+                var defaultExperienceNormalizedString = (defaultExperience || Constants.DefaultAccountExperience.Default).toLowerCase();
+                switch (defaultExperienceNormalizedString) {
+                    case Constants.DefaultAccountExperience.DocumentDB.toLowerCase():
+                        _this.addCollectionText("New Collection");
+                        _this.addDatabaseText("New Database");
+                        _this.collectionTitle("SQL API");
+                        _this.collectionTreeNodeAltText("Collection");
+                        _this.deleteCollectionText("Delete Collection");
+                        _this.deleteDatabaseText("Delete Database");
+                        _this.addCollectionPane.title("Add Collection");
+                        _this.addCollectionPane.collectionIdTitle("Collection Id");
+                        _this.addCollectionPane.collectionWithThroughputInSharedTitle("Provision dedicated throughput for this collection");
+                        _this.addCollectionPane.collectionMaxSharedThroughputTitle("Utilize all of the available database throughput for this collection");
+                        _this.refreshTreeTitle("Refresh collections");
+                        break;
+                    case Constants.DefaultAccountExperience.MongoDB.toLowerCase():
+                        _this.addCollectionText("New Collection");
+                        _this.addDatabaseText("New Database");
+                        _this.collectionTitle("MongoDB API");
+                        _this.collectionTreeNodeAltText("Collection");
+                        _this.deleteCollectionText("Delete Collection");
+                        _this.deleteDatabaseText("Delete Database");
+                        _this.addCollectionPane.title("Add Collection");
+                        _this.addCollectionPane.collectionIdTitle("Collection Id");
+                        _this.addCollectionPane.collectionWithThroughputInSharedTitle("Provision dedicated throughput for this collection");
+                        _this.addCollectionPane.collectionMaxSharedThroughputTitle("Utilize all of the available database throughput for this collection");
+                        _this.refreshTreeTitle("Refresh collections");
+                        break;
+                    case Constants.DefaultAccountExperience.Graph.toLowerCase():
+                        _this.addCollectionText("New Graph");
+                        _this.addDatabaseText("New Database");
+                        _this.deleteCollectionText("Delete Graph");
+                        _this.deleteDatabaseText("Delete Database");
+                        _this.collectionTitle("Gremlin API");
+                        _this.collectionTreeNodeAltText("Graph");
+                        _this.addCollectionPane.title("Add Graph");
+                        _this.addCollectionPane.collectionIdTitle("Graph Id");
+                        _this.addCollectionPane.collectionWithThroughputInSharedTitle("Provision dedicated throughput for this graph");
+                        _this.addCollectionPane.collectionMaxSharedThroughputTitle("Utilize all of the available database throughput for this graph");
+                        _this.deleteCollectionConfirmationPane.title("Delete Graph");
+                        _this.deleteCollectionConfirmationPane.collectionIdConfirmationText("Confirm by typing the graph id");
+                        _this.refreshTreeTitle("Refresh graphs");
+                        break;
+                    case Constants.DefaultAccountExperience.Table.toLowerCase():
+                        _this.addCollectionText("New Table");
+                        _this.addDatabaseText("New Database");
+                        _this.deleteCollectionText("Delete Table");
+                        _this.deleteDatabaseText("Delete Database");
+                        _this.collectionTitle("Azure Table API");
+                        _this.collectionTreeNodeAltText("Table");
+                        _this.addCollectionPane.title("Add Table");
+                        _this.addCollectionPane.collectionIdTitle("Table Id");
+                        _this.addCollectionPane.collectionWithThroughputInSharedTitle("Provision dedicated throughput for this table");
+                        _this.addCollectionPane.collectionMaxSharedThroughputTitle("Utilize all of the available database throughput for this table");
+                        _this.refreshTreeTitle("Refresh tables");
+                        _this.addTableEntityPane.title("Add Table Entity");
+                        _this.editTableEntityPane.title("Edit Table Entity");
+                        _this.deleteCollectionConfirmationPane.title("Delete Table");
+                        _this.deleteCollectionConfirmationPane.collectionIdConfirmationText("Confirm by typing the table id");
+                        _this.tableDataClient = new TableDataClient_1.TablesAPIDataClient(_this.documentClientUtility);
+                        break;
+                    case Constants.DefaultAccountExperience.Cassandra.toLowerCase():
+                        _this.addCollectionText("New Table");
+                        _this.addDatabaseText("New Keyspace");
+                        _this.deleteCollectionText("Delete Table");
+                        _this.deleteDatabaseText("Delete Keyspace");
+                        _this.collectionTitle("Cassandra API");
+                        _this.collectionTreeNodeAltText("Table");
+                        _this.addCollectionPane.title("Add Table");
+                        _this.addCollectionPane.collectionIdTitle("Table Id");
+                        _this.addCollectionPane.collectionWithThroughputInSharedTitle("Provision dedicated throughput for this table");
+                        _this.addCollectionPane.collectionMaxSharedThroughputTitle("Utilize all of the available keyspace throughput for this table");
+                        _this.refreshTreeTitle("Refresh tables");
+                        _this.addTableEntityPane.title("Add Table Row");
+                        _this.editTableEntityPane.title("Edit Table Row");
+                        _this.deleteCollectionConfirmationPane.title("Delete Table");
+                        _this.deleteCollectionConfirmationPane.collectionIdConfirmationText("Confirm by typing the table id");
+                        _this.deleteDatabaseConfirmationPane.title("Delete Keyspace");
+                        _this.deleteDatabaseConfirmationPane.databaseIdConfirmationText("Confirm by typing the keyspace id");
+                        _this.tableDataClient = new TableDataClient_1.CassandraAPIDataClient(_this.documentClientUtility);
+                        break;
+                }
+            });
+            this.nonSystemDatabases = ko.computed(function () {
+                return _this.databases().filter(function (database) { return !_this._isSystemDatabasePredicate(database); });
+            });
+            this._initSettings();
+            TelemetryProcessor_1.default.traceSuccess(TelemetryConstants_1.Action.InitializeDataExplorer, { dataExplorerArea: Constants.Areas.ResourceTree }, startKey);
+        }
+        Explorer.prototype.rebindDocumentClientUtility = function (documentClientUtility) {
+            this.documentClientUtility = documentClientUtility;
+            this._panes.forEach(function (pane) {
+                pane.documentClientUtility = documentClientUtility;
+            });
+        };
+        Explorer.prototype.copyUrlLink = function (src, event) {
+            var _this = this;
+            var urlLinkInput = document.getElementById("shareUrlLink");
+            urlLinkInput && urlLinkInput.select();
+            document.execCommand("copy");
+            this.shareUrlCopyHelperText("Copied");
+            setTimeout(function () { return _this.shareUrlCopyHelperText("Click to copy"); }, Constants.ClientDefaults.copyHelperTimeoutMs);
+            TelemetryProcessor_1.default.trace(TelemetryConstants_1.Action.SelectItem, TelemetryConstants_1.ActionModifiers.Mark, {
+                description: "Copy full screen URL",
+                databaseAccountName: this.databaseAccount() && this.databaseAccount().name,
+                defaultExperience: this.defaultExperience && this.defaultExperience(),
+                dataExplorerArea: Constants.Areas.ShareDialog
+            });
+        };
+        Explorer.prototype.onCopyUrlLinkKeyPress = function (src, event) {
+            if (event.keyCode === Constants.KeyCodes.Enter || event.keyCode === Constants.KeyCodes.Space) {
+                this.copyUrlLink(src, null);
+                return false;
+            }
+            return true;
+        };
+        ;
+        Explorer.prototype.copyToken = function (src, event) {
+            var _this = this;
+            var tokenInput = document.getElementById("shareToken");
+            tokenInput && tokenInput.select();
+            document.execCommand("copy");
+            this.shareTokenCopyHelperText("Copied");
+            setTimeout(function () { return _this.shareTokenCopyHelperText("Click to copy"); }, Constants.ClientDefaults.copyHelperTimeoutMs);
+        };
+        Explorer.prototype.onCopyTokenKeyPress = function (src, event) {
+            if (event.keyCode === Constants.KeyCodes.Enter || event.keyCode === Constants.KeyCodes.Space) {
+                this.copyToken(src, null);
+                return false;
+            }
+            return true;
+        };
+        ;
+        Explorer.prototype.generateSharedAccessData = function () {
+            var _this = this;
+            var id = NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.InProgress, "Generating share url");
+            AuthHeadersUtil.generateEncryptedToken().then(function (tokenResponse) {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.clearInProgressMessageWithId(id);
+                NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Info, "Successfully generated share url");
+                _this.shareAccessData({
+                    readWriteUrl: _this._getShareAccessUrlForToken(tokenResponse.readWrite),
+                    readUrl: _this._getShareAccessUrlForToken(tokenResponse.read)
+                });
+                !_this.shareAccessData().readWriteUrl && _this.shareAccessToggleState(1 /* Read */); // select read toggle by default for readers
+                _this.shareAccessToggleState.valueHasMutated(); // to set initial url and token state
+                _this.shareAccessData.valueHasMutated();
+                _this._openShareDialog();
+            }, function (error) {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.clearInProgressMessageWithId(id);
+                NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Error, "Failed to generate share url: " + JSON.stringify(error));
+                console.error(error);
+            });
+        };
+        Explorer.prototype.renewShareAccess = function (token) {
+            var _this = this;
+            if (!this.renewExplorerShareAccess) {
+                return Q.reject("Not implemented");
+            }
+            var deferred = Q.defer();
+            var id = NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.InProgress, "Initiating connection to account");
+            this.renewExplorerShareAccess(this, token).then(function () {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Info, "Connection successful");
+                _this.renewAdHocAccessPane && _this.renewAdHocAccessPane.close();
+                deferred.resolve();
+            }, function (error) {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Error, "Failed to connect: " + JSON.stringify(error));
+                deferred.reject(error);
+            }).finally(function () {
+                NotificationConsoleUtils_1.NotificationConsoleUtils.clearInProgressMessageWithId(id);
+            });
+            return deferred.promise;
+        };
+        Explorer.prototype.displayGuestAccessTokenRenewalPrompt = function () {
+            var _this = this;
+            if (!$("#dataAccessTokenModal").dialog("instance")) {
+                var connectButton = {
+                    text: "Connect",
+                    class: 'connectDialogButtons connectButton connectOkBtns',
+                    click: function () {
+                        _this.renewAdHocAccessPane.open();
+                        $("#dataAccessTokenModal").dialog("close");
+                    }
+                };
+                var cancelButton = {
+                    text: "Cancel",
+                    class: 'connectDialogButtons cancelBtn',
+                    click: function () {
+                        $("#dataAccessTokenModal").dialog("close");
+                    }
+                };
+                $("#dataAccessTokenModal").dialog({
+                    autoOpen: false,
+                    buttons: [connectButton, cancelButton],
+                    closeOnEscape: false,
+                    draggable: false,
+                    dialogClass: "no-close",
+                    height: 180,
+                    modal: true,
+                    position: { my: "center center", at: "center center", of: window },
+                    resizable: false,
+                    title: "Temporary access expired",
+                    width: 435,
+                    close: function (event, ui) { return _this.shouldShowDataAccessExpiryDialog(false); }
+                });
+                $("#dataAccessTokenModal").dialog("option", "classes", {
+                    "ui-dialog-titlebar": "connectTitlebar"
+                });
+            }
+            this.shouldShowDataAccessExpiryDialog(true);
+            $("#dataAccessTokenModal").dialog("open");
+        };
+        Explorer.prototype.isConnectExplorerVisible = function () {
+            return $("#connectExplorer").is(":visible") || false;
+        };
+        Explorer.prototype.displayContextSwitchPromptForConnectionString = function (connectionString) {
+            var _this = this;
+            var yesButton = {
+                text: "OK",
+                class: 'connectDialogButtons okBtn connectOkBtns',
+                click: function () {
+                    $("#contextSwitchPrompt").dialog("close");
+                    _this.openedTabs([]); // clear all tabs so we dont leave any tabs from previous session open
+                    _this.renewShareAccess(connectionString);
+                }
+            };
+            var noButton = {
+                text: "Cancel",
+                class: 'connectDialogButtons cancelBtn',
+                click: function () {
+                    $("#contextSwitchPrompt").dialog("close");
+                }
+            };
+            if (!$("#contextSwitchPrompt").dialog("instance")) {
+                $("#contextSwitchPrompt").dialog({
+                    autoOpen: false,
+                    buttons: [yesButton, noButton],
+                    closeOnEscape: false,
+                    draggable: false,
+                    dialogClass: "no-close",
+                    height: 255,
+                    modal: true,
+                    position: { my: "center center", at: "center center", of: window },
+                    resizable: false,
+                    title: "Switch accounts",
+                    width: 440,
+                    close: function (event, ui) { return _this.shouldShowDataAccessExpiryDialog(false); }
+                });
+                $("#contextSwitchPrompt").dialog("option", "classes", {
+                    "ui-dialog-titlebar": "connectTitlebar"
+                });
+                $("#contextSwitchPrompt").dialog("option", "open", function (event, ui) {
+                    $(".ui-dialog ").css("z-index", 1001);
+                    $("#contextSwitchPrompt").parent().siblings(".ui-widget-overlay").css("z-index", 1000);
+                });
+            }
+            $("#contextSwitchPrompt").dialog("option", "buttons", [yesButton, noButton]); // rebind buttons so callbacks accept current connection string
+            this.shouldShowContextSwitchPrompt(true);
+            $("#contextSwitchPrompt").dialog("open");
+        };
+        Explorer.prototype.displayConnectExplorerForm = function () {
+            $("#divExplorer").hide();
+            $("#connectExplorer").css("display", "flex");
+        };
+        Explorer.prototype.hideConnectExplorerForm = function () {
+            $("#connectExplorer").hide();
+            $("#divExplorer").show();
+        };
+        Explorer.prototype.isDatabaseNodeOrNoneSelected = function () {
+            return this.isNoneSelected() || this.isDatabaseNodeSelected();
+        };
+        Explorer.prototype.isDatabaseNodeSelected = function () {
+            return (this.selectedNode() && this.selectedNode().nodeKind === "Database") || false;
+        };
+        Explorer.prototype.isNodeKindSelected = function (nodeKind) {
+            return (this.selectedNode() && this.selectedNode().nodeKind === nodeKind) || false;
+        };
+        Explorer.prototype.isNoneSelected = function () {
+            return this.selectedNode() == null;
+        };
+        Explorer.prototype.isFeatureEnabled = function (feature) {
+            var features = this.features();
+            if (!features) {
+                return false;
+            }
+            if (feature in features && features[feature]) {
+                return true;
+            }
+            return false;
+        };
+        Explorer.prototype.logConsoleData = function (consoleData) {
+            this.notificationConsoleOptions().consoleData.splice(0, 0, consoleData);
+        };
+        Explorer.prototype.deleteInProgressConsoleDataWithId = function (id) {
+            var updatedConsoleData = _.reject(this.notificationConsoleOptions().consoleData(), function (data) { return data.type === NotificationConsole_1.ConsoleDataType.InProgress && data.id === id; });
+            this.notificationConsoleOptions().consoleData(updatedConsoleData);
+        };
+        Explorer.prototype.toggleLeftPaneExpanded = function () {
+            this.isLeftPaneExpanded(!this.isLeftPaneExpanded());
+            if (this.isLeftPaneExpanded()) {
+                this.splitter.expandLeft();
+            }
+            else {
+                this.splitter.collapseLeft();
+            }
+        };
+        Explorer.prototype.refreshAllDatabases = function (isInitialLoad) {
+            var _this = this;
+            this.isRefreshingExplorer(true);
+            var startKey = TelemetryProcessor_1.default.traceStart(TelemetryConstants_1.Action.LoadDatabases, {
+                databaseAccountName: this.databaseAccount() && this.databaseAccount().name,
+                defaultExperience: this.defaultExperience && this.defaultExperience(),
+                dataExplorerArea: Constants.Areas.ResourceTree
+            });
+            var resourceTreeStartKey = null;
+            if (isInitialLoad) {
+                resourceTreeStartKey = TelemetryProcessor_1.default.traceStart(TelemetryConstants_1.Action.LoadResourceTree, {
+                    databaseAccountName: this.databaseAccount() && this.databaseAccount().name,
+                    defaultExperience: this.defaultExperience && this.defaultExperience(),
+                    dataExplorerArea: Constants.Areas.ResourceTree
+                });
+            }
+            // TODO: Refactor
+            var deferred = Q.defer();
+            var offerPromise = this.documentClientUtility.readOffers(null /** options **/);
+            offerPromise.then(function (offers) {
+                _this.documentClientUtility.readDatabases(null /*options*/).then(function (databases) {
+                    TelemetryProcessor_1.default.traceSuccess(TelemetryConstants_1.Action.LoadDatabases, {
+                        databaseAccountName: _this.databaseAccount().name,
+                        defaultExperience: _this.defaultExperience(),
+                        dataExplorerArea: Constants.Areas.ResourceTree
+                    }, startKey);
+                    var currentlySelectedNode = _this.selectedNode();
+                    var deltaDatabases = _this.getDeltaDatabases(databases, offers);
+                    _this.addDatabasesToList(deltaDatabases.toAdd);
+                    _this.deleteDatabasesFromList(deltaDatabases.toDelete);
+                    _this.selectedNode(currentlySelectedNode);
+                    _this.refreshAndExpandNewDatabases(deltaDatabases.toAdd).then(function () {
+                        deferred.resolve();
+                    }, function (reason) {
+                        deferred.reject(reason);
+                    }).finally(function () { return _this.isRefreshingExplorer(false); });
+                }, function (error) {
+                    deferred.reject(error);
+                    _this.isRefreshingExplorer(false);
+                    TelemetryProcessor_1.default.traceFailure(TelemetryConstants_1.Action.LoadDatabases, {
+                        databaseAccountName: _this.databaseAccount().name,
+                        defaultExperience: _this.defaultExperience(),
+                        dataExplorerArea: Constants.Areas.ResourceTree,
+                        error: JSON.stringify(error)
+                    }, startKey);
+                    NotificationConsoleUtils_1.NotificationConsoleUtils.logConsoleMessage(NotificationConsole_1.ConsoleDataType.Error, "Error while refreshing databases: " + JSON.stringify(error));
+                });
+            });
+            return deferred.promise.then(function () {
+                if (resourceTreeStartKey != null) {
+                    TelemetryProcessor_1.default.traceSuccess(TelemetryConstants_1.Action.LoadResourceTree, {
+                        databaseAccountName: _this.databaseAccount() && _this.databaseAccount().name,
+                        defaultExperience: _this.defaultExperience && _this.defaultExperience(),
+                        dataExplorerArea: Constants.Areas.ResourceTree
+                    }, resourceTreeStartKey);
+                }
+            }, function (reason) {
+                if (resourceTreeStartKey != null) {
+                    TelemetryProcessor_1.default.traceFailure(TelemetryConstants_1.Action.LoadResourceTree, {
+                        databaseAccountName: _this.databaseAccount() && _this.databaseAccount().name,
+                        defaultExperience: _this.defaultExperience && _this.defaultExperience(),
+                        dataExplorerArea: Constants.Areas.ResourceTree,
+                        error: reason
+                    }, resourceTreeStartKey);
+                }
+            });
+        };
+        Explorer.prototype.handleMessage = function (event) {
+            var _this = this;
+            if (typeof event.data !== "object" || event.data["signature"] !== "pcIframe")
+                return;
+            if (typeof event.data !== "object" || !("data" in event.data))
+                return;
+            if (typeof event.data["data"] !== "object" || (!("inputs" in event.data["data"]) && !this._importExplorerConfigComplete))
+                return;
+            var message = event.data.data;
+            var inputs = message.inputs;
+            var initPromise = inputs ? this.initDataExplorerWithFrameInputs(inputs) : Q();
+            initPromise.then(function () {
+                var openAction = message.openAction;
+                if (!!openAction) {
+                    if (_this.isRefreshingExplorer()) {
+                        var subscription_1 = _this.databases.subscribe(function (databases) {
+                            OpenActions_1.handleOpenAction(openAction, _this.nonSystemDatabases(), _this);
+                            subscription_1.dispose();
+                        });
+                    }
+                    else {
+                        OpenActions_1.handleOpenAction(openAction, _this.nonSystemDatabases(), _this);
+                    }
+                }
+                if (message.actionType === ExplorerContracts_1.ActionContracts.ActionType.TransmitCachedData) {
+                    MessageHandler_1.MessageHandler.handleCachedDataMessage(message);
+                }
+                if (message.messageType === ExplorerContracts_1.MessageTypes.UpdateLocationHash && !!message.locationHash) {
+                    hasher.replaceHash(message.locationHash);
+                    RouteHandler_1.RouteHandler.getInstance().parseHash(message.locationHash);
+                }
+            });
+        };
+        Explorer.prototype.findSelectedDatabase = function () {
+            var _this = this;
+            if (this.selectedNode().nodeKind === "Database") {
+                return _.find(this.databases(), function (database) { return database.rid === _this.selectedNode().rid; });
+            }
+            return this.findSelectedCollection().database;
+        };
+        Explorer.prototype.findDatabaseWithId = function (databaseId) {
+            return _.find(this.databases(), function (database) { return database.id() === databaseId; });
+        };
+        Explorer.prototype.isSelectedDatabaseShared = function () {
+            var database = this.findSelectedDatabase();
+            if (!!database) {
+                return database.offer && !!database.offer();
+            }
+            return false;
+        };
+        Explorer.prototype.initDataExplorerWithFrameInputs = function (inputs) {
+            if (inputs != null) {
+                var authorizationToken = inputs.authorizationToken || "";
+                var masterKey = inputs.masterKey || "";
+                var databaseAccount = inputs.databaseAccount || null;
+                this.features(inputs.features);
+                this.serverId(inputs.serverId);
+                this.extensionEndpoint(inputs.extensionEndpoint || "");
+                this.notificationsClient.setExtensionEndpoint(this.extensionEndpoint());
+                this.databaseAccount(databaseAccount);
+                this.subscriptionType(inputs.subscriptionType);
+                this.quotaId(inputs.quotaId);
+                this.hasWriteAccess(inputs.hasWriteAccess);
+                this.addDatabasePane.defaultFlight(inputs.addCollectionDefaultFlight);
+                this.addCollectionPane.defaultFlight(inputs.addCollectionDefaultFlight);
+                this.cassandraAddCollectionPane.defaultFlight(inputs.addCollectionDefaultFlight);
+                this.isTryCosmosDBSubscription(inputs.isTryCosmosDBSubscription);
+                if (!!inputs.sharedThroughputDefault) {
+                    var sharedThroughputExtensionConfiguration = {
+                        defaultRU: inputs.sharedThroughputDefault,
+                        minimumRU: inputs.sharedThroughputMinimum,
+                        maximumRU: inputs.sharedThroughputMaximum
+                    };
+                    this.sharedThroughputRange(sharedThroughputExtensionConfiguration);
+                }
+                if (!!inputs.dataExplorerVersion) {
+                    this.parentFrameDataExplorerVersion(inputs.dataExplorerVersion);
+                }
+                this._importExplorerConfigComplete = true;
+                DocumentDB.RequestHandler._authorizationToken(authorizationToken);
+                DocumentDB.RequestHandler._masterKey(masterKey);
+                DocumentDB.RequestHandler._databaseAccount(databaseAccount);
+                DocumentDB.RequestHandler._subscriptionId(inputs.subscriptionId);
+                DocumentDB.RequestHandler._resourceGroup(inputs.resourceGroup);
+                TelemetryProcessor_1.default.traceSuccess(TelemetryConstants_1.Action.LoadDatabaseAccount, {
+                    resourceId: this.databaseAccount && this.databaseAccount().id,
+                    dataExplorerArea: Constants.Areas.ResourceTree,
+                    databaseAccount: this.databaseAccount && this.databaseAccount()
+                }, inputs.loadDatabaseAccountTimestamp);
+                MessageHandler_1.MessageHandler.sendMessage({
+                    messageType: ExplorerContracts_1.MessageTypes.UpdateAccountName,
+                    accountName: databaseAccount && databaseAccount.name
+                });
+                this.isAccountReady(true);
+                return this._initDatabaseAccountFromGateway();
+            }
+            return Q();
+        };
+        Explorer.prototype._initDatabaseAccountFromGateway = function () {
+            var _this = this;
+            if (!this.databaseAccount()) {
+                return Q();
+            }
+            var deferred = Q.defer();
+            this.documentClientUtility.readDatabaseAccount(null /* options */).then(function (gatewayDatabaseAccount) {
+                var mergedDatabaseAccount = DatabaseAccountUtils_1.DatabaseAccountUtils.mergeDatabaseAccountWithGateway(_this.databaseAccount(), gatewayDatabaseAccount);
+                _this.databaseAccount(mergedDatabaseAccount);
+                DocumentDB.RequestHandler._databaseAccount(mergedDatabaseAccount);
+                deferred.resolve();
+            }, function (error) {
+                deferred.reject(error);
+            });
+            return deferred.promise;
+        };
+        Explorer.prototype.findActiveTab = function () {
+            return _.find(this.openedTabs(), function (tab) { return tab.isActive && tab.isActive(); });
+        };
+        Explorer.prototype.findSelectedCollection = function () {
+            if (this.selectedNode().nodeKind === "Collection") {
+                return this.findSelectedCollectionForSelectedNode();
+            }
+            else {
+                return this.findSelectedCollectionForSubNode();
+            }
+        };
+        // TODO: Refactor below methods, minimize dependencies and add unit tests where necessary
+        Explorer.prototype.findSelectedStoredProcedure = function () {
+            var _this = this;
+            var selectedCollection = this.findSelectedCollection();
+            return _.find(selectedCollection.storedProcedures(), function (storedProcedure) {
+                var openedSprocTab = _this.openedTabs().filter(function (tab) { return (tab.node.rid === storedProcedure.rid) && (tab.tabKind === ViewModels.CollectionTabKind.StoredProcedures); });
+                return storedProcedure.rid === _this.selectedNode().rid || (!!openedSprocTab && openedSprocTab.length > 0 && openedSprocTab[0].isActive());
+            });
+        };
+        Explorer.prototype.findSelectedUDF = function () {
+            var _this = this;
+            var selectedCollection = this.findSelectedCollection();
+            return _.find(selectedCollection.userDefinedFunctions(), function (userDefinedFunction) {
+                var openedUdfTab = _this.openedTabs().filter(function (tab) { return (tab.node.rid === userDefinedFunction.rid) && (tab.tabKind === ViewModels.CollectionTabKind.UserDefinedFunctions); });
+                return userDefinedFunction.rid === _this.selectedNode().rid || (!!openedUdfTab && openedUdfTab.length > 0 && openedUdfTab[0].isActive());
+            });
+        };
+        Explorer.prototype.findSelectedTrigger = function () {
+            var _this = this;
+            var selectedCollection = this.findSelectedCollection();
+            return _.find(selectedCollection.triggers(), function (trigger) {
+                var openedTriggerTab = _this.openedTabs().filter(function (tab) { return (tab.node.rid === trigger.rid) && (tab.tabKind === ViewModels.CollectionTabKind.Triggers); });
+                return trigger.rid === _this.selectedNode().rid || (!!openedTriggerTab && openedTriggerTab.length > 0 && openedTriggerTab[0].isActive());
+            });
+        };
+        Explorer.prototype.closeAllTabsForResource = function (resourceId) {
+            var currentlyActiveTabs = this.openedTabs().filter(function (tab) { return tab.isActive && tab.isActive(); });
+            currentlyActiveTabs.forEach(function (tab) { return tab.isActive(false); });
+            var openedTabsForResource = this.openedTabs().filter(function (tab) { return (tab.node.rid === resourceId); });
+            openedTabsForResource.forEach(function (tab) { return tab.onCloseTabButtonClick(); });
+        };
+        Explorer.prototype.closeAllPanes = function () {
+            this._panes.forEach(function (pane) { return pane.close(); });
+        };
+        Explorer.prototype.getPlatformType = function () {
+            return window.dataExplorerPlatform;
+        };
+        Explorer.prototype.isRunningOnNationalCloud = function () {
+            return this.serverId() === Constants.ServerIds.blackforest || this.serverId() === Constants.ServerIds.fairfax || this.serverId() === Constants.ServerIds.mooncake;
+        };
+        Explorer.prototype.refreshAndExpandNewDatabases = function (newDatabases) {
+            var _this = this;
+            // we reload collections for all databases so the resource tree reflects any collection-level changes
+            // i.e addition of stored procedures, etc.
+            var deferred = Q.defer();
+            var loadCollectionPromises = [];
+            var startKey = TelemetryProcessor_1.default.traceStart(TelemetryConstants_1.Action.LoadCollections, {
+                databaseAccountName: this.databaseAccount() && this.databaseAccount().name,
+                defaultExperience: this.defaultExperience && this.defaultExperience(),
+                dataExplorerArea: Constants.Areas.ResourceTree
+            });
+            this.databases().forEach(function (database) {
+                loadCollectionPromises.push(database.loadCollections().finally(function () {
+                    var isNewDatabase = _.some(newDatabases, function (db) { return db.rid === database.rid; });
+                    if (isNewDatabase) {
+                        database.expandDatabase();
+                    }
+                    database.refreshTabSelectedState();
+                }));
+            });
+            Q.all(loadCollectionPromises).done(function () {
+                deferred.resolve();
+                TelemetryProcessor_1.default.traceSuccess(TelemetryConstants_1.Action.LoadCollections, { dataExplorerArea: Constants.Areas.ResourceTree }, startKey);
+            }, function (error) {
+                deferred.reject(error);
+                TelemetryProcessor_1.default.traceFailure(TelemetryConstants_1.Action.LoadCollections, {
+                    databaseAccountName: _this.databaseAccount() && _this.databaseAccount().name,
+                    defaultExperience: _this.defaultExperience && _this.defaultExperience(),
+                    dataExplorerArea: Constants.Areas.ResourceTree,
+                    trace: JSON.stringify(error)
+                }, startKey);
+            });
+            return deferred.promise;
+        };
+        Explorer.prototype._getShareAccessUrlForToken = function (token) {
+            if (!token) {
+                return undefined;
+            }
+            var urlPrefixWithKeyParam = Constants.Referrers.hostedDataExplorer + "?key=";
+            var currentActiveTab = this.findActiveTab();
+            return "" + urlPrefixWithKeyParam + token + "#/" + (currentActiveTab && currentActiveTab.hashLocation() || "");
+        };
+        Explorer.prototype._initSettings = function () {
+            if (!ExplorerSettings_1.ExplorerSettings.hasSettingsDefined()) {
+                ExplorerSettings_1.ExplorerSettings.createDefaultSettings();
+            }
+        };
+        Explorer.prototype.findSelectedCollectionForSelectedNode = function () {
+            for (var i = 0; i < this.databases().length; i++) {
+                var database = this.databases()[i];
+                for (var j = 0; j < database.collections().length; j++) {
+                    var collection = database.collections()[j];
+                    if (collection.rid === this.selectedNode().rid) {
+                        return collection;
+                    }
+                }
+            }
+            return null;
+        };
+        Explorer.prototype.getDeltaDatabases = function (updatedDatabaseList, updatedOffersList) {
+            var _this = this;
+            var newDatabases = _.filter(updatedDatabaseList, function (database) {
+                var databaseExists = _.some(_this.databases(), function (existingDatabase) { return existingDatabase.rid === database._rid; });
+                return !databaseExists;
+            });
+            var databasesToAdd = _.map(newDatabases, function (newDatabase) {
+                var databaseOffer = _this.getOfferForResource(updatedOffersList, newDatabase._self);
+                return new Database(_this, newDatabase, databaseOffer);
+            });
+            var databasesToDelete = [];
+            ko.utils.arrayForEach(this.databases(), function (database) {
+                var databasePresentInUpdatedList = _.some(updatedDatabaseList, function (db) { return db._rid === database.rid; });
+                if (!databasePresentInUpdatedList) {
+                    databasesToDelete.push(database);
+                }
+            });
+            return { toAdd: databasesToAdd, toDelete: databasesToDelete };
+        };
+        Explorer.prototype.addDatabasesToList = function (databases) {
+            this.databases(this.databases().concat(databases));
+        };
+        Explorer.prototype.deleteDatabasesFromList = function (databasesToRemove) {
+            var databasesToKeep = [];
+            ko.utils.arrayForEach(this.databases(), function (database) {
+                var shouldRemoveDatabase = _.some(databasesToRemove, function (db) { return db.rid === database.rid; });
+                if (!shouldRemoveDatabase) {
+                    databasesToKeep.push(database);
+                }
+            });
+            this.databases(databasesToKeep);
+        };
+        Explorer.prototype.findSelectedCollectionForSubNode = function () {
+            for (var i = 0; i < this.databases().length; i++) {
+                var database = this.databases()[i];
+                for (var j = 0; j < database.collections().length; j++) {
+                    var collection = database.collections()[j];
+                    if (collection.rid === this.selectedNode().collection.rid) {
+                        return collection;
+                    }
+                }
+            }
+            return null;
+        };
+        Explorer.prototype.getOfferForResource = function (offers, resourceId) {
+            return _.find(offers, function (offer) { return offer.resource === resourceId; });
+        };
+        return Explorer;
+    }());
+    return Explorer;
+});
+Mçr7—      [Õ¾Ç[Õ¾Ê?§¶°[×k:   <    :https://cosmos.azure.com/built/Explorer/Explorer.js?v=1.0.1 necko:classified 1 strongly-framed 1 security-info FnhllAKWRHGAlo+ESXykKAAAAAAAAAAAwAAAAAAAAEaphjojH6pBabDSgSnsfLHeAAQAAgAAAAAAAAAAAAAAAAAAAAAB4vFIJp5wRkeyPxAQ9RJGKPqbqVvKO0mKuIl8ec8o/uhmCjImkVxP+7sgiYWmMt8FvcOXmlQiTNWFiWlrbpbqgwAAAAAAAAOMMIIDiDCCAnCgAwIBAgIERTJgUjANBgkqhkiG9w0BAQsFADCBijEUMBIGA1UEBhMLUG9ydFN3aWdnZXIxFDASBgNVBAgTC1BvcnRTd2lnZ2VyMRQwEgYDVQQHEwtQb3J0U3dpZ2dlcjEUMBIGA1UEChMLUG9ydFN3aWdnZXIxFzAVBgNVBAsTDlBvcnRTd2lnZ2VyIENBMRcwFQYDVQQDEw5Qb3J0U3dpZ2dlciBDQTAeFw0xNDEwMjgxMzEyMTBaFw0zODEwMjgxMzEyMTBaMGAxFDASBgNVBAYTC1BvcnRTd2lnZ2VyMRQwEgYDVQQKEwtQb3J0U3dpZ2dlcjEXMBUGA1UECxMOUG9ydFN3aWdnZXIgQ0ExGTAXBgNVBAMTEGNvc21vcy5henVyZS5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCKn7emKINsnWqPZ+C/VsqbQf/l4NsmIh34bXBR0xdNg9bfb+xcoghRlmbPjhZ/A26A2gJ6Rrg2d0GGMLpbqA8nTlRRGXEAD39321zk4ye09ElXClvqguGqdqOJpPQ05DPFD6wSOq+KVAEblE5bi+LMqBLipDERzgUe7xzeqVVk0i0ldh9yQOIk3YuzcBR9igSEuw5qladmMYvXKHYM9YZz0R7axMc8xAtadK7C9KfFPfEI5LS2nhmy4vBrTgFyYhfkEvKfmIj6HTX0ISFCAC2llcBLpEDcuiW76tAHp1pXDeWtSeaV36AeOctdleVgrbmsGs3fu6ppuRcWjEZUbjE3AgMBAAGjHzAdMBsGA1UdEQQUMBKCEGNvc21vcy5henVyZS5jb20wDQYJKoZIhvcNAQELBQADggEBABYikT6Y5YgJJ4IVJldlFDF5MKxp26YegXhvT8EmAbgr0yQBIlY2DtKEiHf7Q8wRoJ9y5Ajst1D7HmRba+XLjS6s3IHJ7gtuvc3fZj9MPKpbqSKRfHDB8bDOVIzmjBseg2BqckHTkcYak3b/pTWCTqKHM3LxKsDwN8F3HNQ2pY4d5ma2kR1EtWdTpRiIbir3QxJDcWVp8CgHONZcoMn33NNwnWWjAQMX6d8e1CPuBZi0t+myaYduCqPgKKox9qMXSubF6uifQkAJ5RdLZrZ2pghENA/4r1oz51wqEmpjPsStSUxRPwJ6wJrB4gwGtX7++ZHLjAaNrTSUCGwIOlAT4LnALwEDAAAAAAEBAAAAAA== request-method GET request-Accept-Encoding gzip, deflate, br response-head HTTP/1.1 200 OK
+Content-Length: 64847
+Content-Type: application/x-javascript
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:39:06 GMT
+ original-response-headers Content-Length: 64847
+Content-Type: application/x-javascript
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:39:06 GMT
+Connection: close
+ uncompressed-len 0 net-response-time-onstart 2689 net-response-time-onstop 2691   ýO

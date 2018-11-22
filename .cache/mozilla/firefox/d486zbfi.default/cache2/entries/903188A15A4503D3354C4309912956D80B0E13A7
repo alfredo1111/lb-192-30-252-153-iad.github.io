@@ -1,0 +1,216 @@
+define(["require", "exports", "knockout", "underscore", "../../../Shared/Telemetry/TelemetryConstants", "../../../Common/Constants", "../Constants", "../../../Shared/Telemetry/TelemetryProcessor", "datatables"], function (require, exports, ko, _, TelemetryConstants_1, CommonConstants, Constants, TelemetryProcessor_1) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    var DataTableViewModel = /** @class */ (function () {
+        function DataTableViewModel() {
+            /* Observables */
+            this.items = ko.observableArray();
+            this.selected = ko.observableArray();
+            this.downloadSize = 300;
+            // Used by table redraw throttling
+            this.pollingInterval = 1000;
+            this.redrawInterval = 500;
+            this.pendingRedraw = false;
+            this.lastRedrawTime = new Date().getTime();
+            this.items([]);
+            this.selected([]);
+            // Late bound
+            this.dataTableOperationManager = null;
+        }
+        DataTableViewModel.prototype.bind = function (dataTableOperationManager) {
+            this.dataTableOperationManager = dataTableOperationManager;
+        };
+        DataTableViewModel.prototype.clearLastSelected = function () {
+            this.lastSelectedItem = null;
+            this.lastSelectedAnchorItem = null;
+        };
+        DataTableViewModel.prototype.clearCache = function () {
+            this.cache.clear();
+            this._documentIterator = null;
+            this.continuationToken = null;
+            this.allDownloaded = false;
+        };
+        DataTableViewModel.prototype.clearSelection = function () {
+            this.selected.removeAll();
+        };
+        // Redraws the table, but guarantees that multiple sequential calls will not incur
+        // another redraw until a certain time interval has passed.
+        DataTableViewModel.prototype.redrawTableThrottled = function () {
+            var _this = this;
+            if (!this.pendingRedraw) {
+                this.pendingRedraw = true;
+                var current = new Date().getTime();
+                var timeSinceLastRedraw = current - this.lastRedrawTime;
+                var redraw = function () {
+                    _this.table.draw(false /*reset*/);
+                    _this.lastRedrawTime = new Date().getTime();
+                    _this.pendingRedraw = false;
+                };
+                if (timeSinceLastRedraw > this.redrawInterval) {
+                    redraw();
+                }
+                else {
+                    var timeUntilNextRedraw = this.redrawInterval - timeSinceLastRedraw;
+                    setTimeout(function () { return redraw(); }, timeUntilNextRedraw);
+                }
+            }
+        };
+        DataTableViewModel.prototype.focusDataTable = function () {
+            this.dataTableOperationManager.focusTable();
+        };
+        DataTableViewModel.prototype.getItemFromSelectedItems = function (itemKeys) {
+            var _this = this;
+            return _.find(this.selected(), function (item) {
+                return _this.matchesKeys(item, itemKeys);
+            });
+        };
+        DataTableViewModel.prototype.getItemFromCurrentPage = function (itemKeys) {
+            var _this = this;
+            return _.find(this.items(), function (item) {
+                return _this.matchesKeys(item, itemKeys);
+            });
+        };
+        DataTableViewModel.prototype.getItemIndexFromCurrentPage = function (itemKeys) {
+            var _this = this;
+            return _.findIndex(this.items(), function (item) {
+                return _this.matchesKeys(item, itemKeys);
+            });
+        };
+        DataTableViewModel.prototype.getItemIndexFromAllPages = function (itemKeys) {
+            var _this = this;
+            return _.findIndex(this.cache.data, function (item) {
+                return _this.matchesKeys(item, itemKeys);
+            });
+        };
+        DataTableViewModel.prototype.getItemsFromAllPagesWithinRange = function (start, end) {
+            return this.cache.data.slice(start, end);
+        };
+        DataTableViewModel.prototype.isItemSelected = function (itemKeys) {
+            var _this = this;
+            return _.some(this.selected(), function (item) {
+                return _this.matchesKeys(item, itemKeys);
+            });
+        };
+        DataTableViewModel.prototype.isItemCached = function (itemKeys) {
+            var _this = this;
+            return _.some(this.cache.data, function (item) {
+                return _this.matchesKeys(item, itemKeys);
+            });
+        };
+        DataTableViewModel.prototype.getAllItemsInCurrentPage = function () {
+            return this.items();
+        };
+        DataTableViewModel.prototype.getAllItemsInCache = function () {
+            return this.cache.data;
+        };
+        DataTableViewModel.prototype.sortColumns = function (sortOrder, oSettings) {
+            var self = this;
+            this.clearSelection();
+            this.cache.data.sort(function (a, b) {
+                return self.dataComparer(a, b, sortOrder, oSettings);
+            });
+            this.cache.sortOrder = sortOrder;
+        };
+        DataTableViewModel.prototype.renderPage = function (renderCallBack, draw, startIndex, pageSize, oSettings, postRenderTasks) {
+            var _this = this;
+            if (postRenderTasks === void 0) { postRenderTasks = null; }
+            this.updatePaginationControls(oSettings);
+            // pageSize < 0 means to show all data
+            var endIndex = pageSize < 0 ? this.cache.length : startIndex + pageSize;
+            var renderData = this.cache.data.slice(startIndex, endIndex);
+            this.items(renderData);
+            var render = {
+                draw: draw,
+                aaData: renderData,
+                recordsTotal: this.cache.length,
+                recordsFiltered: this.cache.length
+            };
+            if (!!postRenderTasks) {
+                postRenderTasks(startIndex, pageSize)
+                    .then(function () {
+                    _this.table.rows().invalidate();
+                });
+            }
+            renderCallBack(render);
+            if (this.queryTablesTab.onLoadStartKey != null && this.queryTablesTab.onLoadStartKey != undefined) {
+                TelemetryProcessor_1.default.traceSuccess(TelemetryConstants_1.Action.Tab, {
+                    databaseAccountName: this.queryTablesTab.collection.container.databaseAccount().name,
+                    databaseName: this.queryTablesTab.collection.database.id(),
+                    collectionName: this.queryTablesTab.collection.id(),
+                    defaultExperience: this.queryTablesTab.collection.container.defaultExperience(),
+                    dataExplorerArea: CommonConstants.Areas.Tab,
+                    tabTitle: this.queryTablesTab.tabTitle()
+                }, this.queryTablesTab.onLoadStartKey);
+                this.queryTablesTab.onLoadStartKey = null;
+            }
+        };
+        DataTableViewModel.prototype.matchesKeys = function (item, itemKeys) {
+            var _this = this;
+            return itemKeys.every(function (property) {
+                var itemValue = item[property.key];
+                // if (itemValue && property.subkey) {
+                //     itemValue = itemValue._[property.subkey];
+                //     if (!itemValue) {
+                //         itemValue = "";
+                //     }
+                // } else if (property.subkey) {
+                //     itemValue = "";
+                // }
+                return _this.stringCompare(itemValue._, property.value);
+            });
+        };
+        /**
+         * Default string comparison is case sensitive as most Azure resources' names are case sensitive.
+         * Override this if a name, i.e., Azure File/Directory name, is case insensitive.
+         */
+        DataTableViewModel.prototype.stringCompare = function (s1, s2) {
+            return s1 === s2;
+        };
+        DataTableViewModel.prototype.updatePaginationControls = function (oSettings) {
+            var pageInfo = this.table.page.info();
+            var pageSize = pageInfo.length;
+            var paginateElement = $(oSettings.nTableWrapper).find(Constants.htmlSelectors.paginateSelector);
+            if (this.allDownloaded) {
+                if (this.cache.length <= pageSize) {
+                    // Hide pagination controls if everything fits in one page!.
+                    paginateElement.hide();
+                }
+                else {
+                    // Enable pagination controls.
+                    paginateElement.show();
+                    oSettings.oLanguage.oPaginate.sLast = DataTableViewModel.lastPageLabel;
+                }
+            }
+            else {
+                // Enable pagination controls and show load more button.
+                paginateElement.show();
+                oSettings.oLanguage.oPaginate.sLast = DataTableViewModel.loadMoreLabel;
+            }
+        };
+        DataTableViewModel.lastPageLabel = ">>"; // Localize
+        DataTableViewModel.loadMoreLabel = "Load more"; // Localize
+        return DataTableViewModel;
+    }());
+    exports.default = DataTableViewModel;
+});
+_ít)      [Õ¾ü[Ö€?§¶Ô[×ks   W    :https://cosmos.azure.com/built/Explorer/Tables/DataTable/DataTableViewModel.js?v=1.0.1 necko:classified 1 strongly-framed 1 security-info FnhllAKWRHGAlo+ESXykKAAAAAAAAAAAwAAAAAAAAEaphjojH6pBabDSgSnsfLHeAAQAAgAAAAAAAAAAAAAAAAAAAAAB4vFIJp5wRkeyPxAQ9RJGKPqbqVvKO0mKuIl8ec8o/uhmCjImkVxP+7sgiYWmMt8FvcOXmlQiTNWFiWlrbpbqgwAAAAAAAAOMMIIDiDCCAnCgAwIBAgIERTJgUjANBgkqhkiG9w0BAQsFADCBijEUMBIGA1UEBhMLUG9ydFN3aWdnZXIxFDASBgNVBAgTC1BvcnRTd2lnZ2VyMRQwEgYDVQQHEwtQb3J0U3dpZ2dlcjEUMBIGA1UEChMLUG9ydFN3aWdnZXIxFzAVBgNVBAsTDlBvcnRTd2lnZ2VyIENBMRcwFQYDVQQDEw5Qb3J0U3dpZ2dlciBDQTAeFw0xNDEwMjgxMzEyMTBaFw0zODEwMjgxMzEyMTBaMGAxFDASBgNVBAYTC1BvcnRTd2lnZ2VyMRQwEgYDVQQKEwtQb3J0U3dpZ2dlcjEXMBUGA1UECxMOUG9ydFN3aWdnZXIgQ0ExGTAXBgNVBAMTEGNvc21vcy5henVyZS5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCKn7emKINsnWqPZ+C/VsqbQf/l4NsmIh34bXBR0xdNg9bfb+xcoghRlmbPjhZ/A26A2gJ6Rrg2d0GGMLpbqA8nTlRRGXEAD39321zk4ye09ElXClvqguGqdqOJpPQ05DPFD6wSOq+KVAEblE5bi+LMqBLipDERzgUe7xzeqVVk0i0ldh9yQOIk3YuzcBR9igSEuw5qladmMYvXKHYM9YZz0R7axMc8xAtadK7C9KfFPfEI5LS2nhmy4vBrTgFyYhfkEvKfmIj6HTX0ISFCAC2llcBLpEDcuiW76tAHp1pXDeWtSeaV36AeOctdleVgrbmsGs3fu6ppuRcWjEZUbjE3AgMBAAGjHzAdMBsGA1UdEQQUMBKCEGNvc21vcy5henVyZS5jb20wDQYJKoZIhvcNAQELBQADggEBABYikT6Y5YgJJ4IVJldlFDF5MKxp26YegXhvT8EmAbgr0yQBIlY2DtKEiHf7Q8wRoJ9y5Ajst1D7HmRba+XLjS6s3IHJ7gtuvc3fZj9MPKpbqSKRfHDB8bDOVIzmjBseg2BqckHTkcYak3b/pTWCTqKHM3LxKsDwN8F3HNQ2pY4d5ma2kR1EtWdTpRiIbir3QxJDcWVp8CgHONZcoMn33NNwnWWjAQMX6d8e1CPuBZi0t+myaYduCqPgKKox9qMXSubF6uifQkAJ5RdLZrZ2pghENA/4r1oz51wqEmpjPsStSUxRPwJ6wJrB4gwGtX7++ZHLjAaNrTSUCGwIOlAT4LnALwEDAAAAAAEBAAAAAA== request-method GET request-Accept-Encoding gzip, deflate, br response-head HTTP/1.1 200 OK
+Content-Length: 9266
+Content-Type: application/x-javascript
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:39:59 GMT
+ original-response-headers Content-Length: 9266
+Content-Type: application/x-javascript
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:39:59 GMT
+Connection: close
+ uncompressed-len 0 net-response-time-onstart 3479 net-response-time-onstop 3479   $2

@@ -1,0 +1,367 @@
+var init = function(){
+  window.sfcc$ = {};
+  sf$.doSetup=false;
+  // Required values: Customer specific values
+    sf$.token="85101";
+    sf$.showSmartFormAlerts=false; // set to false after a successful configuration
+    sf$.showCriticalAlerts=false; // set to false after a successful configuration
+    // Required mapping: Input field ID mapping for required end user company input data
+    sf$.companyNameFieldAlias="Company";
+    // Input field ID mappings for additional data that can be used in the remediation process
+    sf$.firstNameFieldAlias="FirstName";
+    sf$.lastNameFieldAlias="LastName";
+    sf$.emailFieldAlias="Email";
+    // Optional mappings: Hidden field ID mappings for MATCHED company append data
+    sf$.mCompanyNameFieldAlias="RF_Company_Name__c";
+    sf$.mCityFieldAlias="RF_SITE_City__c";
+    sf$.mStateCodeFieldAlias="RF_SITE_State__c";
+    sf$.mZipFieldAlias="RF_SITE_Zip__c";
+    sf$.mCountryFieldAlias="RF_SITE_Country__c";
+    sf$.mPhoneFieldAlias="RF_SITE_Phone__c";
+    // Optional mappings: Hidden field ID mappings for HEADQUARTER company append data
+    sf$.hqCompanyNameFieldAlias="RF_HQ_Company_Name__c";
+    sf$.hqCityFieldAlias="RF_HQ_City__c";
+    sf$.hqStateCodeFieldAlias="RF_HQ_State__c";
+    sf$.hqZipFieldAlias="RF_HQ_Zip__c";
+    sf$.hqCountryFieldAlias="RF_HQ_Country__c";
+    sf$.hqPhoneFieldAlias="RF_HQ_Phone__c";
+    sf$.hqTradeNameFieldAlias="RF_Trade_Name__c";
+    sf$.hqUrlFieldAlias="RF_HQ_Website__c";
+    sf$.hqAltSicFieldAlias="RF_HQ_Industry__c";
+    // Optional mappings: Inferred Technology
+    sf$.techMarketingAutomationFieldAlias="RF_techMarketingAuto__c";
+    sf$.techEmailDeliverySpamProtectionFieldAlias="RF_techEmailSpamProtection__c";
+    sf$.techEmailMarketingFieldAlias="RF_techEmailMarketing__c";
+    // Optional mappings: Hidden field ID mappings for GLOBAL HEADQUARTER company append data
+    sf$.ghqEmployeeCountFieldAlias="RF_GHQ_Employee_Total__c";
+    sf$.ghqAnnualRevFieldAlias="RF_GHQ_Annual_Revenue__c";
+    // Required mappings:
+    sf$.smartFormID="mktoForm_1155"; // ID of the form if available
+    sf$.confidenceLevelFieldAlias="RF_Confidence_Level__c"; // Field ID to hold the confidence level of a company remediation
+    sf$.selectListHoverColor="transparent";
+    sf$.selectListColor1="#FFFFFF"; // Hex color for background of company select list
+    sf$.selectListHoverColor="#CCCCCC"; //Hex color for background of company select hover color
+    sfcc$.checkFormExist = setInterval(function() {
+      if (sfjq$("#" + sf$.grabInputID(sf$.companyNameFieldAlias)).length) {
+        sfcc$.formID=sfjq$("input[name=formid]").val();
+        if (typeof Mkto === "object" && typeof Mkto.formSubmit === "function") {
+          // Mkto Forms 1.0 submit injection
+          sf$.smartFormID="mktForm_" + sfcc$.formID;
+          sf$.overrideSubmit=true;
+        } else {
+          // Mkto Forms 2.0 submit injection
+          sf$.smartFormID="mktoForm_" + sfcc$.formID;
+          sf$.overrideSubmit=false;
+        }
+        sf$.assignIDsByName=true;
+        sf$.doSetup=true;
+        sf$.runSFSetup();
+        if (!sf$.overrideSubmit) {
+          sfcc$.doAppend=true;
+          sfcc$.form=MktoForms2.getForm(sfcc$.formID);
+          sfcc$.form.onSubmit(function() {
+            if (typeof sf$.forceSelection === "function" && sfcc$.doAppend && sf$.formCheck()) {
+              sfcc$.form.submitable(false);
+              sfcc$.doAppend = false;
+              sf$.forceSelection();
+              return false;
+            }
+            // return true to allow submit when SF submit injection completes - submit request initiated with sf$.doSmartFormSubmit()
+            return true;
+          });
+          // override sf$.doSmartFormSubmit() so that we force an original form submit, not a scripted form.submit()
+          sf$.doSmartFormSubmit = function() {
+            var stateField = sfjq$('#'+sf$.smartFormID).find('#State');
+            var streetField = sfjq$('#'+sf$.smartFormID).find('#Address');
+            var cityField = sfjq$('#'+sf$.smartFormID).find('#City');
+            var zipField = sfjq$('#'+sf$.smartFormID).find('input[name = "Postal Code"]');
+            var countryField = sfjq$('#'+sf$.smartFormID).find('#Country');
+            if(stateField.length && stateField.val().length < 1){
+              stateField.val(sfjq$('#'+sf$.mStateCodeFieldAlias).val());
+            }
+            if(streetField.length && streetField.val().length < 1){
+              streetField.val(sfjq$('#'+sf$.mAddr1FieldAlias).val());
+            }
+            if(cityField.length && cityField.val().length < 1){
+              cityField.val(sfjq$('#'+sf$.mCityFieldAlias).val());
+            }
+            if(zipField.length && zipField.val().length < 1){
+              zipField.val(sfjq$('#'+sf$.mZipFieldAlias).val());
+            }
+            if(countryField.length && countryField.val().length < 1){
+              countryField.val(sfjq$('#'+sf$.mCountryFieldAlias).val());
+            }
+            sfcc$.form.submitable(true);
+            sfjq$("#"+sf$.smartFormID+" :submit").removeAttr("disabled").click();
+          };
+        }
+        clearInterval(sfcc$.checkFormExist);
+      }
+    }, 100);
+  // Custom Industry Translations
+  sf$.translateAltSic = function(val) {
+    try {
+      if (undefined != val && val != null && val.length > 0) {
+        var subval = val.substr(0,4);
+        var translation = sfcc$.sicCodeMap[subval];
+        if (translation == null) {
+          subval = val.substr(0,3);
+          translation = sfcc$.sicCodeMap[subval];
+          if (translation == null) {
+            subval = val.substr(0,2);
+            translation = sfcc$.sicCodeMap[subval];
+            if (translation == null) {
+              subval = val.substr(0,1);
+              translation = sfcc$.sicCodeMap[subval];
+            }
+          }
+        }
+        val = (translation == null) ? val : translation;
+      }
+    } catch(e) {}
+    return val;
+  };
+  sfcc$.sicCodeMap = {
+    "01" : "Crops & Agriculture Production",
+    "02" : "Crops & Agriculture Production",
+    "07" : "Crops & Agriculture Production",
+    "08" : "Crops & Agriculture Production",
+    "09" : "Crops & Agriculture Production",
+    "10" : "Mining & Metals ",
+    "12" : "Mining & Metals ",
+    "13" : "Mining & Metals ",
+    "14" : "Mining & Metals ",
+    "15" : "Construction & Building Materials",
+    "16" : "Construction & Building Materials",
+    "17" : "Construction & Building Materials",
+    "20" : "Food & Beverage",
+    "211" : "Industrial Manufacturing & Services",
+    "212" : "Industrial Manufacturing & Services",
+    "213" : "Crops & Agriculture Production",
+    "214" : "Crops & Agriculture Production",
+    "22" : "Industrial Manufacturing & Services",
+    "23" : "Industrial Manufacturing & Services",
+    "24" : "Construction & Building Materials",
+    "25" : "Industrial Manufacturing & Services",
+    "26" : "Industrial Manufacturing & Services",
+    "27" : "Media",
+    "28" : "Chemicals",
+    "283" : "Pharmaceuticals & Biotech",
+    "29" : "Mining & Metals ",
+    "30" : "Industrial Manufacturing & Services",
+    "31" : "Industrial Manufacturing & Services",
+    "32" : "Industrial Manufacturing & Services",
+    "33" : "Mining & Metals ",
+    "34" : "Mining & Metals ",
+    "35" : "Industrial Manufacturing & Services",
+    "357" : "Computer Hardware",
+    "36" : "Electronics",
+    "37" : "Transportation",
+    "371" : "Automotive",
+    "376" : "Aerospace & Defense",
+    "38" : "Industrial Manufacturing & Services",
+    "39" : "Industrial Manufacturing & Services",
+    "40" : "Transportation",
+    "41" : "Transportation",
+    "42" : "Transportation",
+    "43" : "Transportation",
+    "44" : "Transportation",
+    "45" : "Transportation",
+    "46" : "Transportation",
+    "47" : "Transportation",
+    "48" : "Telecommunications",
+    "49" : "Energy & Environmental",
+    "50" : "Construction & Building Materials",
+    "501" : "Automotive",
+    "502" : "Consumer Products",
+    "505" : "Mining & Metals ",
+    "506" : "Electronics",
+    "5043" : "Consumer Products",
+    "5044" : "Consumer Products",
+    "5045" : "Computer Software",
+    "5046" : "Consumer Products",
+    "5047" : "Hospitals & Healthcare",
+    "5048" : "Hospitals & Healthcare",
+    "5049" : "Corporate Services",
+    "5082" : "Mining & Metals ",
+    "5083" : "Crops & Agriculture Production",
+    "5084" : "Industrial Manufacturing & Services",
+    "5085" : "Industrial Manufacturing & Services",
+    "5087" : "Corporate Services",
+    "5088" : "Transportation",
+    "5091" : "Leisure, Sports & Recreation",
+    "5092" : "Leisure, Sports & Recreation",
+    "5094" : "Consumer Products",
+    "5099" : "Consumer Products",
+    "51" : "Food & Beverage",
+    "511" : "Consumer Products",
+    "512" : "Consumer Products",
+    "513" : "Retail",
+    "515" : "Crops & Agriculture Production",
+    "516" : "Chemicals",
+    "517" : "Mining & Metals ",
+    "518" : "Food & Beverage",
+    "519" : "Consumer Products",
+    "5191" : "Crops & Agriculture Production",
+    "5192" : "Media",
+    "5198" : "Construction & Building Materials",
+    "52" : "Construction & Building Materials",
+    "53" : "Retail",
+    "54" : "Food & Beverage",
+    "55" : "Automotive",
+    "56" : "Retail",
+    "57" : "Retail",
+    "58" : "Food & Beverage",
+    "59" : "Retail",
+    "592" : "Food & Beverage",
+    "60" : "Banks",
+    "61" : "Banks",
+    "62" : "Financial Services",
+    "63" : "Insurance",
+    "64" : "Insurance",
+    "65" : "Real Estate Services",
+    "67" : "Holding Companies",
+    "70" : "Leisure, Sports & Recreation",
+    "72" : "Consumer Services",
+    "73" : "Corporate Services",
+    "737" : "Computer Software",
+    "75" : "Consumer Services",
+    "76" : "Consumer Services",
+    "78" : "Media",
+    "79" : "Leisure, Sports & Recreation",
+    "80" : "Hospitals & Healthcare",
+    "81" : "Corporate Services",
+    "82" : "Schools & Education",
+    "83" : "Consumer Services",
+    "84" : "Leisure, Sports & Recreation",
+    "86" : "Charities, Foundations & Non-Profits",
+    "87" : "Corporate Services",
+    "88" : "Consumer Services",
+    "89" : "Consumer Services",
+    "91" : "Government",
+    "92" : "Government",
+    "93" : "Government",
+    "94" : "Government",
+    "95" : "Government",
+    "96" : "Government",
+    "97" : "Aerospace & Defense",
+    "99" : "Non-Classified"
+  };
+  // Translates SmartForms Country Names to MessageSystems Custom Country Names
+  sf$.translateCountryNm = function(val) {
+    try {
+      if (undefined != val && val != null && val.length > 0) {
+        if (val == 'England') {
+          val = 'United Kingdom';
+        } else
+        if (val == 'Korea Rep Of') {
+          val = 'South Korea';
+        } else
+        if (val == 'Nothern Ireland') {
+          val = 'United Kingdom';
+        } else
+        if (val == 'Scotland') {
+          val = 'United Kingdom';
+        } else
+        if (val == 'USA') {
+          val = 'United States';
+        } else
+        if (val == 'Wales') {
+          val = 'United Kingdom';
+        }
+      } else {
+        val = val;
+      }
+    } catch(e) {}
+    return val;
+  };
+  var styles = '@import url(//fonts.googleapis.com/css?family=Raleway);\
+    .divDisplayFrame {\
+      visibility:hidden;\
+      border-color:#FFFFFF;\
+      border-width:1px !important;\
+      border-style:outset !important;\
+      border-radius:3px;\
+      -webkit-border-radius:3px;\
+      -moz-border-radius:5px;\
+      -moz-box-shadow:5px 5px 7px 3px #6B6B6B;\
+      -webkit-box-shadow:5px 5px 7px 3px #6B6B6B;\
+      box-shadow:5px 5px 7px 3px #6B6B6B;\
+      width:400px;\
+      position:absolute !important;\
+      background-color:#ffffff !important;\
+      text-align:left;\
+      font-size:26px;\
+      padding: 5px;\
+      font-family: "Raleway", Arial, Helvetica, sans-serif !important;\
+    }\
+    @media screen and (min-width:404px) {.divDisplayFrame{width:402px !important;}}\
+    @media screen and (max-width:403px) {.divDisplayFrame{width:318px !important;}}\
+    .tabCompList {\
+      border:0;\
+      margin-bottom:16px;\
+    }\
+    .tabCompList caption {\
+      line-height:95%;\
+      padding:0;\
+    }\
+    .tabCompList h3 {\
+      padding:20px 0 10px 0;\
+      font-weight: bold;\
+      color:#3c3c3c;\
+      border-width:0;\
+      text-align: center;\
+    }\
+    .tabCompList td {\
+      line-height:115%;\
+      font-size:14px;\
+      border-width:0;\
+    }\
+    .tabCompTR {}\
+    .tabCompTD {\
+      padding:2px 4px 2px 4px;\
+      border-bottom: 1px solid #CCCCCC !important;\
+    }\
+    .tabCompNATR {}\
+    .tabCompNATD {padding-left:2px;}\
+    .divCompList {\
+      font-weight: 200 !important;\
+    }\
+    .divCompName {color:#15317E;}\
+    .divCompDetails {color:#606060;}\
+    .divCompNAName {\
+      color:#3c3c3c;\
+      font-weight:bold;\
+      font-size:12px;\
+    }\
+    .divCompNADetails {\
+      color:#3c3c3c;\
+    }';
+    sfjq$('head').append('<style type="text/css">' + styles + '</style>');
+};
+sf$.onSFLoad(init);
+ÿ•ò©V      [Ö•[Ö–?§éØ[Ö–   /    :https://d26n74bqaye0ia.cloudfront.net/85101.js necko:classified 1 strongly-framed 1 security-info FnhllAKWRHGAlo+ESXykKAAAAAAAAAAAwAAAAAAAAEaphjojH6pBabDSgSnsfLHeAAQAAgAAAAAAAAAAAAAAAAAAAAAB4vFIJp5wRkeyPxAQ9RJGKPqbqVvKO0mKuIl8ec8o/uhmCjImkVxP+7sgiYWmMt8FvcOXmlQiTNWFiWlrbpbqgwAAAAAAAAOmMIIDojCCAoqgAwIBAgIERTJgDDANBgkqhkiG9w0BAQsFADCBijEUMBIGA1UEBhMLUG9ydFN3aWdnZXIxFDASBgNVBAgTC1BvcnRTd2lnZ2VyMRQwEgYDVQQHEwtQb3J0U3dpZ2dlcjEUMBIGA1UEChMLUG9ydFN3aWdnZXIxFzAVBgNVBAsTDlBvcnRTd2lnZ2VyIENBMRcwFQYDVQQDEw5Qb3J0U3dpZ2dlciBDQTAeFw0xNDEwMjgxMzEyMTBaFw0zODEwMjgxMzEyMTBaMG0xFDASBgNVBAYTC1BvcnRTd2lnZ2VyMRQwEgYDVQQKEwtQb3J0U3dpZ2dlcjEXMBUGA1UECxMOUG9ydFN3aWdnZXIgQ0ExJjAkBgNVBAMTHWQyNm43NGJxYXllMGlhLmNsb3VkZnJvbnQubmV0MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAip+3piiDbJ1qj2fgv1bKm0H/5eDbJiId+G1wUdMXTYPW32/sXKIIUZZmz44WfwNugNoCeka4NndBhjC6W6gPJ05UURlxAA9/d9tc5OMntPRJVwpb6oLhqnajiaT0NOQzxQ+sEjqvilQBG5ROW4vizKgS4qQxEc4FHu8c3qlVZNItJXYfckDiJN2Ls3AUfYoEhLsOapWnZjGL1yh2DPWGc9Ee2sTHPMQLWnSuwvSnxT3xCOS0tp4ZsuLwa04BcmIX5BLyn5iI+h019CEhQgAtpZXAS6RA3Lolu+rQB6daVw3lrUnmld+gHjnLXZXlYK25rBrN37uqabkXFoxGVG4xNwIDAQABoywwKjAoBgNVHREEITAfgh1kMjZuNzRicWF5ZTBpYS5jbG91ZGZyb250Lm5ldDANBgkqhkiG9w0BAQsFAAOCAQEAPomuTNTnXfjV78VQ89DOf82C41lYOEbpSRP3TaBuhFYFzUAYzxB6eZXJsmZn4vXDpeJOmnOxLPpvE/bxv9f7veuWtcht7ICIAZPHBiGVy4VagF3zcFp2VVyCyBreUihARk3GzHloCs3TmUe5/hO3zRR84QFGbeeGiPbopkBlSjDY5IA3RiQxBE9pYvvOXFmTqMCxYGXBal8Te0djBx+T2GwnJdvTzVtNoAgYJNQLwTYPSIp9Mwz4tkjmc6YOjFi4jE64gjn3lOKHSK/n7jJM22HYf5GqXLyiCauHHJ1gYq2ILQ7DHIfp2EY09/yamZ/lXF899lJPveOX/qXxuE7/zsAvAQMAAAAAAQEAAAAA request-method GET request-Accept-Encoding gzip, deflate, br response-head HTTP/1.1 200 OK
+Content-Type: application/x-javascript
+Date: Sun, 05 Nov 2017 05:40:24 GMT
+Last-Modified: Wed, 28 Jun 2017 18:17:31 GMT
+x-amz-meta-md5-hash: f38ec4490d148250b65498069aa18f90
+Server: AmazonS3
+Vary: Accept-Encoding
+Age: 17746
+X-Cache: Hit from cloudfront
+Via: 1.1 5a80bc66543c053c3c3d8bf5c1fa5248.cloudfront.net (CloudFront)
+X-Amz-Cf-Id: LdWbLJE1_KyqYbK2eIlwWjWQNfXOJa0bmzfHdHOXtSbafW8X8Ku55w==
+Content-Length: 12958
+ original-response-headers Content-Type: application/x-javascript
+Connection: close
+Date: Sun, 05 Nov 2017 05:40:24 GMT
+Last-Modified: Wed, 28 Jun 2017 18:17:31 GMT
+x-amz-meta-md5-hash: f38ec4490d148250b65498069aa18f90
+Server: AmazonS3
+Vary: Accept-Encoding
+Age: 17746
+X-Cache: Hit from cloudfront
+Via: 1.1 5a80bc66543c053c3c3d8bf5c1fa5248.cloudfront.net (CloudFront)
+X-Amz-Cf-Id: LdWbLJE1_KyqYbK2eIlwWjWQNfXOJa0bmzfHdHOXtSbafW8X8Ku55w==
+Content-Length: 12958
+ uncompressed-len 0 net-response-time-onstart 804 net-response-time-onstop 804   2ž

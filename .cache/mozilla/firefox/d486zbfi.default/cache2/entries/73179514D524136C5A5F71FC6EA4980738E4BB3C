@@ -1,0 +1,362 @@
+var __extends = (this && this.__extends) || function (d, b) {
+    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+    function __() { this.constructor = d; }
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+};
+define(["require", "exports", "../scripts/Framework/Util/Log", "text!./Templates/FormFieldTemplate.html", "text!./Templates/PasswordboxTemplate.html", "text!./Templates/TextareaTemplate.html", "text!./Templates/ComboboxTemplate.html", "text!./Templates/TextboxTemplate.html", "text!./Templates/TextboxWithPrefixTemplate.html", "text!./Templates/FileInputTemplate.html", "text!./images/Info.svg", "css!./CSS/FormFields.css", "css!./CSS/Common.css"], function (require, exports, Log) {
+    "use strict";
+    var logger = Log.getLogger({ loggerName: "FormFields" });
+    function getDefaultOption(options) {
+        var defaultOptions = options.filter(function (opt) { return opt.isDefault; });
+        if (defaultOptions.length > 0) {
+            return defaultOptions[0];
+        }
+        return null;
+    }
+    exports.getDefaultOption = getDefaultOption;
+    var ValidatedBoxViewModel = (function () {
+        function ValidatedBoxViewModel(formFieldOptions) {
+            var _this = this;
+            this.value = ko.observable();
+            this.validationEnabled = ko.observable(false);
+            this.valid = ko.observable();
+            this.validating = ko.observable(false);
+            this.hasValidation = ko.observable(false);
+            this.errorMessage = ko.observable();
+            this.options = formFieldOptions;
+            if (this.options.enabled === undefined) {
+                this.options.enabled = ko.observable(true);
+            }
+            if (this.options.visible === undefined) {
+                this.options.visible = ko.observable(true);
+            }
+            this.labelText = formFieldOptions.label;
+            this.infoBalloonText = formFieldOptions.infoBalloon;
+            if (this.options.balloonSize === undefined) {
+                this.options.balloonSize = ko.observable("medium");
+            }
+            this.value(formFieldOptions.defaultValue);
+            this.required = ko.computed(function () {
+                var labelText = _this.labelText;
+                if (typeof labelText === "string") {
+                    return formFieldOptions.required;
+                }
+                else {
+                    return formFieldOptions.required && !!labelText();
+                }
+            });
+            this.placeholder = formFieldOptions.placeholder;
+            this.indicateSuccess = !!formFieldOptions.indicateSuccess;
+            this.id = "idFormField" + ValidatedBoxViewModel.currentId++;
+            this.setValidation(formFieldOptions.validations);
+            ko.computed(function () {
+                if (_this.validationEnabled()) {
+                    _this.validating(true);
+                    var valPromise_1 = undefined;
+                    var capturedValue_1 = _this.value();
+                    var getNextPromise = function (promise, index) {
+                        if (promise === undefined) {
+                            return _this._validate[index](capturedValue_1);
+                        }
+                        return promise.then(function (result) {
+                            if (!result.valid) {
+                                return Q(result);
+                            }
+                            else {
+                                return _this._validate[index](capturedValue_1);
+                            }
+                        });
+                    };
+                    for (var i = 0; i < _this._validate.length; i++) {
+                        valPromise_1 = getNextPromise(valPromise_1, i);
+                    }
+                    valPromise_1 = valPromise_1 || Q({ valid: true, message: "" });
+                    _this._valPromise = valPromise_1;
+                    _this._valPromise.then(function (result) {
+                        if (valPromise_1 === _this._valPromise) {
+                            _this.valid(result.valid);
+                            if (!_this.valid()) {
+                                _this.errorMessage(result.message);
+                            }
+                            if (_this.valid()) {
+                                _this.errorMessage("");
+                            }
+                        }
+                    }, function (reason) {
+                        if (valPromise_1 === _this._valPromise) {
+                            _this.errorMessage("Unable to validate");
+                            _this.valid(false);
+                        }
+                    }).finally(function () {
+                        _this.validating(false);
+                    });
+                }
+            });
+        }
+        ValidatedBoxViewModel.prototype.setValidation = function (valFunctions) {
+            this.hasValidation(valFunctions && valFunctions.length > 0);
+            this._validate = valFunctions;
+        };
+        ValidatedBoxViewModel.prototype.isValid = function () {
+            this.validationEnabled(true);
+            if (this.validating()) {
+                return this._valPromise;
+            }
+            else {
+                return Q({ valid: this.valid(), message: this.errorMessage() });
+            }
+        };
+        Object.defineProperty(ValidatedBoxViewModel.prototype, "label", {
+            get: function () {
+                return ko.unwrap(this.labelText);
+            },
+            enumerable: true,
+            configurable: true
+        });
+        ValidatedBoxViewModel.currentId = new Date().getTime();
+        return ValidatedBoxViewModel;
+    }());
+    exports.ValidatedBoxViewModel = ValidatedBoxViewModel;
+    var ValidatedSelectBoxViewModel = (function (_super) {
+        __extends(ValidatedSelectBoxViewModel, _super);
+        function ValidatedSelectBoxViewModel(optionList, formFieldOptions, fullOptionList) {
+            var _this = this;
+            _super.call(this, formFieldOptions);
+            this.focusing = ko.observable(false);
+            this.optionList = optionList;
+            this.fullOptionList = fullOptionList;
+            if (this.fullOptionList) {
+                this.focusing.subscribe(function (value) {
+                    if (value) {
+                        _this.optionList(_this.fullOptionList());
+                    }
+                    else {
+                        _this.optionList([{
+                                value: _this.value().toString(),
+                                displayText: _this.displayText
+                            }]);
+                    }
+                });
+            }
+        }
+        Object.defineProperty(ValidatedSelectBoxViewModel.prototype, "selectedOption", {
+            get: function () {
+                var _this = this;
+                var options = this.optionList().filter(function (option) {
+                    return option.value === _this.value().toString();
+                });
+                if (options.length >= 1) {
+                    return options[0];
+                }
+                return undefined;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(ValidatedSelectBoxViewModel.prototype, "displayText", {
+            get: function () {
+                var _this = this;
+                var selectedOption = this.optionList().filter(function (option) {
+                    return option.value === _this.value().toString();
+                });
+                if (selectedOption.length === 1) {
+                    return selectedOption[0].displayText;
+                }
+                else if (selectedOption.length > 1) {
+                    logger.logWarning("The selected option matched {0} options from the list. Returning the display text of the first one."
+                        .format(selectedOption.length));
+                    return selectedOption[0].displayText;
+                }
+                else if (selectedOption.length === 0) {
+                    return "";
+                }
+            },
+            enumerable: true,
+            configurable: true
+        });
+        return ValidatedSelectBoxViewModel;
+    }(ValidatedBoxViewModel));
+    exports.ValidatedSelectBoxViewModel = ValidatedSelectBoxViewModel;
+    var ValidatedFileBoxViewModel = (function (_super) {
+        __extends(ValidatedFileBoxViewModel, _super);
+        function ValidatedFileBoxViewModel(formFieldOptions) {
+            _super.call(this, formFieldOptions);
+            this.accept = ko.observable("");
+        }
+        return ValidatedFileBoxViewModel;
+    }(ValidatedBoxViewModel));
+    exports.ValidatedFileBoxViewModel = ValidatedFileBoxViewModel;
+    var ValidatedFixedPrefixBoxViewModel = (function (_super) {
+        __extends(ValidatedFixedPrefixBoxViewModel, _super);
+        function ValidatedFixedPrefixBoxViewModel(staticPrefix, formFieldOptions) {
+            var _this = this;
+            _super.call(this, formFieldOptions);
+            this.keyEvent = function (data, event) {
+                var element = event.target;
+                if (event.which !== 37 && event.which !== 39 && !event.ctrlKey) {
+                    if (element.selectionStart < _this.staticPrefix.length) {
+                        if (element.selectionEnd > _this.staticPrefix.length) {
+                            element.selectionStart = _this.staticPrefix.length;
+                        }
+                        else {
+                            element.selectionStart = element.selectionEnd;
+                            return false;
+                        }
+                    }
+                    else if (element.selectionStart === _this.staticPrefix.length) {
+                        if (element.selectionEnd === _this.staticPrefix.length && event.which === 8) {
+                            return false;
+                        }
+                    }
+                }
+                return true;
+            };
+            this.clipboardEvent = function (data, event) {
+                var element = event.target;
+                if (event.type === "cut" && element.selectionStart < _this.staticPrefix.length) {
+                    return false;
+                }
+                if (event.type === "paste") {
+                    if (element.selectionStart < _this.staticPrefix.length) {
+                        if (element.selectionEnd > _this.staticPrefix.length) {
+                            element.selectionStart = _this.staticPrefix.length;
+                        }
+                        else {
+                            element.selectionStart = _this.staticPrefix.length;
+                            element.selectionEnd = _this.staticPrefix.length;
+                        }
+                    }
+                }
+                return true;
+            };
+            this.staticPrefix = staticPrefix;
+            this.value(staticPrefix);
+        }
+        ValidatedFixedPrefixBoxViewModel.prototype.setPrefix = function (prefix) {
+            this.staticPrefix = prefix;
+            this.value(prefix + this.value());
+        };
+        return ValidatedFixedPrefixBoxViewModel;
+    }(ValidatedBoxViewModel));
+    exports.ValidatedFixedPrefixBoxViewModel = ValidatedFixedPrefixBoxViewModel;
+    var BoxViewModel = (function () {
+        function BoxViewModel(params) {
+            var _this = this;
+            this.validationImageClass = ko.observable(BoxViewModel.baseValidationImageClass);
+            this.viewModel = params.vm;
+            this.customClass = params.customClass;
+            this.warningMessage = params.vm.warningMessage;
+            ko.computed(function () {
+                if (!_this.viewModel.validationEnabled()) {
+                    return;
+                }
+                if (_this.viewModel.validating()) {
+                    _this.validationImageClass(BoxViewModel.baseValidationImageClass + " progresso");
+                }
+                else if (_this.viewModel.valid() && _this.viewModel.indicateSuccess) {
+                    _this.validationImageClass(BoxViewModel.baseValidationImageClass + " successo");
+                }
+                else if (!_this.viewModel.valid()) {
+                    _this.validationImageClass(BoxViewModel.baseValidationImageClass + " failo");
+                }
+                else {
+                    _this.validationImageClass(BoxViewModel.baseValidationImageClass);
+                }
+            });
+        }
+        BoxViewModel.formFieldTemplate = require("text!./Templates/FormFieldTemplate.html");
+        BoxViewModel.textboxInput = require("text!./Templates/TextboxTemplate.html");
+        BoxViewModel.textboxWithFixedPrefixInput = require("text!./Templates/TextboxWithPrefixTemplate.html");
+        BoxViewModel.comboboxInput = require("text!./Templates/ComboboxTemplate.html");
+        BoxViewModel.passwordInput = require("text!./Templates/PasswordboxTemplate.html");
+        BoxViewModel.fileInput = require("text!./Templates/FileInputTemplate.html");
+        BoxViewModel.textareaInput = require("text!./Templates/TextareaTemplate.html");
+        BoxViewModel.baseValidationImageClass = "validationImage";
+        return BoxViewModel;
+    }());
+    exports.BoxViewModel = BoxViewModel;
+    var SelectBoxViewModel = (function (_super) {
+        __extends(SelectBoxViewModel, _super);
+        function SelectBoxViewModel(params) {
+            _super.call(this, params);
+            this.optionList = params.vm.optionList;
+        }
+        return SelectBoxViewModel;
+    }(BoxViewModel));
+    exports.SelectBoxViewModel = SelectBoxViewModel;
+    var FileBoxViewModel = (function (_super) {
+        __extends(FileBoxViewModel, _super);
+        function FileBoxViewModel(params) {
+            _super.call(this, params);
+            this.accept = params.vm.accept;
+            this.fileChange = params.vm.fileChange;
+        }
+        return FileBoxViewModel;
+    }(BoxViewModel));
+    exports.FileBoxViewModel = FileBoxViewModel;
+    if (!ko.components.isRegistered("datafactory-validatedtextbox")) {
+        ko.components.register("datafactory-validatedtextbox", {
+            viewModel: BoxViewModel,
+            template: BoxViewModel.formFieldTemplate.replace("%%INPUTFIELD%%", BoxViewModel.textboxInput)
+        });
+    }
+    if (!ko.components.isRegistered("datafactory-validatedpasswordbox")) {
+        ko.components.register("datafactory-validatedpasswordbox", {
+            viewModel: BoxViewModel,
+            template: BoxViewModel.formFieldTemplate.replace("%%INPUTFIELD%%", BoxViewModel.passwordInput)
+        });
+    }
+    if (!ko.components.isRegistered("datafactory-validatedtextareabox")) {
+        ko.components.register("datafactory-validatedtextareabox", {
+            viewModel: BoxViewModel,
+            template: BoxViewModel.formFieldTemplate.replace("%%INPUTFIELD%%", BoxViewModel.textareaInput)
+        });
+    }
+    if (!ko.components.isRegistered("datafactory-validatedselectbox")) {
+        ko.components.register("datafactory-validatedselectbox", {
+            viewModel: SelectBoxViewModel,
+            template: BoxViewModel.formFieldTemplate.replace("%%INPUTFIELD%%", BoxViewModel.comboboxInput)
+        });
+    }
+    if (!ko.components.isRegistered("datafactory-validatedfixedprefixtextbox")) {
+        ko.components.register("datafactory-validatedfixedprefixtextbox", {
+            viewModel: BoxViewModel,
+            template: BoxViewModel.formFieldTemplate.replace("%%INPUTFIELD%%", BoxViewModel.textboxWithFixedPrefixInput)
+        });
+    }
+    if (!ko.components.isRegistered("datafactory-validatedfilebox")) {
+        ko.components.register("datafactory-validatedfilebox", {
+            viewModel: FileBoxViewModel,
+            template: BoxViewModel.formFieldTemplate.replace("%%INPUTFIELD%%", BoxViewModel.fileInput)
+        });
+    }
+});
+//# sourceMappingURL=FormFields.js.mapéoˆ¢¢      [Öþ[Ö?§ç[[ØåW   ˆ    :https://datafactory-endpoint.azureedge.net/node_modules/@ms-atlas-module/datastudio-datafactory/bootstrapper/FormFields.js?v=1.0.4164.1 necko:classified 1 strongly-framed 1 security-info FnhllAKWRHGAlo+ESXykKAAAAAAAAAAAwAAAAAAAAEaphjojH6pBabDSgSnsfLHeAAQAAgAAAAAAAAAAAAAAAAAAAAAB4vFIJp5wRkeyPxAQ9RJGKPqbqVvKO0mKuIl8ec8o/uhmCjImkVxP+7sgiYWmMt8FvcOXmlQiTNWFiWlrbpbqgwAAAAAAAAOwMIIDrDCCApSgAwIBAgIERTJgTjANBgkqhkiG9w0BAQsFADCBijEUMBIGA1UEBhMLUG9ydFN3aWdnZXIxFDASBgNVBAgTC1BvcnRTd2lnZ2VyMRQwEgYDVQQHEwtQb3J0U3dpZ2dlcjEUMBIGA1UEChMLUG9ydFN3aWdnZXIxFzAVBgNVBAsTDlBvcnRTd2lnZ2VyIENBMRcwFQYDVQQDEw5Qb3J0U3dpZ2dlciBDQTAeFw0xNDEwMjgxMzEyMTBaFw0zODEwMjgxMzEyMTBaMHIxFDASBgNVBAYTC1BvcnRTd2lnZ2VyMRQwEgYDVQQKEwtQb3J0U3dpZ2dlcjEXMBUGA1UECxMOUG9ydFN3aWdnZXIgQ0ExKzApBgNVBAMTImRhdGFmYWN0b3J5LWVuZHBvaW50LmF6dXJlZWRnZS5uZXQwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCKn7emKINsnWqPZ+C/VsqbQf/l4NsmIh34bXBR0xdNg9bfb+xcoghRlmbPjhZ/A26A2gJ6Rrg2d0GGMLpbqA8nTlRRGXEAD39321zk4ye09ElXClvqguGqdqOJpPQ05DPFD6wSOq+KVAEblE5bi+LMqBLipDERzgUe7xzeqVVk0i0ldh9yQOIk3YuzcBR9igSEuw5qladmMYvXKHYM9YZz0R7axMc8xAtadK7C9KfFPfEI5LS2nhmy4vBrTgFyYhfkEvKfmIj6HTX0ISFCAC2llcBLpEDcuiW76tAHp1pXDeWtSeaV36AeOctdleVgrbmsGs3fu6ppuRcWjEZUbjE3AgMBAAGjMTAvMC0GA1UdEQQmMCSCImRhdGFmYWN0b3J5LWVuZHBvaW50LmF6dXJlZWRnZS5uZXQwDQYJKoZIhvcNAQELBQADggEBAD5nTga0zudMitI/u0TfDiXUvU9MHWtnM1QsCR52LG8/P3zHlMPdW01WDRZUWTzCGka9MJHNjppqHPNsxY69i49nAksLYLzG7nK57bfwfvJQH/v27QUFGFMmKZNtpz+523V8pi+RJR9/DcmY0SQslyt1+Cj1SViKKOJYr8DiCwrYSUxWRp0XCM6ACnyoVhILHxIff7DQUE7Qq8eLX2UMcsrHHrlmbWpSCkEMtikIahIK4D2jjHj/CFWVzmKApRGZHRCenGUCvwPc6+mdefq6dna4yuo/9sC8unizedWeSL+sIj+Qxy7egEU4w3ZyvM8xUIozSNHY/VVwXW5ypPYqSlDALwEDAAAAAAEBAAAAAA== request-method GET request-Accept-Encoding gzip, deflate, br response-head HTTP/1.1 200 OK
+Content-Type: application/javascript
+Last-Modified: Sat, 06 Oct 2018 23:13:01 GMT
+Accept-Ranges: bytes
+Etag: "f853d420ca5dd41:0"
+Server: Microsoft-IIS/8.5
+X-Frame-Options: AllowAll
+X-XSS-Protection: 1; mode=block
+X-Content-Type-Options: nosniff
+Strict-Transport-Security: max-age=15724800; includeSubDomains
+Access-Control-Allow-Origin: *
+Vary: Accept-Encoding
+Content-Length: 16332
+Date: Sun, 28 Oct 2018 18:50:42 GMT
+ original-response-headers Content-Type: application/javascript
+Last-Modified: Sat, 06 Oct 2018 23:13:01 GMT
+Accept-Ranges: bytes
+Etag: "f853d420ca5dd41:0"
+Server: Microsoft-IIS/8.5
+X-Frame-Options: AllowAll
+X-XSS-Protection: 1; mode=block
+X-Content-Type-Options: nosniff
+Strict-Transport-Security: max-age=15724800; includeSubDomains
+Access-Control-Allow-Origin: *
+Vary: Accept-Encoding
+Content-Length: 16332
+Date: Sun, 28 Oct 2018 18:50:42 GMT
+Connection: close
+ uncompressed-len 0 net-response-time-onstart 4893 net-response-time-onstop 4893   ?Ì

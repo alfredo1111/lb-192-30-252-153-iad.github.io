@@ -1,0 +1,293 @@
+/******************************************************************************
+                                FONTS
+/******************************************************************************/
+@font-face {
+  font-family: wf_segoe-ui_normal;
+  src: url('../fonts/segoe-ui/west-european/normal/latest.woff');
+}
+/******************************************************************************
+                                COLORS
+/******************************************************************************/
+/******************************************************************************
+                                METRICS
+/******************************************************************************/
+/**********************************************************************************
+                              Common Flex Property
+/**********************************************************************************/
+/*************************************************************************************
+                                 High contrast mode active
+**************************************************************************************/
+@media all and (-ms-high-contrast: none), (-ms-high-contrast: active) {
+  .selectedRadio,
+  .selectedRadio:hover,
+  .selectedRadio:active,
+  .selectedRadio.dirty,
+  .tab [type=radio]:checked ~ label,
+  .tab [type=radio]:checked ~ label:hover {
+    -ms-high-contrast-adjust: none;
+    -webkit-text-fill-color: HighlightText;
+    color: HighlightText;
+    border-color: HighlightText;
+    background-color: Highlight;
+  }
+  .queryMetricsSummaryTuple th:nth-child(2),
+  .queryMetricsSummaryTuple td:nth-child(2) {
+    width: 650px;
+  }
+  .queryMetricsSummaryTuple th:nth-child(3),
+  .queryMetricsSummaryTuple td:nth-child(3) {
+    width: 50%;
+  }
+}
+/********************************************************************************************
+                            Common Hover and Active color
+*********************************************************************************************/
+/************************************************************************************************
+                               Common Toggle Switch
+*************************************************************************************************/
+/********************************************************************************************************
+                             Common Data Explorer Icons
+*********************************************************************************************************/
+/*********************************************************************************************************
+                            Info Tooltip
+**********************************************************************************************************/
+/*********************************************************************************************************
+                          Media Queries
+**********************************************************************************************************/
+@media only screen and (max-width: 1920px) {
+  .staticCommandExpand {
+    display: none;
+  }
+}
+@media only screen and (min-width: 1039px) and (max-width: 1112px) {
+  .visibleCommands command-button:nth-child(n+9) {
+    display: none;
+  }
+  .hiddenCommands command-button:not(:nth-child(n+3)) {
+    display: none;
+  }
+  .staticCommandExpand {
+    display: block;
+  }
+}
+@media only screen and (min-width: 874px) and (max-width: 1038px) {
+  .visibleCommands command-button:nth-child(n+8) {
+    display: none;
+  }
+  .hiddenCommands command-button:not(:nth-child(n+2)) {
+    display: none;
+  }
+  .staticCommandExpand {
+    display: block;
+  }
+}
+@media only screen and (min-width: 723px) and (max-width: 873px) {
+  .visibleCommands command-button:nth-child(n+7) {
+    display: none;
+  }
+  .hiddenCommands command-button:not(:nth-child(n+1)) {
+    display: none;
+  }
+  .staticCommandExpand {
+    display: block;
+  }
+}
+@media only screen and (max-width: 722px) {
+  .visibleCommands command-button:nth-child(n+7) {
+    display: none;
+  }
+  .hiddenCommands command-button:not(:nth-child(n+1)) {
+    display: none;
+  }
+  .staticCommandExpand {
+    display: block;
+  }
+}
+.commandBar {
+  padding-left: 8px;
+  border-bottom: 1px solid #CCCCCC;
+  display: flex;
+  overflow: hidden;
+  height: 36px;
+}
+.commandBar .staticCommands {
+  list-style: none;
+  margin: 0px;
+  padding: 0px;
+  display: flex;
+  flex: 0 0 auto;
+}
+.commandBar .overflowCommands {
+  display: flex;
+  flex: 1 0 auto;
+}
+.commandBar .overflowCommands .visibleCommands {
+  display: inline-flex;
+  list-style: none;
+  margin: 0px;
+  padding: 0px;
+}
+.commandBar .overflowCommands .partialSplitterContainer {
+  padding: 4px 8px 4px 4px;
+  display: -webkit-flex;
+  display: -ms-flexbox;
+  display: -ms-flex;
+  display: flex;
+}
+.commandBar .overflowCommands .commandExpand {
+  border: none;
+  padding: 0px;
+  direction: rtl;
+}
+.commandBar .overflowCommands .commandExpand:hover {
+  background-color: #EEF7FF;
+  cursor: pointer;
+}
+.commandBar .overflowCommands .commandExpand:hover > .commandDropdownContainer {
+  display: block !important;
+}
+.commandBar .overflowCommands .commandExpand:focus {
+  outline: 1px dashed #004E87;
+}
+.commandBar .overflowCommands .commandExpand .commandDropdownLauncher {
+  direction: ltr;
+  padding-top: 4px;
+}
+.commandBar .overflowCommands .commandExpand .commandDropdownLauncher .commandIcon {
+  vertical-align: text-top;
+}
+.commandBar .overflowCommands .commandExpand .commandDropdownLauncher .commandBarEllipses {
+  font-weight: bold;
+  font-size: 20px;
+}
+.commandBar .overflowCommands .hiddenCommandsContainer > .commandDropdownLauncher {
+  padding: 0px 8px;
+}
+.commandBar .overflowCommands .commandDropdownContainer {
+  display: none;
+  z-index: 1000;
+  direction: ltr;
+  position: absolute;
+  width: fit-content;
+  padding: 0px;
+  background-color: #FFFFFF;
+  box-shadow: 1px 2px 6px #767676, -2px 2px 6px #767676;
+}
+.commandBar .overflowCommands .commandDropdownContainer .commandDropdown {
+  display: flex;
+  flex-direction: column;
+  padding: 0px;
+  margin: 0px;
+}
+.commandBar .feedbackButton {
+  margin-right: 16px;
+  white-space: nowrap;
+}
+command-button {
+  display: inline-flex;
+}
+command-button .commandButtonComponent {
+  width: 100%;
+  color: #393939;
+  background-color: transparent;
+  text-decoration: none;
+  border: 1px solid transparent;
+  display: -webkit-flex;
+  display: -ms-flexbox;
+  display: -ms-flex;
+  display: flex;
+}
+command-button .commandButtonComponent:hover:not(.commandDisabled) {
+  cursor: pointer;
+  background-color: #EEF7FF;
+}
+command-button .commandButtonComponent:active:not(.commandDisabled) {
+  border: 1px dashed #004E87;
+  background-color: #DDF0FF;
+}
+command-button .commandButtonComponent:focus:not(.commandDisabled) {
+  border: 1px dashed #004E87;
+}
+command-button .commandButtonComponent .commandContent {
+  padding: 6px 8px 8px;
+  flex: 0 0 auto;
+}
+command-button .commandButtonComponent .commandContent .commandIcon {
+  margin: 0 4px 0 0;
+  vertical-align: text-top;
+  width: 18px;
+  height: 18px;
+}
+command-button .commandButtonComponent .commandContent .commandLabel {
+  padding: 0px;
+}
+command-button .commandButtonComponent .commandContent .hasHiddenItems {
+  padding-right: 4px;
+}
+command-button .commandButtonComponent.commandDisabled {
+  color: #767676;
+  opacity: 0.5;
+}
+command-button .commandExpand {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+command-button .commandExpand:hover {
+  background-color: #EEF7FF;
+}
+command-button .commandExpand:hover > .commandDropdownContainer {
+  display: block !important;
+}
+command-button .commandExpand:focus {
+  outline: 1px dashed #004E87;
+}
+command-button .commandExpand .commandDropdownLauncher {
+  cursor: pointer;
+  display: inline-flex;
+}
+command-button .commandExpand .commandDropdownLauncher .commandButtonComponent {
+  padding: 0px;
+}
+command-button .commandExpand .expandDropdown {
+  padding: 4px;
+}
+command-button .commandExpand .expandDropdown img {
+  vertical-align: top;
+}
+command-button .commandExpand .partialSplitter {
+  margin: 4px 0px 6px;
+}
+command-button .commandButtonComponent[tabindex]:focus {
+  outline: none;
+}
+command-button .selectedButton {
+  background-color: #EDF6FF;
+  outline: none;
+}
+.partialSplitter {
+  border-left: 1px solid #767676;
+}
+.commandDropdown .commandButtonComponent {
+  padding-left: 0px;
+}
+›‡A¢4R      [Õ¾±[Õ¾´?§¶ [×k"   7    :https://cosmos.azure.com/css/CommandButton.css?v=1.0.1 necko:classified 1 strongly-framed 1 security-info FnhllAKWRHGAlo+ESXykKAAAAAAAAAAAwAAAAAAAAEaphjojH6pBabDSgSnsfLHeAAQAAgAAAAAAAAAAAAAAAAAAAAAB4vFIJp5wRkeyPxAQ9RJGKPqbqVvKO0mKuIl8ec8o/uhmCjImkVxP+7sgiYWmMt8FvcOXmlQiTNWFiWlrbpbqgwAAAAAAAAOMMIIDiDCCAnCgAwIBAgIERTJgUjANBgkqhkiG9w0BAQsFADCBijEUMBIGA1UEBhMLUG9ydFN3aWdnZXIxFDASBgNVBAgTC1BvcnRTd2lnZ2VyMRQwEgYDVQQHEwtQb3J0U3dpZ2dlcjEUMBIGA1UEChMLUG9ydFN3aWdnZXIxFzAVBgNVBAsTDlBvcnRTd2lnZ2VyIENBMRcwFQYDVQQDEw5Qb3J0U3dpZ2dlciBDQTAeFw0xNDEwMjgxMzEyMTBaFw0zODEwMjgxMzEyMTBaMGAxFDASBgNVBAYTC1BvcnRTd2lnZ2VyMRQwEgYDVQQKEwtQb3J0U3dpZ2dlcjEXMBUGA1UECxMOUG9ydFN3aWdnZXIgQ0ExGTAXBgNVBAMTEGNvc21vcy5henVyZS5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCKn7emKINsnWqPZ+C/VsqbQf/l4NsmIh34bXBR0xdNg9bfb+xcoghRlmbPjhZ/A26A2gJ6Rrg2d0GGMLpbqA8nTlRRGXEAD39321zk4ye09ElXClvqguGqdqOJpPQ05DPFD6wSOq+KVAEblE5bi+LMqBLipDERzgUe7xzeqVVk0i0ldh9yQOIk3YuzcBR9igSEuw5qladmMYvXKHYM9YZz0R7axMc8xAtadK7C9KfFPfEI5LS2nhmy4vBrTgFyYhfkEvKfmIj6HTX0ISFCAC2llcBLpEDcuiW76tAHp1pXDeWtSeaV36AeOctdleVgrbmsGs3fu6ppuRcWjEZUbjE3AgMBAAGjHzAdMBsGA1UdEQQUMBKCEGNvc21vcy5henVyZS5jb20wDQYJKoZIhvcNAQELBQADggEBABYikT6Y5YgJJ4IVJldlFDF5MKxp26YegXhvT8EmAbgr0yQBIlY2DtKEiHf7Q8wRoJ9y5Ajst1D7HmRba+XLjS6s3IHJ7gtuvc3fZj9MPKpbqSKRfHDB8bDOVIzmjBseg2BqckHTkcYak3b/pTWCTqKHM3LxKsDwN8F3HNQ2pY4d5ma2kR1EtWdTpRiIbir3QxJDcWVp8CgHONZcoMn33NNwnWWjAQMX6d8e1CPuBZi0t+myaYduCqPgKKox9qMXSubF6uifQkAJ5RdLZrZ2pghENA/4r1oz51wqEmpjPsStSUxRPwJ6wJrB4gwGtX7++ZHLjAaNrTSUCGwIOlAT4LnALwEDAAAAAAEBAAAAAA== request-method GET request-Accept-Encoding gzip, deflate, br response-head HTTP/1.1 200 OK
+Content-Length: 8408
+Content-Type: text/css
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:38:44 GMT
+ original-response-headers Content-Length: 8408
+Content-Type: text/css
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:38:44 GMT
+Connection: close
+ uncompressed-len 0 net-response-time-onstart 3551 net-response-time-onstop 3551    Ø

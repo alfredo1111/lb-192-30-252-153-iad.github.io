@@ -1,0 +1,199 @@
+var __extends = (this && this.__extends) || (function () {
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    }
+    return function (d, b) {
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
+define(["require", "exports", "knockout", "./TableEntityPane", "../../Tables/Utilities", "../../Tables/Constants", "./EntityPropertyViewModel", "../../Tables/TableEntityProcessor"], function (require, exports, ko, TableEntityPane, Utilities, TableConstants, EntityPropertyViewModel_1, TableEntityProcessor) {
+    "use strict";
+    var EditTableEntityPane = /** @class */ (function (_super) {
+        __extends(EditTableEntityPane, _super);
+        function EditTableEntityPane(options) {
+            var _this = _super.call(this, options) || this;
+            _this.submitButtonText("Update Entity");
+            _this.container.isPreferredApiCassandra.subscribe(function (isCassandra) {
+                if (isCassandra) {
+                    _this.submitButtonText("Update Row");
+                }
+            });
+            _this.scrollId = ko.observable("editEntityScroll");
+            return _this;
+        }
+        EditTableEntityPane.prototype.submit = function () {
+            var _this = this;
+            if (!this.canApply()) {
+                return;
+            }
+            var entity = this.updateEntity(this.displayedAttributes());
+            this.container.tableDataClient.updateDocument(this.tableViewModel.queryTablesTab.collection, this.originalDocument, entity).then(function (newEntity) {
+                var numberOfProperties = 0;
+                for (var property in newEntity) {
+                    if (property !== TableEntityProcessor.keyProperties.attachments
+                        && property !== TableEntityProcessor.keyProperties.etag
+                        && property !== TableEntityProcessor.keyProperties.resourceId
+                        && property !== TableEntityProcessor.keyProperties.self
+                        && (!_this.container.isPreferredApiCassandra() || property !== TableConstants.EntityKeyNames.RowKey)) {
+                        numberOfProperties++;
+                    }
+                }
+                var propertiesDelta = numberOfProperties - _this.originalNumberOfProperties;
+                return _this.tableViewModel.updateCachedEntity(newEntity).then(function () {
+                    if (!_this.tryInsertNewHeaders(_this.tableViewModel, newEntity)) {
+                        _this.tableViewModel.redrawTableThrottled();
+                    }
+                }).then(function () {
+                    // Selecting updated entity
+                    _this.tableViewModel.selected.removeAll();
+                    _this.tableViewModel.selected.push(newEntity);
+                });
+            });
+            this.close();
+        };
+        EditTableEntityPane.prototype.open = function () {
+            this.displayedAttributes(this.constructDisplayedAttributes(this.originEntity));
+            if (this.container.isPreferredApiTable()) {
+                this.originalDocument = TableEntityProcessor.convertEntitiesToDocuments([this.originEntity], this.tableViewModel.queryTablesTab.collection)[0]; // TODO change for Cassandra
+                this.originalDocument.id = ko.observable(this.originalDocument.id);
+            }
+            else {
+                this.originalDocument = this.originEntity;
+            }
+            this.updateIsActionEnabled();
+            _super.prototype.open.call(this);
+        };
+        EditTableEntityPane.prototype.constructDisplayedAttributes = function (entity) {
+            var _this = this;
+            var displayedAttributes = [];
+            var keys = Object.keys(entity);
+            keys.forEach(function (key) {
+                if (key !== TableEntityProcessor.keyProperties.attachments
+                    && key !== TableEntityProcessor.keyProperties.etag
+                    && key !== TableEntityProcessor.keyProperties.resourceId
+                    && key !== TableEntityProcessor.keyProperties.self
+                    && (!_this.container.isPreferredApiCassandra() || key !== TableConstants.EntityKeyNames.RowKey)) {
+                    if (_this.container.isPreferredApiCassandra()) {
+                        var cassandraKeys = _this.tableViewModel.queryTablesTab.collection.cassandraKeys.partitionKeys
+                            .concat(_this.tableViewModel.queryTablesTab.collection.cassandraKeys.clusteringKeys).map(function (key) { return key.property; });
+                        var entityAttribute = entity[key];
+                        var entityAttributeType = entityAttribute.$;
+                        var displayValue = _this.getPropertyDisplayValue(entity, key, entityAttributeType);
+                        var removable = false;
+                        // TODO figure out validation story for blob and Inet so we can allow adding/editing them
+                        var nonEditableType = entityAttributeType === TableConstants.CassandraType.Blob || entityAttributeType === TableConstants.CassandraType.Inet;
+                        displayedAttributes.push(new EntityPropertyViewModel_1.default(_this, key, entityAttributeType, displayValue, 
+                        /* namePlaceholder */ undefined, 
+                        /* valuePlaceholder */ undefined, false, 
+                        /* default valid name */ true, 
+                        /* default valid value */ true, 
+                        /* isRequired */ false, removable, 
+                        /*value editable*/ !_.contains(cassandraKeys, key) && !nonEditableType));
+                    }
+                    else {
+                        var entityAttribute = entity[key];
+                        var entityAttributeType = entityAttribute.$;
+                        var displayValue = _this.getPropertyDisplayValue(entity, key, entityAttributeType);
+                        var editable = _this.isAttributeEditable(key, entityAttributeType);
+                        // As per VSO:189935, Binary properties are read-only, we still want to be able to remove them.
+                        var removable = (editable || (entityAttributeType === TableConstants.TableType.Binary));
+                        displayedAttributes.push(new EntityPropertyViewModel_1.default(_this, key, entityAttributeType, displayValue, 
+                        /* namePlaceholder */ undefined, 
+                        /* valuePlaceholder */ undefined, editable, 
+                        /* default valid name */ true, 
+                        /* default valid value */ true, 
+                        /* isRequired */ false, removable));
+                    }
+                }
+            });
+            if (this.container.isPreferredApiCassandra()) {
+                this.container.tableDataClient.getTableSchema(this.tableViewModel.queryTablesTab.collection).then(function (properties) {
+                    properties.forEach(function (property) {
+                        if (!_.contains(keys, property.property)) {
+                            _this.insertAttribute(property.property, property.type);
+                        }
+                    });
+                });
+            }
+            return displayedAttributes;
+        };
+        EditTableEntityPane.prototype.updateEntity = function (displayedAttributes) {
+            var _this = this;
+            var updatedEntity = {};
+            displayedAttributes.forEach(function (attribute) {
+                if (attribute.name() && (!_this.tableViewModel.queryTablesTab.container.isPreferredApiCassandra() || (attribute.value() !== ""))) {
+                    var value = attribute.getPropertyValue();
+                    var type = attribute.type();
+                    if (type === TableConstants.TableType.Int64) {
+                        value = Utilities.padLongWithZeros(value);
+                    }
+                    updatedEntity[attribute.name()] = {
+                        "_": value,
+                        "$": type
+                    };
+                }
+            });
+            return updatedEntity;
+        };
+        EditTableEntityPane.prototype.isAttributeEditable = function (attributeName, entityAttributeType) {
+            return !(attributeName === TableConstants.EntityKeyNames.PartitionKey ||
+                attributeName === TableConstants.EntityKeyNames.RowKey ||
+                attributeName === TableConstants.EntityKeyNames.Timestamp ||
+                // As per VSO:189935, Making Binary properties read-only in Edit Entity dialog until we have a full story for it.
+                entityAttributeType === TableConstants.TableType.Binary);
+        };
+        EditTableEntityPane.prototype.getPropertyDisplayValue = function (entity, name, type) {
+            var attribute = entity[name];
+            var displayValue = attribute._;
+            var isBinary = (type === TableConstants.TableType.Binary);
+            // Showing the value in base64 for binary properties since that is what the Azure Storage Client Library expects.
+            // This means that, even if the Azure Storage API returns a byte[] of binary content, it needs that same array
+            // *base64 - encoded * as the value for the updated property or the whole update operation will fail.
+            if (isBinary && displayValue && $.isArray(displayValue.data)) {
+                var bytes = displayValue.data;
+                displayValue = this.getBase64DisplayValue(bytes);
+            }
+            return displayValue;
+        };
+        EditTableEntityPane.prototype.getBase64DisplayValue = function (bytes) {
+            var displayValue = null;
+            try {
+                var chars = bytes.map(function (byte) { return String.fromCharCode(byte); });
+                var toEncode = chars.join("");
+                displayValue = window.btoa(toEncode);
+            }
+            catch (error) {
+                // Error
+            }
+            return displayValue;
+        };
+        return EditTableEntityPane;
+    }(TableEntityPane));
+    return EditTableEntityPane;
+});
+i®ï      [Õ¾Ê[Õ¾Ó?§¶²[×k>   T    :https://cosmos.azure.com/built/Explorer/Panes/Tables/EditTableEntityPane.js?v=1.0.1 necko:classified 1 strongly-framed 1 security-info FnhllAKWRHGAlo+ESXykKAAAAAAAAAAAwAAAAAAAAEaphjojH6pBabDSgSnsfLHeAAQAAgAAAAAAAAAAAAAAAAAAAAAB4vFIJp5wRkeyPxAQ9RJGKPqbqVvKO0mKuIl8ec8o/uhmCjImkVxP+7sgiYWmMt8FvcOXmlQiTNWFiWlrbpbqgwAAAAAAAAOMMIIDiDCCAnCgAwIBAgIERTJgUjANBgkqhkiG9w0BAQsFADCBijEUMBIGA1UEBhMLUG9ydFN3aWdnZXIxFDASBgNVBAgTC1BvcnRTd2lnZ2VyMRQwEgYDVQQHEwtQb3J0U3dpZ2dlcjEUMBIGA1UEChMLUG9ydFN3aWdnZXIxFzAVBgNVBAsTDlBvcnRTd2lnZ2VyIENBMRcwFQYDVQQDEw5Qb3J0U3dpZ2dlciBDQTAeFw0xNDEwMjgxMzEyMTBaFw0zODEwMjgxMzEyMTBaMGAxFDASBgNVBAYTC1BvcnRTd2lnZ2VyMRQwEgYDVQQKEwtQb3J0U3dpZ2dlcjEXMBUGA1UECxMOUG9ydFN3aWdnZXIgQ0ExGTAXBgNVBAMTEGNvc21vcy5henVyZS5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCKn7emKINsnWqPZ+C/VsqbQf/l4NsmIh34bXBR0xdNg9bfb+xcoghRlmbPjhZ/A26A2gJ6Rrg2d0GGMLpbqA8nTlRRGXEAD39321zk4ye09ElXClvqguGqdqOJpPQ05DPFD6wSOq+KVAEblE5bi+LMqBLipDERzgUe7xzeqVVk0i0ldh9yQOIk3YuzcBR9igSEuw5qladmMYvXKHYM9YZz0R7axMc8xAtadK7C9KfFPfEI5LS2nhmy4vBrTgFyYhfkEvKfmIj6HTX0ISFCAC2llcBLpEDcuiW76tAHp1pXDeWtSeaV36AeOctdleVgrbmsGs3fu6ppuRcWjEZUbjE3AgMBAAGjHzAdMBsGA1UdEQQUMBKCEGNvc21vcy5henVyZS5jb20wDQYJKoZIhvcNAQELBQADggEBABYikT6Y5YgJJ4IVJldlFDF5MKxp26YegXhvT8EmAbgr0yQBIlY2DtKEiHf7Q8wRoJ9y5Ajst1D7HmRba+XLjS6s3IHJ7gtuvc3fZj9MPKpbqSKRfHDB8bDOVIzmjBseg2BqckHTkcYak3b/pTWCTqKHM3LxKsDwN8F3HNQ2pY4d5ma2kR1EtWdTpRiIbir3QxJDcWVp8CgHONZcoMn33NNwnWWjAQMX6d8e1CPuBZi0t+myaYduCqPgKKox9qMXSubF6uifQkAJ5RdLZrZ2pghENA/4r1oz51wqEmpjPsStSUxRPwJ6wJrB4gwGtX7++ZHLjAaNrTSUCGwIOlAT4LnALwEDAAAAAAEBAAAAAA== request-method GET request-Accept-Encoding gzip, deflate, br response-head HTTP/1.1 200 OK
+Content-Length: 10459
+Content-Type: application/x-javascript
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:39:15 GMT
+ original-response-headers Content-Length: 10459
+Content-Type: application/x-javascript
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:39:15 GMT
+Connection: close
+ uncompressed-len 0 net-response-time-onstart 8473 net-response-time-onstop 8473   (Û

@@ -1,0 +1,475 @@
+<!DOCTYPE html public "-//W3C//DTD HTML 4.0//en">
+<html>
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="height=device-height, width=device-width, initial-scale=1.0">
+    <meta name='robots' content='noindex, nofollow' />
+
+    <title>Azure Cosmos DB</title>
+
+    <link rel="shortcut icon" href="images/favicon.ico" type="image/x-icon" />
+
+    <script>
+        function getParameterByName(name) {
+            var url = window.location.href;
+            name = name.replace(/[\[\]]/g, "\\$&");
+            var regex = new RegExp("[?&]" + name + "(=([^&#]*)|&|#|$)");
+            var results = regex.exec(url);
+            if (!results) {
+                return null;
+            }
+            if (!results[2]) {
+                return '';
+            }
+
+            return decodeURIComponent(results[2].replace(/\+/g, " "));
+        }
+
+        cosmosDbDataExplorerVersion = getParameterByName("v") || new Date().getTime();
+
+        function loadCssWithVersion(urls) {
+            var urlsArray = (Array.isArray(urls)) ? urls : [urls];
+
+            for (var i = 0; i < urlsArray.length; i++) {
+                var link = document.createElement("link");
+                link.rel = "stylesheet";
+                link.type = "text/css";
+                link.href = urlsArray[i] + '?v=' + cosmosDbDataExplorerVersion;
+                document.getElementsByTagName("head")[0].appendChild(link);
+            }
+        }
+
+        function loadScriptsWithVersion(urls) {
+            var urlsArray = (Array.isArray(urls)) ? urls : [urls];
+            for (var i = 0; i < urlsArray.length; i++) {
+                var script = document.createElement("script");
+                script.type = "text/javascript";
+                script.src = urlsArray[i] + '?v=' + cosmosDbDataExplorerVersion;
+                document.getElementsByTagName("head")[0].appendChild(script);
+            }
+        }
+
+        function initAppInsights() {
+            var appInsightsKey = getParameterByName("appInsightsKey");
+
+            if (appInsightsKey == null || appInsightsKey.length === 0) {
+                return;
+            }
+
+            var appInsights = window.appInsights || function(a) {
+                function b(a) {
+                    c[a] = function() {
+                        var b = arguments;
+                        c.queue.push(function() {
+                            c[a].apply(c, b)
+                        })
+                    }
+                }
+                var c = {
+                        config: a
+                    },
+                    d = document,
+                    e = window;
+                setTimeout(function() {
+                    var b = d.createElement("script");
+                    b.src = a.url || "https://az416426.vo.msecnd.net/scripts/a/ai.0.js", d.getElementsByTagName("script")[0].parentNode.appendChild(b)
+                });
+                try {
+                    c.cookie = d.cookie
+                } catch (a) {}
+                c.queue = [];
+                for (var f = ["Event", "Exception", "Metric", "PageView", "Trace", "Dependency"]; f.length;) b("track" + f.pop());
+                if (b("setAuthenticatedUserContext"), b("clearAuthenticatedUserContext"), b("startTrackEvent"), b("stopTrackEvent"), b("startTrackPage"), b("stopTrackPage"), b("flush"), !a.disableExceptionTracking) {
+                    f = "onerror", b("_" + f);
+                    var g = e[f];
+                    e[f] = function(a, b, d, e, h) {
+                        var i = g && g(a, b, d, e, h);
+                        return !0 !== i && c["_" + f](a, b, d, e, h), i
+                    }
+                }
+                return c
+            }({
+                instrumentationKey: appInsightsKey
+            });
+
+            window.appInsights = appInsights, appInsights.queue && 0 === appInsights.queue.length && appInsights.trackPageView();
+        }
+    </script>
+    <script type="text/javascript">
+        // Fix to enable react dev - tools to work
+        // for code running in an iframe.Must be executed before react gets loaded
+        if (window.parent !== window) {
+            window.__REACT_DEVTOOLS_GLOBAL_HOOK__ = window.parent.__REACT_DEVTOOLS_GLOBAL_HOOK__;
+        }
+    </script>
+
+    <script src="externals/require.js"></script>
+    <!-- TODO: use Jade to generate the version number -->
+    <script src="built/require-config.js?v=0.0.0"></script>
+    <script src="externals/jquery.min.js"></script>
+    <!-- TODO: Load adal from parent iframe -->
+    <script src="externals/adal.js?v=0.0.0"></script>
+    <script src="externals/big-integer.js?v=0.0.0"></script>
+    <script src="externals/buffer.js?v=0.0.0"></script>
+    <script src="externals/documentdbclient-1.14.0.js?v=0.0.0"></script>
+    <script src="contracts/ExplorerContracts.js?v=0.0.0"></script>
+
+    <script>
+        initAppInsights();
+        loadCssWithVersion([
+            "externals/bootstrap.css",
+            "css/DocumentDB.css",
+            "css/tree.css",
+            "css/forms.css",
+            "css/menus.css",
+            "css/messagebox.css",
+            "css/InputTypeahead.css",
+            "css/CommandButton.css",
+            "css/ErrorDisplayComponent.css",
+            "css/NotificationConsole.css",
+            "css/CollapsiblePanelComponent.css",
+            "css/DynamicListComponent.css",
+            "css/JsonEditorComponent.css",
+            "css/graphExplorer.css",
+            "css/queryBuilder.css",
+            "externals/jquery.datatables.min.css",
+            "css/fullDatatables.css",
+            "externals/jquery.contextMenu.css",
+            "css/EntityEditor.css",
+            "css/CustomizeColumns.css",
+            "externals/jquery.typeahead.min.css",
+            "externals/jquery-ui.min.css",
+            "externals/jquery-ui.structure.min.css",
+            "externals/jquery-ui.theme.min.css",
+            "css/newVertexComponent.css",
+            "css/GraphNewVertexPane.css",
+            "css/QueryTab.css"
+        ]);
+
+        loadScriptsWithVersion([
+            "built/require-config.js",
+            "externals/big-integer.js",
+            "externals/buffer.js",
+            "externals/documentdbclient-1.14.0.js",
+            "externals/vs/loader.js",
+            "externals/vs/editor/editor.main.js",
+            "externals/bootstrap.js",
+            "externals/underscore-min.js",
+            "externals/jquery.contextMenu.js",
+            "externals/jquery.typeahead.min.js",
+            "externals/adal.js",
+            "externals/encoding.js",
+            "externals/encoding-indexes.js",
+            "contracts/ExplorerContracts.js"
+        ]);
+    </script>
+</head>
+
+<body>
+    <div class="flexContainer">
+        <div id="divExplorer" class="flexContainer hideOverflows" style="display: none">
+            <!-- Main Command Bar - Start -->
+            <command-bar params="{data: $data}"></command-bar>
+            <!-- Main Command Bar - End -->
+            <!-- Share url flyout - Start -->
+            <div id="shareDataAccessFlyout" class="shareDataAccessFlyout" data-bind="visible: shouldShowShareDialogContents">
+                <div class="shareDataAccessFlyoutContent">
+                    <div class="urlContainer">
+                        <span class="urlContentText">Open this database account in a new browser tab with Cosmos DB Explorer. Or copy the read-write or read only access urls below to share with others. For security purposes, the URLs grant time-bound access to the account. When access expires, you can reconnect, using a valid connection string for the account.</span>
+                        <br />
+                        <div class="toggles" data-bind="event: { keydown: onToggleKeyDown }, visible: shareAccessData().readWriteUrl != null" tabindex="0" aria-label="Read-Write and Read toggle">
+                            <div class="tab">
+                                <input type="radio" class="radio" value="readwrite"></input>
+                                <span class="toggleSwitch" role="presentation" data-bind="click: toggleReadWrite, css:{ selectedToggle: isReadWriteToggled(), unselectedToggle: !isReadWriteToggled() }">Read-Write</span>
+                            </div>
+                            <div class="tab">
+                                <input type="radio" class="radio" value="read"></input>
+                                <span class="toggleSwitch" role="presentation" data-bind="click: toggleRead, css:{ selectedToggle: isReadToggled(), unselectedToggle: !isReadToggled() }">Read</span>
+                            </div>
+                        </div>
+                        <div class="urlSpace">
+                            <input id="shareUrlLink" class="shareLink" type="text" read-only data-bind="value: shareAccessUrl"></input>
+                            <span class="urlTokenCopyInfoTooltip" data-bind="click: copyUrlLink, event: { keypress: onCopyUrlLinkKeyPress }" tabindex="0">
+                                <img src="images/Copy.svg" alt="Copy link"></img>
+                                <span class="urlTokenCopyTooltiptext" data-bind="text: shareUrlCopyHelperText"></span>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Share url flyout - End -->
+
+            <!-- Collections Tree and Tabs - Begin -->
+            <div class="resourceTreeAndTabs">
+                <!-- Collections Tree - Start -->
+                <div id="resourcetree" class="resourceTree">
+                    <div class="collectionsTreeWithSplitter">
+                        <!-- Collections Tree Expanded - Start -->
+                        <div id="main" class="main" data-bind="
+                            visible: isLeftPaneExpanded()">
+                            <!-- Collections Window - - Start -->
+                            <div id="mainslide" class="flexContainer">
+                                <!-- Collections Window Title/Command Bar - Start -->
+                                <div class="collectiontitle">
+                                    <div class="coltitle">
+                                        <span class="titlepadcol" data-bind="text: collectionTitle"></span>
+                                        <div class="float-right">
+                                            <span class="padimgcolrefresh" role="button" data-bind="
+                                                click: onRefreshDatabasesClick, clickBubble: false, event: { keypress: onRefreshDatabasesKeyPress }" tabindex="0" aria-label="Refresh tree">
+                                                <img class="refreshcol" src="images/refresh.svg" data-bind="attr: { alt: refreshTreeTitle }" />
+                                            </span>
+                                            <span class="padimgcolrefresh1" role="button" data-bind="
+                                                click: toggleLeftPaneExpanded, event: { keypress: toggleLeftPaneExpandedKeyPress }" tabindex="0" aria-label="Collapse Tree">
+                                                <img class="refreshcol1" src="images/imgarrowlefticon.svg" alt="Hide">
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- Collections Window Title/Command Bar - End  -->
+
+                                <resource-tree class="resourceTreeScroll" params="{data: $data}"></resource-tree>
+
+                            </div>
+                            <!--  Collections Window - End -->
+
+                        </div>
+                        <!-- Collections Tree Expanded - End -->
+
+                        <!-- Collections Tree Collapsed - Start -->
+                        <div id="mini" class="mini toggle-mini" data-bind="visible: !isLeftPaneExpanded()
+                            attr: { style: { width: collapsedResourceTreeWidth }}">
+                            <div class="main-nav nav">
+                                <ul class="nav">
+                                    <li class="resourceTreeCollapse" role="button" data-bind="event: { keypress: toggleLeftPaneExpandedKeyPress }" tabindex="0" aria-label="Expand Tree">
+                                        <span class="leftarrowCollapsed" data-bind="
+                                            click: toggleLeftPaneExpanded">
+                                            <img class="arrowCollapsed" src="images/imgarrowlefticon.svg" alt="Expand">
+                                        </span>
+                                        <span class="collectionCollapsed" data-bind="
+                                            click: toggleLeftPaneExpanded">
+                                            <span data-bind="
+                                                text: collectionTitle"></span>
+                                        </span>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                        <!-- Collections Tree Collapsed - End -->
+                    </div>
+                    <!-- Splitter - Start -->
+                    <div class="splitter ui-resizable-handle ui-resizable-e" id="h_splitter1"></div>
+                    <!-- Splitter - End -->
+                </div>
+                <!-- Collections Tree - End -->
+
+                <div class="connectExplorerContainer" data-bind="visible: !isRefreshingExplorer() && (openedTabs == null || openedTabs().length === 0)">
+                    <form class="connectExplorerFormContainer">
+                        <div class="connectExplorer">
+                            <p class="connectExplorerContent">
+                                <img src="images/HdeConnectCosmosDB.svg" alt="Azure Cosmos DB"></img>
+                            </p>
+                            <p class="welcomeText">Welcome to Azure Cosmos DB</p>
+                            <p class="connectExplorerContent">Create new or work with existing collection(s).</p>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Tabs and Tabs Panes - Start -->
+                <div id="content" class="flexContainer hideOverflows" data-bind="
+                        visible: openedTabs && openedTabs().length > 0">
+                    <!-- Tabs - Start -->
+                    <div class="nav-tabs-margin" data-bind="visible:!isTabsContentExpanded()">
+                        <ul class="nav nav-tabs level navTabHeight" id="navTabs" role="tablist">
+                            <!-- ko foreach: openedTabs -->
+                            <li class="tabList" data-bind="
+                                    attr: {
+                                        title: $data.tabPath,
+                                        'aria-selected': $data.isActive,
+                                        'aria-expanded': $data.isActive,
+                                        'aria-controls': $data.tabId
+                                    },
+                                    css:{
+                                        active: $data.isActive
+                                    },
+                                    hasFocus: $data.hasFocus,
+                                    event: { keypress: onKeyPressActivate },
+                                    click: $data.onTabClick," tabindex="0" role="tab">
+                                <span class="tabNavContentContainer">
+                                    <a data-toggle="tab" data-bind="attr: { href: '#' + $data.tabId }" tabindex="-1">
+                                        <div class="tab_Content">
+                                            <span class="statusIconContainer">
+                                                <div class="errorIconContainer" title="Click to view more details" data-bind="
+                                                    click: onErrorDetailsClick,
+                                                    event: { keypress: onErrorDetailsKeyPress },
+                                                    attr: { tabindex: errorDetailsTabIndex },
+                                                    css: { actionsEnabled: isActive },
+                                                    visible: isExecutionError">
+                                                    <span class="errorIcon"></span>
+                                                </div>
+                                                <img class="loadingIcon" title="Loading" src="images/circular_loader_black_16x16.gif" data-bind="visible: $data.isExecuting" />
+                                            </span>
+                                            <span class="tabNavText" data-bind="text: $data.tabTitle"></span>
+                                            <span class="tabIconSection">
+                                                <span aria-label="Close Tab" role="button" class="cancelButton" data-bind="
+                                                    click: $data.onCloseTabButtonClick,
+                                                    event: { keypress: onKeyPressClose },
+                                                    attr: { tabindex: $data.closeButtonTabIndex },
+                                                    visible: $data.isActive() || $data.isMouseOver()" title="Close">
+                                                    <span class="tabIcon close-Icon" data-bind="visible: $data.isActive() || $data.isMouseOver()"></span>
+                                                </span>
+                                            </span>
+                                        </div>
+                                    </a>
+                                </span>
+                            </li>
+                            <!-- /ko -->
+                        </ul>
+                    </div>
+                    <!-- Tabs -- End -->
+
+                    <!-- Tabs Panes -- Start -->
+                    <div class="tabPanesContainer">
+                        <!-- ko foreach: openedTabs -->
+                        <div class="tabs-container" data-bind="visible: $data.isActive">
+                            <!-- ko if: $data.tabKind === 0 -->
+                            <documents-tab params="{data: $data}"></documents-tab>
+                            <!-- /ko -->
+
+                            <!-- ko if: $data.tabKind === 1 -->
+                            <settings-tab params="{data: $data}"></settings-tab>
+                            <!-- /ko -->
+
+                            <!-- ko if: $data.tabKind === 2 -->
+                            <stored-procedure-tab params="{data: $data}"></stored-procedure-tab>
+                            <!-- /ko -->
+
+                            <!-- ko if: $data.tabKind === 3 -->
+                            <user-defined-function-tab params="{data: $data}"></user-defined-function-tab>
+                            <!-- /ko -->
+
+                            <!-- ko if: $data.tabKind === 4 -->
+                            <trigger-tab params="{data: $data}"></trigger-tab>
+                            <!-- /ko -->
+
+                            <!-- ko if: $data.tabKind === 5 -->
+                            <query-tab params="{data: $data}"></query-tab>
+                            <!-- /ko -->
+
+                            <!-- ko if: $data.tabKind === 6 -->
+                            <graph-tab params="{data: $data}"></graph-tab>
+                            <!-- /ko -->
+
+                            <!-- ko if: $data.tabKind === 9 -->
+                            <tables-query-tab class="flexContainer" params="{data: $data}"></tables-query-tab>
+                            <!-- /ko -->
+
+                            <!-- ko if: $data.tabKind === 10 -->
+                            <mongo-shell-tab params="{data: $data}"></mongo-shell-tab>
+                            <!-- /ko -->
+
+                            <!-- ko if: $data.tabKind === 11 -->
+                            <database-settings-tab params="{data: $data}"></database-settings-tab>
+                            <!-- /ko -->
+
+                             <!-- ko if: $data.tabKind === 12 -->
+                             <conflicts-tab params="{data: $data}"></conflicts-tab>
+                             <!-- /ko -->
+                        </div>
+                        <!-- /ko -->
+                    </div>
+                    <!-- Tabs Panes - End -->
+                </div>
+                <!-- Tabs and Tabs Panes - End -->
+            </div>
+            <!-- Collections Tree and Tabs - End -->
+        </div>
+            <div id="connectExplorer" class="connectExplorerContainer" style="display: none;">
+                <form data-bind="submit: renewToken" class="connectExplorerFormContainer">
+                    <div class="connectExplorer">
+                        <p class="connectExplorerContent">
+                            <img src="images/HdeConnectCosmosDB.svg" alt="Azure Cosmos DB"></img>
+                        </p>
+                        <p class="welcomeText">Welcome to Azure Cosmos DB</p>
+                        <p class="connectExplorerContent connectStringText">Connect to your account with connection string</p>
+                        <p class="connectExplorerContent">
+                            <input class="inputToken" type="text" required placeholder="Please enter a connection string" data-bind="value: tokenForRenewal"></input>
+                            <span class="errorDetailsInfoTooltip" data-bind="visible: renewTokenError().length > 0">
+                                    <img class="errorImg" src="images/error.svg" alt="Error notification">
+                                    <span class="errorDetails" data-bind="text: renewTokenError"></span>
+                            </span>
+                        </p>
+                        <p class="connectExplorerContent">
+                            <input class="filterbtnstyle" type="submit" value="Connect"></input>
+                        </p>
+                    </div>
+                </form>
+            </div>
+            <div class="dataExplorerErrorConsoleContainer" id="explorerNotificationConsole">
+                <notification-console class="notificationFlexContainer" params="{data: $data}"></notification-console>
+            </div>
+        <add-database-pane params="{data: addDatabasePane}"></add-database-pane>
+        <add-collection-pane params="{data: addCollectionPane}"></add-collection-pane>
+        <delete-collection-confirmation-pane params="{data: deleteCollectionConfirmationPane}"></delete-collection-confirmation-pane>
+        <delete-database-confirmation-pane params="{data: deleteDatabaseConfirmationPane}"></delete-database-confirmation-pane>
+        <graph-new-vertex-pane params="{data: newVertexPane}"></graph-new-vertex-pane>
+        <graph-styling-pane params="{data: graphStylingPane}"></graph-styling-pane>
+        <table-add-entity-pane params="{data: addTableEntityPane}"></table-add-entity-pane>
+        <table-edit-entity-pane params="{data: editTableEntityPane}"></table-edit-entity-pane>
+        <table-column-options-pane params="{data: tableColumnOptionsPane}"></table-column-options-pane>
+        <table-query-select-pane params="{data: querySelectPane}"></table-query-select-pane>
+        <cassandra-add-collection-pane params="{data: cassandraAddCollectionPane}"></cassandra-add-collection-pane>
+        <settings-pane params="{data: settingsPane}"></settings-pane>
+        <upload-items-pane params="{data: uploadItemsPane}"></upload-items-pane>
+        <execute-sproc-params-pane params="{data: executeSprocParamsPane}"></execute-sproc-params-pane>
+        <renew-adhoc-access-pane params="{data: renewAdHocAccessPane}"></renew-adhoc-access-pane>
+
+        <!-- Global loader - Start -->
+        <div class="dataExplorerLoaderContainer" data-bind="visible: isRefreshingExplorer">
+            <img class="dataExplorerLoader" src="images/LoadingIndicator_3Squares.gif" />
+        </div>
+        <!-- Global loader - End -->
+
+        <!-- Global access token expiration dialog - Start -->
+        <div id="dataAccessTokenModal" class="dataAccessTokenModal" style="display: none" data-bind="visible: shouldShowDataAccessExpiryDialog">
+            <div class="dataAccessTokenModalContent">
+                <p class="dataAccessTokenExpireText">Please reconnect to the account using the connection string.</p>
+            </div>
+        </div>
+        <!-- Global access token expiration dialog - End -->
+        <!-- Context switch prompt - Start -->
+        <div id="contextSwitchPrompt" class="dataAccessTokenModal" style="display: none" data-bind="visible: shouldShowContextSwitchPrompt">
+            <div class="dataAccessTokenModalContent">
+                <p class="dataAccessTokenExpireText">Please save your work before you switch! When you switch to a different Azure Cosmos DB account, current Data Explorer tabs will be closed.</p>
+                <p class="dataAccessTokenExpireText">Proceed anyway?</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        require(["./built/Main"]);
+    </script>
+
+</body>
+
+</html>,­W^d—      [Õ¾«[Ö¨?§¶œ[×k   c    :https://cosmos.azure.com/explorer.html?v=1.0.1&appInsightsKey=fa645d97-6237-4656-9559-0ee0cb55ee49 necko:classified 1 strongly-framed 1 security-info FnhllAKWRHGAlo+ESXykKAAAAAAAAAAAwAAAAAAAAEaphjojH6pBabDSgSnsfLHeAAQAAgAAAAAAAAAAAAAAAAAAAAAB4vFIJp5wRkeyPxAQ9RJGKPqbqVvKO0mKuIl8ec8o/uhmCjImkVxP+7sgiYWmMt8FvcOXmlQiTNWFiWlrbpbqgwAAAAAAAAOMMIIDiDCCAnCgAwIBAgIERTJgUjANBgkqhkiG9w0BAQsFADCBijEUMBIGA1UEBhMLUG9ydFN3aWdnZXIxFDASBgNVBAgTC1BvcnRTd2lnZ2VyMRQwEgYDVQQHEwtQb3J0U3dpZ2dlcjEUMBIGA1UEChMLUG9ydFN3aWdnZXIxFzAVBgNVBAsTDlBvcnRTd2lnZ2VyIENBMRcwFQYDVQQDEw5Qb3J0U3dpZ2dlciBDQTAeFw0xNDEwMjgxMzEyMTBaFw0zODEwMjgxMzEyMTBaMGAxFDASBgNVBAYTC1BvcnRTd2lnZ2VyMRQwEgYDVQQKEwtQb3J0U3dpZ2dlcjEXMBUGA1UECxMOUG9ydFN3aWdnZXIgQ0ExGTAXBgNVBAMTEGNvc21vcy5henVyZS5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCKn7emKINsnWqPZ+C/VsqbQf/l4NsmIh34bXBR0xdNg9bfb+xcoghRlmbPjhZ/A26A2gJ6Rrg2d0GGMLpbqA8nTlRRGXEAD39321zk4ye09ElXClvqguGqdqOJpPQ05DPFD6wSOq+KVAEblE5bi+LMqBLipDERzgUe7xzeqVVk0i0ldh9yQOIk3YuzcBR9igSEuw5qladmMYvXKHYM9YZz0R7axMc8xAtadK7C9KfFPfEI5LS2nhmy4vBrTgFyYhfkEvKfmIj6HTX0ISFCAC2llcBLpEDcuiW76tAHp1pXDeWtSeaV36AeOctdleVgrbmsGs3fu6ppuRcWjEZUbjE3AgMBAAGjHzAdMBsGA1UdEQQUMBKCEGNvc21vcy5henVyZS5jb20wDQYJKoZIhvcNAQELBQADggEBABYikT6Y5YgJJ4IVJldlFDF5MKxp26YegXhvT8EmAbgr0yQBIlY2DtKEiHf7Q8wRoJ9y5Ajst1D7HmRba+XLjS6s3IHJ7gtuvc3fZj9MPKpbqSKRfHDB8bDOVIzmjBseg2BqckHTkcYak3b/pTWCTqKHM3LxKsDwN8F3HNQ2pY4d5ma2kR1EtWdTpRiIbir3QxJDcWVp8CgHONZcoMn33NNwnWWjAQMX6d8e1CPuBZi0t+myaYduCqPgKKox9qMXSubF6uifQkAJ5RdLZrZ2pghENA/4r1oz51wqEmpjPsStSUxRPwJ6wJrB4gwGtX7++ZHLjAaNrTSUCGwIOlAT4LnALwEDAAAAAAEBAAAAAA== request-method GET request-Accept-Encoding gzip, deflate, br response-head HTTP/1.1 200 OK
+Content-Length: 25792
+Content-Type: text/html
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:38:37 GMT
+ original-response-headers Content-Length: 25792
+Content-Type: text/html
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:38:37 GMT
+Connection: close
+ uncompressed-len 0 net-response-time-onstart 2793 net-response-time-onstop 2801 predictor::resource-count 100 predictor::https://cosmos.azure.com/built/Explorer/Controls/JsonEditor/JsonEditorComponent.js?v=1.0.1 1,1,1540734635,4096 predictor::https://cosmos.azure.com/built/Explorer/Controls/DiffEditor/DiffEditorComponent.js?v=1.0.1 1,1,1540734635,4096 predictor::https://cosmos.azure.com/built/Explorer/WaitsForTemplateViewModel.js?v=1.0.1 1,1,1540734635,4096 predictor::https://cosmos.azure.com/built/Common/HeadersUtility.js?v=1.0.1 1,1,1540734635,4096 predictor::https://cosmos.azure.com/built/Platform/Hosted/Helpers/ConnectionStringParser.js?v=1.0.1 1,1,1540734635,4096 predictor::https://cosmos.azure.com/built/RouteHandlers/TabRouteHandler.js?v=1.0.1 1,1,1540734635,4096 predictor::https://cosmos.azure.com/built/Common/DataAccessUtilityBase.js?v=1.0.1 1,1,1540734635,4096 predictor::https://cosmos.azure.com/built/Utils/VersionFeatures.js?v=1.0.1 1,1,1540734635,4096 predictor::https://cosmos.azure.com/built/Platform/Hosted/DataAccessUtility.js?v=1.0.1 1,1,1540734635,4096 predictor::https://cosmos.azure.com/built/Explorer/Tabs/TabsBase.js?v=1.0.1 1,1,1540734635,4096 predictor::https://cosmos.azure.com/built/Explorer/Menus/CommandBar/CommandBarOptions.js?v=1.0.1 1,1,1540734635,4096 predictor::https://cosmos.azure.com/built/Explorer/Tabs/DocumentsTab.js?v=1.0.1 1,1,1540734635,4096 predictor::https://cosmos.azure.com/built/Explorer/Tabs/ConflictsTab.js?v=1.0.1 1,1,1540734635,4096 predictor::https://cosmos.azure.com/built/Explorer/Tabs/MongoDocumentsTab.js?v=1.0.1 1,1,1540734635,4096 predictor::https://cosmos.azure.com/built/Explorer/Tabs/SettingsTab.js?v=1.0.1 1,1,1540734635,4096 predictor::https://cosmos.azure.com/built/Explorer/Tabs/QueryTab.js?v=1.0.1 1,1,1540734635,4096 predictor::https://cosmos.azure.com/built/Explorer/Tabs/MongoQueryTab.js?v=1.0.1 1,1,1540734635,4096 predictor::https://cosmos.azure.com/built/Explorer/Tabs/QueryTablesTab.js?v=1.0.1 1,1,1540734635,4096 predictor::https://cosmos.azure.com/built/Explorer/Tabs/GraphTab.js?v=1.0.1 1,1,1540734635,4096 predictor::https://cosmos.azure.com/built/Explorer/Tabs/MongoShellTab.js?v=1.0.1 1,1,1540734635,4096 predictor::https://cosmos.azure.com/built/Explorer/Tree/StoredProcedure.js?v=1.0.1 1,1,1540734635,4096 predictor::https://cosmos.azure.com/built/Explorer/Tree/UserDefinedFunction.js?v=1.0.1 1,1,1540734635,4096 predictor::https://cosmos.azure.com/built/Explorer/Tree/Trigger.js?v=1.0.1 1,1,1540734635,4096 predictor::https://cosmos.azure.com/built/Utils/OfferUtils.js?v=1.0.1 1,1,1540734635,4096 predictor::https://cosmos.azure.com/built/Explorer/Tables/QueryBuilder/DateTimeUtilities.js?v=1.0.1 1,1,1540734635,4096 predictor::https://cosmos.azure.com/built/Explorer/Panes/Tables/Validators/EntityPropertyNameValidator.js?v=1.0.1 1,1,1540734635,4096 predictor::https://cosmos.azure.com/built/Explorer/Panes/Tables/Validators/EntityPropertyValueValidator.js?v=1.0.1 1,1,1540734635,4096 predictor::https://cosmos.azure.com/built/Explorer/Controls/Toolbar/ToolbarDropDown.js?v=1.0.1 1,1,1540734635,4096 predictor::https://cosmos.azure.com/built/Explorer/Controls/Toolbar/ToolbarAction.js?v=1.0.1 1,1,1540734635,4096 predictor::https://cosmos.azure.com/built/Explorer/Controls/Toolbar/ToolbarToggle.js?v=1.0.1 1,1,1540734635,4096 predictor::https://cosmos.azure.com/built/Explorer/Graph/GraphExplorerComponent/D3ForceGraph.js?v=1.0.1 1,1,1540734635,4096 predictor::https://cosmos.azure.com/built/Explorer/Graph/GraphExplorerComponent/GraphData.js?v=1.0.1 1,1,1540734635,4096 predictor::https://cosmos.azure.com/built/Explorer/Graph/GraphExplorerComponent/GremlinClient.js?v=1.0.1 1,1,1540734635,4096 predictor::https://cosmos.azure.com/built/Explorer/Graph/GraphExplorerComponent/RightPaneAdapter.js?v=1.0.1 1,1,1540734635,4096 predictor::https://cosmos.azure.com/built/Explorer/Graph/GraphExplorerComponent/ArraysByKeyCache.js?v=1.0.1 1,1,1540734635,4096 predictor::https://cosmos.azure.com/built/Explorer/Graph/GraphExplorerComponent/EdgeInfoCache.js?v=1.0.1 1,1,1540734635,4096 predictor::https://cosmos.azure.com/externals/crossroads.js?v=1.0.1 1,1,1540734635,4096 predictor::https://cosmos.azure.com/built/Utils/VersionUtils.js?v=1.0.1 1,1,1540734635,4096 predictor::https://cosmos.azure.com/built/Common/ThemeUtility.js?v=1.0.1 1,1,1540734635,4096 predictor::https://cosmos.azure.com/built/Explorer/Tree/AccessibleVerticalList.js?v=1.0.1 1,1,1540734635,4096 predictor::https://cosmos.azure.com/built/Explorer/Tree/DocumentId.js?v=1.0.1 1,1,1540734635,4096 predictor::https://cosmos.azure.com/built/Utils/QueryUtils.js?v=1.0.1 1,1,1540734635,4096 predictor::https://cosmos.azure.com/built/Explorer/Tree/ConflictId.js?v=1.0.1 1,1,1540734635,4096 predictor::https://cosmos.azure.com/built/Contracts/DataModels.js?v=1.0.1 1,1,1540734635,4096 predictor::https://cosmos.azure.com/built/Explorer/Tree/ObjectId.js?v=1.0.1 1,1,1540734635,4096 predictor::https://cosmos.azure.com/built/Common/MongoUtility.js?v=1.0.1 1,1,1540734635,4096 predictor::https://cosmos.azure.com/built/Explorer/Tables/DataTable/TableEntityListViewModel.js?v=1.0.1 1,1,1540734635,4096 predictor::https://cosmos.azure.com/built/Explorer/Tables/QueryBuilder/QueryViewModel.js?v=1.0.1 1,1,1540734635,4096 predictor::https://cosmos.azure.com/built/Explorer/Tables/DataTable/TableCommands.js?v=1.0.1 1,1,1540734635,4096 predictor::https://cosmos.azure.com/built/Explorer/Tabs/StoredProcedureTab.js?v=1.0.1 1,1,1540734635,4096 predictor::https://cosmos.azure.com/built/Explorer/Tabs/UserDefinedFunctionTab.js?v=1.0.1 1,1,1540734635,4096 predictor::https://cosmos.azure.com/built/Explorer/Tabs/TriggerTab.js?v=1.0.1 1,1,1540734635,4096 predictor::https://cosmos.azure.com/built/Explorer/Panes/Tables/Validators/EntityPropertyValidationCommon.js?v=1.0.1 1,1,1540734635,4096 predictor::https://cosmos.azure.com/built/Explorer/Controls/Toolbar/KeyCodes.js?v=1.0.1 1,1,1540734635,4096 predictor::https://cosmos.azure.com/built/Explorer/Controls/Toolbar/Utilities.js?v=1.0.1 1,1,1540734635,4096 predictor::https://cosmos.azure.com/externals/d3.v4.js?v=1.0.1 1,1,1540734635,4096 predictor::https://cosmos.azure.com/built/Explorer/Graph/GraphExplorerComponent/GremlinSimpleClient.js?v=1.0.1 1,1,1540734635,4096 predictor::https://cosmos.azure.com/built/Explorer/Graph/GraphExplorerComponent/NodeProperties.js?v=1.0.1 1,1,1540734635,4096 predictor::https://cosmos.azure.com/built/Common/ObjectCache.js?v=1.0.1 1,1,1540734635,4096 predictor::https://cosmos.azure.com/built/Explorer/Tables/DataTable/DataTableViewModel.js?v=1.0.1 1,1,1540734635,4096 predictor::https://cosmos.azure.com/built/Explorer/Tables/DataTable/DataTableContextMenu.js?v=1.0.1 1,1,1540734635,4096 predictor::https://cosmos.azure.com/built/Explorer/Tables/DataTable/TableEntityCache.js?v=1.0.1 1,1,1540734635,4096 predictor::https://cosmos.azure.com/built/Explorer/Tables/QueryBuilder/QueryBuilderViewModel.js?v=1.0.1 1,1,1540734635,4096 predictor::https://cosmos.azure.com/built/Explorer/Tabs/ScriptTabBase.js?v=1.0.1 1,1,1540734635,4096 predictor::https://cosmos.azure.com/built/Explorer/Controls/CollapsiblePanel/CollapsiblePanel.js?v=1.0.1 1,1,1540734635,4096 predictor::https://cosmos.azure.com/built/Explorer/Graph/GraphExplorerComponent/ReadOnlyNodeProperties.js?v=1.0.1 1,1,1540734635,4096 predictor::https://cosmos.azure.com/built/Explorer/Graph/GraphExplorerComponent/EditorNodeProperties.js?v=1.0.1 1,1,1540734635,4096 predictor::https://cosmos.azure.com/built/Explorer/Graph/GraphExplorerComponent/ReadOnlyNeighbors.js?v=1.0.1 1,1,1540734635,4096 predictor::https://cosmos.azure.com/built/Explorer/Graph/GraphExplorerComponent/EditorNeighbors.js?v=1.0.1 1,1,1540734635,4096 predictor::https://cosmos.azure.com/built/Explorer/Tables/DataTable/CacheBase.js?v=1.0.1 1,1,1540734635,4096 predictor::https://cosmos.azure.com/built/Explorer/Tables/QueryBuilder/CustomTimestampHelper.js?v=1.0.1 1,1,1540734635,4096 predictor::https://cosmos.azure.com/built/Explorer/Tables/QueryBuilder/QueryClauseViewModel.js?v=1.0.1 1,1,1540734635,4096 predictor::https://cosmos.azure.com/built/Explorer/Tables/QueryBuilder/ClauseGroup.js?v=1.0.1 1,1,1540734635,4096 predictor::https://cosmos.azure.com/built/Explorer/Tables/QueryBuilder/ClauseGroupViewModel.js?v=1.0.1 1,1,1540734635,4096 predictor::https://cosmos.azure.com/built/Explorer/Graph/GraphExplorerComponent/GraphUtil.js?v=1.0.1 1,1,1540734635,4096 predictor::https://cosmos.azure.com/built/Explorer/Controls/InputTypeahead/InputTypeaheadReact.js?v=1.0.1 1,1,1540734635,4096 predictor::https://cosmos.azure.com/externals/text.js?v=1.0.1 1,1,1540734635,4096 predictor::https://cosmos.azure.com/fonts/segoe-ui/west-european/normal/latest.woff 1,1,1540734635,4096 predictor::https://cosmos.azure.com/images/loading.svg 1,1,1540734635,4096 predictor::https://cosmos.azure.com/images/error_black.svg 1,1,1540734635,4096 predictor::https://cosmos.azure.com/images/info-bubble-9x9.svg 1,1,1540734635,4096 predictor::https://cosmos.azure.com/images/QueryBuilder/CollapseChevronUp_16x.png 1,1,1540734635,4096 predictor::https://cosmos.azure.com/images/QueryBuilder/CollapseChevronDown_16x.png 1,1,1540734635,4096 predictor::https://cosmos.azure.com/images/Clear.svg 1,1,1540734635,4096 predictor::https://cosmos.azure.com/images/info_color.svg 1,1,1540734635,4096 predictor::https://cosmos.azure.com/images/error_red.svg 1,1,1540734635,4096 predictor::https://cosmos.azure.com/images/info-bubble.svg 1,1,1540734635,4096 predictor::https://cosmos.azure.com/images/warning.svg 1,1,1540734635,4096 predictor::https://cosmos.azure.com/images/delete.svg 1,1,1540734635,4096 predictor::https://cosmos.azure.com/images/Add-property.svg 1,1,1540734635,4096 predictor::https://cosmos.azure.com/images/Feedback-Command.svg 1,1,1540734635,4096 predictor::https://cosmos.azure.com/images/Edit_entity.svg 1,1,1540734635,4096 predictor::https://cosmos.azure.com/images/RevertBack.svg 1,1,1540734635,4096 predictor::https://cosmos.azure.com/images/Down.svg 1,1,1540734635,4096 predictor::https://cosmos.azure.com/images/Up.svg 1,1,1540734635,4096 predictor::https://cosmos.azure.com/images/folder_16x16.svg 1,1,1540734635,4096 predictor::https://cosmos.azure.com/images/Entity_cancel.svg 1,1,1540734635,4096 predictor::https://cosmos.azure.com/images/Triangle-right.svg 1,1,1540734635,4096 predictor::https://cosmos.azure.com/images/Triangle-down.svg 1,1,1540734635,4096 predictor::https://cosmos.azure.com/images/ConnectionString_Artwork.png 1,1,1540734635,4096   dÀ

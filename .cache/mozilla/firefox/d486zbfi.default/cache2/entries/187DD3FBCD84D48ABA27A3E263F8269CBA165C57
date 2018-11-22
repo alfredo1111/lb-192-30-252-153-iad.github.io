@@ -1,0 +1,818 @@
+var __extends = (this && this.__extends) || (function () {
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    }
+    return function (d, b) {
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
+define(["require", "exports", "knockout", "q", "../../Common/Constants", "../../Contracts/ViewModels", "../../Shared/Telemetry/TelemetryConstants", "../Tree/AccessibleVerticalList", "../../Common/ErrorParserUtility", "../Tree/DocumentId", "../../Common/EditableUtility", "../../Common/HeadersUtility", "./TabsBase", "../Menus/CommandBar/CommandBarOptions", "../../Common/Constants", "../../Utils/QueryUtils", "../../Common/Splitter", "../../Shared/Telemetry/TelemetryProcessor", "../Controls/Toolbar/Toolbar", "../../Common/ThemeUtility"], function (require, exports, ko, Q, Constants, ViewModels, TelemetryConstants_1, AccessibleVerticalList_1, ErrorParserUtility, DocumentId, editable, HeadersUtility, TabsBase, CommandBarOptions_1, Constants_1, QueryUtils_1, Splitter_1, TelemetryProcessor_1, Toolbar_1, ThemeUtility_1) {
+    "use strict";
+    var DocumentsTab = /** @class */ (function (_super) {
+        __extends(DocumentsTab, _super);
+        function DocumentsTab(options) {
+            var _this = _super.call(this, options) || this;
+            _this.commandBarOptions = {};
+            _this.toolbarViewModel = ko.observable();
+            _this.onNewDocumentClick = function () {
+                if (_this.isEditorDirty() && !_this._isIgnoreDirtyEditor()) {
+                    return Q();
+                }
+                _this.daytonaContext && _this.daytonaContext.telemetry.sendEvent("StorageExplorer." + ViewModels.CollectionTabKind[_this.tabKind] + ".CreateNewDocument");
+                _this.selectedDocumentId(null);
+                var defaultDocument = _this.renderObjectForEditor({ id: "replace_with_new_document_id" }, null, 4);
+                _this.selectedDocumentContent.setBaseline(defaultDocument);
+                _this.editorState(ViewModels.DocumentExplorerState.newDocumentValid);
+                return Q();
+            };
+            _this.onSaveNewDocumentClick = function () {
+                _this.isExecutionError(false);
+                var startKey = TelemetryProcessor_1.default.traceStart(TelemetryConstants_1.Action.CreateDocument, {
+                    databaseAccountName: _this.collection && _this.collection.container.databaseAccount().name,
+                    defaultExperience: _this.collection && _this.collection.container.defaultExperience(),
+                    dataExplorerArea: Constants.Areas.Tab,
+                    tabTitle: _this.tabTitle()
+                }, _this.isRunningOnDaytona);
+                var document = JSON.parse(_this.selectedDocumentContent());
+                _this.isExecuting(true);
+                return _this.documentClientUtility.createDocument({ self: _this._selfLink, resourceName: _this.collection && _this.collection.id(), rid: _this.collection && _this.collection.rid }, document, null /*options*/).then(function (savedDocument) {
+                    _this.daytonaContext && _this.daytonaContext.telemetry.sendEvent("StorageExplorer." + ViewModels.CollectionTabKind[_this.tabKind] + ".SaveNewDocument");
+                    var value = _this.renderObjectForEditor(savedDocument || {}, null, 4);
+                    _this.selectedDocumentContent.setBaseline(value);
+                    var partitionKeyValue = _this.documentClientUtility.extractPartitionKey(savedDocument, _this.partitionKey);
+                    var id = new DocumentId(_this, savedDocument, partitionKeyValue);
+                    var ids = _this.documentIds();
+                    ids.push(id);
+                    _this.selectedDocumentId(id);
+                    _this.documentIds(ids);
+                    _this.editorState(ViewModels.DocumentExplorerState.exisitingDocumentNoEdits);
+                    _this.daytonaContext && _this.daytonaContext.telemetry.sendEvent("StorageExplorer." + ViewModels.CollectionTabKind[_this.tabKind] + ".SaveNewDocument");
+                    TelemetryProcessor_1.default.traceSuccess(TelemetryConstants_1.Action.CreateDocument, {
+                        databaseAccountName: _this.collection && _this.collection.container.databaseAccount().name,
+                        defaultExperience: _this.collection && _this.collection.container.defaultExperience(),
+                        dataExplorerArea: Constants.Areas.Tab,
+                        tabTitle: _this.tabTitle()
+                    }, startKey, _this.isRunningOnDaytona);
+                }, function (reason) {
+                    _this.isExecutionError(true);
+                    var message = ErrorParserUtility.parse(reason)[0].message;
+                    if (!_this.isRunningOnDaytona) {
+                        window.alert(message);
+                        TelemetryProcessor_1.default.traceFailure(TelemetryConstants_1.Action.CreateDocument, {
+                            databaseAccountName: _this.collection && _this.collection.container.databaseAccount().name,
+                            defaultExperience: _this.collection && _this.collection.container.defaultExperience(),
+                            dataExplorerArea: Constants.Areas.Tab,
+                            tabTitle: _this.tabTitle()
+                        }, startKey);
+                    }
+                    else {
+                        _this.daytonaContext && _this.daytonaContext.hostProxy.executeProviderOperation("CloudExplorer.Actions.Dialog.promptOK", {
+                            title: "Error",
+                            message: message + ".\r\nPlease use a different id for the document.",
+                            messageBoxType: "error"
+                        });
+                    }
+                }).finally(function () { return _this.isExecuting(false); });
+            };
+            _this.onRevertNewDocumentClick = function () {
+                _this.daytonaContext && _this.daytonaContext.telemetry.sendEvent("StorageExplorer." + ViewModels.CollectionTabKind[_this.tabKind] + ".DiscardNewDocument");
+                _this.selectedDocumentContent("");
+                _this.editorState(ViewModels.DocumentExplorerState.noDocumentSelected);
+                return Q();
+            };
+            _this.onSaveExisitingDocumentClick = function () {
+                var selectedDocumentId = _this.selectedDocumentId();
+                var documentContent = JSON.parse(_this.selectedDocumentContent());
+                selectedDocumentId.partitionKeyValue = _this.documentClientUtility.extractPartitionKey(documentContent, _this.partitionKey);
+                _this.isExecutionError(false);
+                var startKey = TelemetryProcessor_1.default.traceStart(TelemetryConstants_1.Action.UpdateDocument, {
+                    databaseAccountName: _this.collection && _this.collection.container.databaseAccount().name,
+                    defaultExperience: _this.collection && _this.collection.container.defaultExperience(),
+                    dataExplorerArea: Constants.Areas.Tab,
+                    tabTitle: _this.tabTitle()
+                }, _this.isRunningOnDaytona);
+                _this.isExecuting(true);
+                return _this.documentClientUtility.updateDocument(selectedDocumentId, documentContent, null /*options*/).then(function (updatedDocument) {
+                    _this.daytonaContext && _this.daytonaContext.telemetry.sendEvent("StorageExplorer." + ViewModels.CollectionTabKind[_this.tabKind] + ".UpdateDocument");
+                    var value = _this.renderObjectForEditor(updatedDocument || {}, null, 4);
+                    _this.selectedDocumentContent.setBaseline(value);
+                    _this.documentIds().forEach(function (documentId) {
+                        if (documentId.rid === updatedDocument._rid) {
+                            documentId.id(updatedDocument.id);
+                        }
+                    });
+                    _this.editorState(ViewModels.DocumentExplorerState.exisitingDocumentNoEdits);
+                    TelemetryProcessor_1.default.traceSuccess(TelemetryConstants_1.Action.UpdateDocument, {
+                        databaseAccountName: _this.collection && _this.collection.container.databaseAccount().name,
+                        defaultExperience: _this.collection && _this.collection.container.defaultExperience(),
+                        dataExplorerArea: Constants.Areas.Tab,
+                        tabTitle: _this.tabTitle()
+                    }, startKey, _this.isRunningOnDaytona);
+                }, function (reason) {
+                    _this.isExecutionError(true);
+                    var message = ErrorParserUtility.parse(reason)[0].message;
+                    if (!_this.isRunningOnDaytona) {
+                        window.alert(message);
+                        TelemetryProcessor_1.default.traceFailure(TelemetryConstants_1.Action.UpdateDocument, {
+                            databaseAccountName: _this.collection && _this.collection.container.databaseAccount().name,
+                            defaultExperience: _this.collection && _this.collection.container.defaultExperience(),
+                            dataExplorerArea: Constants.Areas.Tab,
+                            tabTitle: _this.tabTitle()
+                        }, startKey);
+                    }
+                    else {
+                        _this.daytonaContext && _this.daytonaContext.hostProxy.executeProviderOperation("CloudExplorer.Actions.Dialog.promptOK", {
+                            title: "Error",
+                            message: message,
+                            messageBoxType: "error"
+                        });
+                    }
+                }).finally(function () { return _this.isExecuting(false); });
+            };
+            _this.onRevertExisitingDocumentClick = function () {
+                _this.daytonaContext && _this.daytonaContext.telemetry.sendEvent("StorageExplorer." + ViewModels.CollectionTabKind[_this.tabKind] + ".DiscardUpdateDocument");
+                var original = _this.selectedDocumentContent.getEditableOriginalValue();
+                _this.selectedDocumentContent.setBaseline(original);
+                _this.editorState(ViewModels.DocumentExplorerState.exisitingDocumentNoEdits);
+                return Q();
+            };
+            _this.onDeleteExisitingDocumentClick = function () {
+                var selectedDocumentId = _this.selectedDocumentId();
+                if (_this.isRunningOnDaytona) {
+                    return _this.daytonaContext && _this.daytonaContext.hostProxy.executeProviderOperation("CloudExplorer.Actions.Dialog.promptYesNo", {
+                        iconType: "question",
+                        message: "Are you sure you want to delete the selected document?"
+                    }).then(function (response) {
+                        if (response) {
+                            return _this._deleteDocument(selectedDocumentId);
+                        }
+                        else {
+                            return Q();
+                        }
+                    });
+                }
+                else {
+                    if (window.confirm('Are you sure you want to delete the selected document?')) {
+                        return _this._deleteDocument(selectedDocumentId);
+                    }
+                    return Q();
+                }
+            };
+            _this._isIgnoreDirtyEditor = function () {
+                var msg = "Changes will be lost. Do you want to continue?";
+                if (_this.isRunningOnDaytona) {
+                    return true;
+                }
+                else {
+                    return window.confirm(msg);
+                }
+            };
+            _this.onLoadMoreKeyInput = function (source, event) {
+                if (event.key === " " || event.key === "Enter") {
+                    _this.loadNextPage();
+                    document.getElementById(_this.documentContentsGridId).focus();
+                    event.stopPropagation();
+                }
+            };
+            if (_this.isRunningOnDaytona) {
+                _this.daytonaContext && _this.daytonaContext.hostProxy.onThemeChange(function (newTheme) {
+                    var newTheme = ThemeUtility_1.default.getMonacoTheme(newTheme);
+                    if (newTheme !== _this._theme) {
+                        _this._theme = newTheme;
+                        monaco.editor.setTheme(newTheme);
+                    }
+                });
+                window.host = _this.daytonaContext && _this.daytonaContext.hostProxy;
+            }
+            _this.isPreferredApiMongoDB = !!_this.collection ? _this.collection.container.isPreferredApiMongoDB() : options.isPreferredApiMongoDB;
+            _this.documentContentsGridId = "documentContentsGrid" + _this.tabId;
+            _this.documentContentsContainerId = "documentContentsContainer" + _this.tabId;
+            _this.editorState = ko.observable(ViewModels.DocumentExplorerState.noDocumentSelected);
+            _this.selectedDocumentId = ko.observable();
+            _this.selectedDocumentContent = editable.observable("");
+            _this.partitionKey = options.partitionKey || (_this.collection && _this.collection.partitionKey);
+            _this.documentIds = options.documentIds;
+            _this._selfLink = options.selfLink || (_this.collection && _this.collection.self);
+            _this.partitionKeyPropertyHeader = (_this.collection && _this.collection.partitionKeyPropertyHeader) || _this._getPartitionKeyPropertyHeader();
+            _this.partitionKeyProperty = !!_this.partitionKeyPropertyHeader ? _this.partitionKeyPropertyHeader.replace(/[/]+/g, ".").substr(1).replace(/[']+/g, '') : null;
+            _this.isFilterExpanded = ko.observable(false);
+            _this.isFilterCreated = ko.observable(!_this.isRunningOnDaytona);
+            _this.filterContent = ko.observable("");
+            _this.appliedFilter = ko.observable("");
+            _this.displayedError = ko.observable("");
+            _this.lastFilterContents = ko.observableArray([
+                'WHERE c.id = "foo"',
+                'ORDER BY c._ts DESC',
+                'WHERE c.id = "foo" ORDER BY c._ts DESC'
+            ]);
+            _this.dataContentsGridScrollHeight = ko.observable(null);
+            // initialize splitter only after template has been loaded so dom elements are accessible
+            _super.prototype.onTemplateReady.call(_this, function (isTemplateReady) {
+                if (isTemplateReady) {
+                    var tabContainer = document.getElementById("content");
+                    var splitterBounds = { min: (Constants.DocumentsGridMetrics.DocumentEditorMinWidthRatio * tabContainer.clientWidth), max: (Constants.DocumentsGridMetrics.DocumentEditorMaxWidthRatio * tabContainer.clientWidth) };
+                    _this.splitter = new Splitter_1.Splitter({
+                        splitterId: "h_splitter2",
+                        leftId: _this.documentContentsContainerId,
+                        bounds: splitterBounds,
+                        direction: Splitter_1.SplitterDirection.Vertical
+                    });
+                }
+            });
+            _this.accessibleDocumentList = new AccessibleVerticalList_1.AccessibleVerticalList(_this.documentIds());
+            _this.accessibleDocumentList.setOnSelect(function (selectedDocument) { return selectedDocument && selectedDocument.click(); });
+            _this.selectedDocumentId.subscribe(function (newSelectedDocumentId) { return _this.accessibleDocumentList.updateCurrentItem(newSelectedDocumentId); });
+            _this.documentIds.subscribe(function (newDocuments) {
+                _this.accessibleDocumentList.updateItemList(newDocuments);
+                _this.dataContentsGridScrollHeight((newDocuments.length * Constants_1.DocumentsGridMetrics.IndividualRowHeight + Constants_1.DocumentsGridMetrics.BufferHeight) + "px");
+            });
+            _this.isEditorDirty = ko.computed(function () {
+                switch (_this.editorState()) {
+                    case ViewModels.DocumentExplorerState.noDocumentSelected:
+                    case ViewModels.DocumentExplorerState.exisitingDocumentNoEdits:
+                        return false;
+                    case ViewModels.DocumentExplorerState.newDocumentValid:
+                    case ViewModels.DocumentExplorerState.newDocumentInvalid:
+                    case ViewModels.DocumentExplorerState.exisitingDocumentDirtyInvalid:
+                        return true;
+                    case ViewModels.DocumentExplorerState.exisitingDocumentDirtyValid:
+                        return _this.selectedDocumentContent.getEditableOriginalValue() !== _this.selectedDocumentContent.getEditableCurrentValue();
+                    default:
+                        return false;
+                }
+            });
+            _this.newDocumentButton = {
+                enabled: ko.computed(function () {
+                    switch (_this.editorState()) {
+                        case ViewModels.DocumentExplorerState.noDocumentSelected:
+                        case ViewModels.DocumentExplorerState.exisitingDocumentNoEdits:
+                            return true;
+                    }
+                    return false;
+                }),
+                visible: ko.computed(function () {
+                    return true;
+                })
+            };
+            _this.saveNewDocumentButton = {
+                enabled: ko.computed(function () {
+                    switch (_this.editorState()) {
+                        case ViewModels.DocumentExplorerState.newDocumentValid:
+                            return true;
+                    }
+                    return false;
+                }),
+                visible: ko.computed(function () {
+                    switch (_this.editorState()) {
+                        case ViewModels.DocumentExplorerState.newDocumentValid:
+                        case ViewModels.DocumentExplorerState.newDocumentInvalid:
+                            return true;
+                    }
+                    return false;
+                })
+            };
+            _this.discardNewDocumentChangesButton = {
+                enabled: ko.computed(function () {
+                    switch (_this.editorState()) {
+                        case ViewModels.DocumentExplorerState.newDocumentValid:
+                        case ViewModels.DocumentExplorerState.newDocumentInvalid:
+                            return true;
+                    }
+                    return false;
+                }),
+                visible: ko.computed(function () {
+                    switch (_this.editorState()) {
+                        case ViewModels.DocumentExplorerState.newDocumentValid:
+                        case ViewModels.DocumentExplorerState.newDocumentInvalid:
+                            return true;
+                    }
+                    return false;
+                })
+            };
+            _this.saveExisitingDocumentButton = {
+                enabled: ko.computed(function () {
+                    switch (_this.editorState()) {
+                        case ViewModels.DocumentExplorerState.exisitingDocumentDirtyValid:
+                            return true;
+                    }
+                    return false;
+                }),
+                visible: ko.computed(function () {
+                    switch (_this.editorState()) {
+                        case ViewModels.DocumentExplorerState.exisitingDocumentNoEdits:
+                        case ViewModels.DocumentExplorerState.exisitingDocumentDirtyInvalid:
+                        case ViewModels.DocumentExplorerState.exisitingDocumentDirtyValid:
+                            return true;
+                    }
+                    return false;
+                })
+            };
+            _this.discardExisitingDocumentChangesButton = {
+                enabled: ko.computed(function () {
+                    switch (_this.editorState()) {
+                        case ViewModels.DocumentExplorerState.exisitingDocumentDirtyInvalid:
+                        case ViewModels.DocumentExplorerState.exisitingDocumentDirtyValid:
+                            return true;
+                    }
+                    return false;
+                }),
+                visible: ko.computed(function () {
+                    switch (_this.editorState()) {
+                        case ViewModels.DocumentExplorerState.exisitingDocumentNoEdits:
+                        case ViewModels.DocumentExplorerState.exisitingDocumentDirtyInvalid:
+                        case ViewModels.DocumentExplorerState.exisitingDocumentDirtyValid:
+                            return true;
+                    }
+                    return false;
+                })
+            };
+            _this.deleteExisitingDocumentButton = {
+                enabled: ko.computed(function () {
+                    switch (_this.editorState()) {
+                        case ViewModels.DocumentExplorerState.exisitingDocumentNoEdits:
+                        case ViewModels.DocumentExplorerState.exisitingDocumentDirtyInvalid:
+                        case ViewModels.DocumentExplorerState.exisitingDocumentDirtyValid:
+                            return true;
+                    }
+                    return false;
+                }),
+                visible: ko.computed(function () {
+                    switch (_this.editorState()) {
+                        case ViewModels.DocumentExplorerState.exisitingDocumentNoEdits:
+                        case ViewModels.DocumentExplorerState.exisitingDocumentDirtyInvalid:
+                        case ViewModels.DocumentExplorerState.exisitingDocumentDirtyValid:
+                            return true;
+                    }
+                    return false;
+                })
+            };
+            _this.applyFilterButton = {
+                enabled: ko.computed(function () {
+                    return true;
+                }),
+                visible: ko.computed(function () {
+                    return true;
+                })
+            };
+            _this.buildCommandBarOptions();
+            _this.buildDaytonaToolbar();
+            _this.shouldShowEditor = ko.computed(function () {
+                var documentHasContent = _this.selectedDocumentContent() != null && _this.selectedDocumentContent().length > 0;
+                var isNewDocument = _this.editorState() === ViewModels.DocumentExplorerState.newDocumentValid || _this.editorState() === ViewModels.DocumentExplorerState.newDocumentInvalid;
+                return documentHasContent || isNewDocument;
+            });
+            _this.selectedDocumentContent.subscribe(function (newContent) { return _this._onEditorContentChange(newContent); });
+            if (_this.isRunningOnDaytona) {
+                _this.onRefreshClick();
+            }
+            return _this;
+        }
+        DocumentsTab.prototype.onShowFilterClick = function () {
+            this.daytonaContext && this.daytonaContext.telemetry.sendEvent("StorageExplorer." + ViewModels.CollectionTabKind[this.tabKind] + ".EditFilter");
+            this.isFilterCreated(true);
+            this.isFilterExpanded(true);
+            $(".filterDocExpanded").addClass("active");
+            $("#content").addClass("active");
+            $(".querydropdown").focus();
+            return Q();
+        };
+        DocumentsTab.prototype.onHideFilterClick = function () {
+            this.isFilterExpanded(false);
+            $(".filterDocExpanded").removeClass("active");
+            $("#content").removeClass("active");
+            return Q();
+        };
+        DocumentsTab.prototype.onApplyFilterClick = function () {
+            var _this = this;
+            this.daytonaContext && this.daytonaContext.telemetry.sendEvent("StorageExplorer." + ViewModels.CollectionTabKind[this.tabKind] + ".ApplyFilter");
+            // clear documents grid
+            this.documentIds([]);
+            return this.createIterator()
+                .then(
+            // reset iterator
+            function (iterator) {
+                _this._documentsIterator = iterator;
+            })
+                .then(
+            // load documents
+            function () {
+                return _this.loadNextPage();
+            })
+                .then(function () {
+                // collapse filter
+                _this.appliedFilter(_this.filterContent());
+                _this.isFilterExpanded(false);
+                _this.isRunningOnDaytona && $(".filterDocExpanded").removeClass("active");
+                _this.isRunningOnDaytona && $("#content").removeClass("active");
+            }).catch(function (reason) {
+                var message = ErrorParserUtility.parse(reason)[0].message;
+                if (!_this.isRunningOnDaytona) {
+                    window.alert(message);
+                }
+                else {
+                    _this.daytonaContext && _this.daytonaContext.hostProxy.executeProviderOperation("CloudExplorer.Actions.Dialog.promptOK", {
+                        title: "Error",
+                        message: message + "\r\nPlease revise your SQL query predicate.",
+                        messageBoxType: "error"
+                    });
+                }
+            });
+        };
+        DocumentsTab.prototype.refreshDocumentsGrid = function () {
+            return this.onApplyFilterClick();
+        };
+        DocumentsTab.prototype.onDocumentIdClick = function (clickedDocumentId) {
+            if (this.editorState() !== ViewModels.DocumentExplorerState.noDocumentSelected) {
+                return Q();
+            }
+            this.editorState(ViewModels.DocumentExplorerState.exisitingDocumentNoEdits);
+            return Q();
+        };
+        DocumentsTab.prototype.onValidDocumentEdit = function () {
+            if (this.editorState() === ViewModels.DocumentExplorerState.newDocumentInvalid || this.editorState() === ViewModels.DocumentExplorerState.newDocumentValid) {
+                this.editorState(ViewModels.DocumentExplorerState.newDocumentValid);
+                return Q();
+            }
+            this.editorState(ViewModels.DocumentExplorerState.exisitingDocumentDirtyValid);
+            return Q();
+        };
+        DocumentsTab.prototype.onDaytonaDiscardClick = function () {
+            if (this.discardExisitingDocumentChangesButton.enabled()) {
+                return this.onRevertExisitingDocumentClick();
+            }
+            else if (this.discardNewDocumentChangesButton.enabled()) {
+                return this.onRevertNewDocumentClick();
+            }
+            return Q();
+        };
+        ;
+        DocumentsTab.prototype.onDaytonaSaveClick = function () {
+            if (this.saveExisitingDocumentButton.enabled()) {
+                return this.onSaveExisitingDocumentClick();
+            }
+            else if (this.saveNewDocumentButton.enabled()) {
+                return this.onSaveNewDocumentClick();
+            }
+            return Q();
+        };
+        ;
+        DocumentsTab.prototype.onInvalidDocumentEdit = function () {
+            if (this.editorState() === ViewModels.DocumentExplorerState.newDocumentInvalid || this.editorState() === ViewModels.DocumentExplorerState.newDocumentValid) {
+                this.editorState(ViewModels.DocumentExplorerState.newDocumentInvalid);
+                return Q();
+            }
+            if (this.editorState() === ViewModels.DocumentExplorerState.exisitingDocumentNoEdits || this.editorState() === ViewModels.DocumentExplorerState.exisitingDocumentDirtyValid) {
+                this.editorState(ViewModels.DocumentExplorerState.exisitingDocumentDirtyInvalid);
+                return Q();
+            }
+            return Q();
+        };
+        DocumentsTab.prototype.onTabClick = function () {
+            var _this = this;
+            return _super.prototype.onTabClick.call(this).then(function () {
+                _this.collection && _this.collection.selectedSubnodeKind(ViewModels.CollectionTabKind.Documents);
+            });
+        };
+        DocumentsTab.prototype.onActivate = function () {
+            var _this = this;
+            return _super.prototype.onActivate.call(this).then(function () {
+                if (_this._documentsIterator) {
+                    return Q.resolve(_this._documentsIterator);
+                }
+                return _this.createIterator().then(function (iterator) {
+                    _this._documentsIterator = iterator;
+                    return _this.loadNextPage();
+                }, function (error) {
+                    if (_this.onLoadStartKey != null && _this.onLoadStartKey != undefined) {
+                        TelemetryProcessor_1.default.traceFailure(TelemetryConstants_1.Action.Tab, {
+                            databaseAccountName: _this.collection.container.databaseAccount().name,
+                            databaseName: _this.collection.database.id(),
+                            collectionName: _this.collection.id(),
+                            defaultExperience: _this.collection.container.defaultExperience(),
+                            dataExplorerArea: Constants.Areas.Tab,
+                            tabTitle: _this.tabTitle(),
+                            error: error
+                        }, _this.onLoadStartKey);
+                        _this.onLoadStartKey = null;
+                    }
+                });
+            });
+        };
+        DocumentsTab.prototype.onRefreshClick = function () {
+            var _this = this;
+            this.daytonaContext && this.daytonaContext.telemetry.sendEvent("StorageExplorer." + ViewModels.CollectionTabKind[this.tabKind] + ".Refresh");
+            return this.refreshDocumentsGrid().then(function () {
+                _this.selectedDocumentContent("");
+                _this.selectedDocumentId(null);
+                _this.editorState(ViewModels.DocumentExplorerState.noDocumentSelected);
+            });
+        };
+        DocumentsTab.prototype._deleteDocument = function (selectedDocumentId) {
+            var _this = this;
+            this.isExecutionError(false);
+            var startKey = TelemetryProcessor_1.default.traceStart(TelemetryConstants_1.Action.DeleteDocument, {
+                databaseAccountName: this.collection && this.collection.container.databaseAccount().name,
+                defaultExperience: this.collection && this.collection.container.defaultExperience(),
+                dataExplorerArea: Constants.Areas.Tab,
+                tabTitle: this.tabTitle()
+            }, this.isRunningOnDaytona);
+            this.isExecuting(true);
+            return this.documentClientUtility.deleteDocument(selectedDocumentId, null /*options*/).then(function (result) {
+                _this.daytonaContext && _this.daytonaContext.telemetry.sendEvent("StorageExplorer." + ViewModels.CollectionTabKind[_this.tabKind] + ".DeleteDocument");
+                _this.documentIds.remove(function (documentId) { return (documentId.rid === selectedDocumentId.rid); });
+                _this.selectedDocumentContent("");
+                _this.selectedDocumentId(null);
+                _this.editorState(ViewModels.DocumentExplorerState.noDocumentSelected);
+                TelemetryProcessor_1.default.traceSuccess(TelemetryConstants_1.Action.DeleteDocument, {
+                    databaseAccountName: _this.collection && _this.collection.container.databaseAccount().name,
+                    defaultExperience: _this.collection && _this.collection.container.defaultExperience(),
+                    dataExplorerArea: Constants.Areas.Tab,
+                    tabTitle: _this.tabTitle()
+                }, startKey, _this.isRunningOnDaytona);
+            }, function (reason) {
+                _this.isExecutionError(true);
+                console.error(reason);
+                TelemetryProcessor_1.default.traceFailure(TelemetryConstants_1.Action.DeleteDocument, {
+                    databaseAccountName: _this.collection && _this.collection.container.databaseAccount().name,
+                    defaultExperience: _this.collection && _this.collection.container.defaultExperience(),
+                    dataExplorerArea: Constants.Areas.Tab,
+                    tabTitle: _this.tabTitle()
+                }, startKey, _this.isRunningOnDaytona);
+            }).finally(function () { return _this.isExecuting(false); });
+        };
+        DocumentsTab.prototype.createIterator = function () {
+            var filters = this.lastFilterContents();
+            var filter = this.filterContent().trim();
+            var query = this._buildQuery(filter);
+            var options = {};
+            options.enableCrossPartitionQuery = HeadersUtility.shouldEnableCrossPartitionKeyForResourceWithPartitionKey(this.partitionKey);
+            return this.documentClientUtility.queryDocuments({ self: this._selfLink, rid: this.collection && this.collection.rid }, query, options);
+        };
+        DocumentsTab.prototype.loadNextPage = function () {
+            var _this = this;
+            this.isExecuting(true);
+            this.isExecutionError(false);
+            return this._loadNextPageInternal().then(function (documentsIdsResponse) {
+                _this.daytonaContext && _this.daytonaContext.telemetry.sendEvent("StorageExplorer." + ViewModels.CollectionTabKind[_this.tabKind] + ".LoadMore");
+                var currentDocuments = _this.documentIds();
+                var currentDocumentsRids = currentDocuments.map(function (currentDocument) { return currentDocument.rid; });
+                var nextDocumentIds = documentsIdsResponse
+                    // filter documents already loaded in observable
+                    .filter(function (d) {
+                    return currentDocumentsRids.indexOf(d._rid) < 0;
+                })
+                    // map raw response to view model
+                    .map(function (rawDocument) {
+                    var partitionKeyValue = rawDocument._partitionKeyValue;
+                    return new DocumentId(_this, rawDocument, partitionKeyValue);
+                });
+                var merged = currentDocuments.concat(nextDocumentIds);
+                _this.documentIds(merged);
+                if (_this.onLoadStartKey != null && _this.onLoadStartKey != undefined) {
+                    TelemetryProcessor_1.default.traceSuccess(TelemetryConstants_1.Action.Tab, {
+                        databaseAccountName: _this.collection.container.databaseAccount().name,
+                        databaseName: _this.collection.database.id(),
+                        collectionName: _this.collection.id(),
+                        defaultExperience: _this.collection.container.defaultExperience(),
+                        dataExplorerArea: Constants.Areas.Tab,
+                        tabTitle: _this.tabTitle()
+                    }, _this.onLoadStartKey);
+                    _this.onLoadStartKey = null;
+                }
+            }, function (error) {
+                _this.isExecutionError(true);
+                if (_this.onLoadStartKey != null && _this.onLoadStartKey != undefined) {
+                    TelemetryProcessor_1.default.traceFailure(TelemetryConstants_1.Action.Tab, {
+                        databaseAccountName: _this.collection.container.databaseAccount().name,
+                        databaseName: _this.collection.database.id(),
+                        collectionName: _this.collection.id(),
+                        defaultExperience: _this.collection.container.defaultExperience(),
+                        dataExplorerArea: Constants.Areas.Tab,
+                        tabTitle: _this.tabTitle(),
+                        error: error
+                    }, _this.onLoadStartKey);
+                    _this.onLoadStartKey = null;
+                }
+            }).finally(function () { return _this.isExecuting(false); });
+        };
+        DocumentsTab.prototype._loadNextPageInternal = function () {
+            var deferred = Q.defer();
+            this.documentClientUtility.nextIteratorItem(this._documentsIterator, Constants_1.DocumentsGridMetrics.DocumentsPerPage, [], deferred);
+            return deferred.promise;
+        };
+        DocumentsTab.prototype._onEditorContentChange = function (newContent) {
+            try {
+                var parsed = JSON.parse(newContent);
+                this.onValidDocumentEdit();
+            }
+            catch (e) {
+                this.onInvalidDocumentEdit();
+            }
+        };
+        DocumentsTab.prototype.initDocumentEditor = function (documentId, documentContent) {
+            if (documentId) {
+                var content = this.renderObjectForEditor(documentContent, null, 4);
+                this.selectedDocumentContent.setBaseline(content);
+                var newState = (documentId) ? ViewModels.DocumentExplorerState.exisitingDocumentNoEdits : ViewModels.DocumentExplorerState.newDocumentValid;
+                this.editorState(newState);
+            }
+            return Q();
+        };
+        DocumentsTab.prototype._buildQuery = function (filter) {
+            return QueryUtils_1.QueryUtils.buildDocumentsQuery(filter, this.partitionKeyProperty, this.partitionKey);
+        };
+        DocumentsTab.prototype.buildDaytonaToolbar = function () {
+            var _this = this;
+            var toolbarActionsConfig = [];
+            // Disable filter for MongoDB for now
+            if (!this.isPreferredApiMongoDB) {
+                toolbarActionsConfig = toolbarActionsConfig.concat([
+                    {
+                        type: "action",
+                        action: function () { return _this.onShowFilterClick(); },
+                        id: "filter",
+                        title: "Filter",
+                        enabled: ko.computed(function () { return !_this.isFilterExpanded(); }, this),
+                        visible: ko.observable(true),
+                        icon: "images/ASX_QueryBuilder.svg",
+                        displayName: "Filter"
+                    },
+                    {
+                        type: "action",
+                        action: function () { return _this.onApplyFilterClick(); },
+                        id: "apply",
+                        title: "Apply",
+                        enabled: ko.computed(function () { return _this.isFilterExpanded(); }, this),
+                        visible: ko.observable(true),
+                        icon: "images/apply-bigicon.svg",
+                        displayName: "Apply"
+                    },
+                    {
+                        type: "separator",
+                    }
+                ]);
+            }
+            toolbarActionsConfig = toolbarActionsConfig.concat([
+                {
+                    type: "action",
+                    action: function () { return _this.onNewDocumentClick(); },
+                    id: "new",
+                    title: "Create new document",
+                    enabled: ko.computed(function () { return _this.newDocumentButton.enabled(); }, this),
+                    visible: ko.observable(true),
+                    icon: "images/createDoc-bigicon.svg",
+                    displayName: "New Document"
+                },
+                {
+                    type: "action",
+                    action: function () { return _this.onDaytonaSaveClick(); },
+                    id: "save",
+                    title: "Save the document",
+                    enabled: ko.computed(function () {
+                        return _this.saveExisitingDocumentButton.enabled() ||
+                            _this.saveNewDocumentButton.enabled();
+                    }, this),
+                    visible: ko.observable(true),
+                    icon: "images/save-bigicon.svg",
+                    displayName: "Save"
+                },
+                {
+                    type: "action",
+                    action: function () { return _this.onDaytonaDiscardClick(); },
+                    id: "discard",
+                    title: "Discard current changes in editor",
+                    enabled: ko.computed(function () {
+                        return _this.discardExisitingDocumentChangesButton.enabled() ||
+                            _this.discardNewDocumentChangesButton.enabled();
+                    }, this),
+                    visible: ko.observable(true),
+                    icon: "images/discard-bigicon.svg",
+                    displayName: "Discard"
+                },
+                {
+                    type: "separator"
+                },
+                {
+                    type: "action",
+                    action: function () { return _this.onDeleteExisitingDocumentClick(); },
+                    id: "delete",
+                    title: "Delete the select document",
+                    enabled: ko.computed(function () { return _this.deleteExisitingDocumentButton.enabled(); }, this),
+                    visible: ko.observable(true),
+                    icon: "images/ASX_Delete.svg",
+                    displayName: "Delete"
+                },
+                {
+                    type: "separator"
+                },
+                {
+                    type: "action",
+                    action: function () { return _this.onRefreshClick(); },
+                    id: "refresh",
+                    title: "Refresh",
+                    enabled: ko.observable(true),
+                    visible: ko.observable(true),
+                    icon: "images/ASX_Refresh.svg",
+                    displayName: "Refresh"
+                }
+            ]);
+            this.toolbarViewModel(new Toolbar_1.default(toolbarActionsConfig, function (id) { }));
+        };
+        DocumentsTab.prototype.buildCommandBarOptions = function () {
+            var _this = this;
+            var newDocumentButtonOptions = {
+                iconSrc: 'images/NewDocument.svg',
+                onCommandClick: this.onNewDocumentClick,
+                commandButtonLabel: 'New Document',
+                hasPopup: false,
+                visible: ko.computed(function () { return _this.newDocumentButton.visible(); }),
+                disabled: ko.computed(function () { return !_this.newDocumentButton.enabled(); }),
+                tabIndex: ko.computed(function () { return _this.newDocumentButton.enabled() ? 0 : -1; })
+            };
+            var saveNewDocumentButtonOptions = {
+                iconSrc: 'images/save.svg',
+                onCommandClick: this.onSaveNewDocumentClick,
+                commandButtonLabel: 'Save',
+                hasPopup: false,
+                visible: ko.computed(function () { return _this.saveNewDocumentButton.visible(); }),
+                disabled: ko.computed(function () { return !_this.saveNewDocumentButton.enabled(); }),
+                tabIndex: ko.computed(function () { return _this.saveNewDocumentButton.enabled() ? 0 : -1; })
+            };
+            var discardNewDocumentChangesButton = {
+                iconSrc: 'images/discard.svg',
+                onCommandClick: this.onRevertNewDocumentClick,
+                commandButtonLabel: 'Discard',
+                hasPopup: false,
+                visible: ko.computed(function () { return _this.discardNewDocumentChangesButton.visible(); }),
+                disabled: ko.computed(function () { return !_this.discardNewDocumentChangesButton.enabled(); }),
+                tabIndex: ko.computed(function () { return _this.discardNewDocumentChangesButton.enabled() ? 0 : -1; })
+            };
+            var saveExisitingDocumentButtonOptions = {
+                iconSrc: 'images/save.svg',
+                onCommandClick: this.onSaveExisitingDocumentClick,
+                commandButtonLabel: 'Update',
+                hasPopup: false,
+                visible: ko.computed(function () { return _this.saveExisitingDocumentButton.visible(); }),
+                disabled: ko.computed(function () { return !_this.saveExisitingDocumentButton.enabled(); }),
+                tabIndex: ko.computed(function () { return _this.saveExisitingDocumentButton.enabled() ? 0 : -1; })
+            };
+            var discardExisitingDocumentChangesButton = {
+                iconSrc: 'images/discard.svg',
+                onCommandClick: this.onRevertExisitingDocumentClick,
+                commandButtonLabel: 'Discard',
+                hasPopup: false,
+                visible: ko.computed(function () { return _this.discardExisitingDocumentChangesButton.visible(); }),
+                disabled: ko.computed(function () { return !_this.discardExisitingDocumentChangesButton.enabled(); }),
+                tabIndex: ko.computed(function () { return _this.discardExisitingDocumentChangesButton.enabled() ? 0 : -1; })
+            };
+            var deleteExisitingDocumentButton = {
+                iconSrc: 'images/DeleteDocument.svg',
+                onCommandClick: this.onDeleteExisitingDocumentClick,
+                commandButtonLabel: 'Delete',
+                hasPopup: false,
+                visible: ko.computed(function () { return _this.deleteExisitingDocumentButton.visible(); }),
+                disabled: ko.computed(function () { return !_this.deleteExisitingDocumentButton.enabled(); }),
+                tabIndex: ko.computed(function () { return _this.deleteExisitingDocumentButton.enabled() ? 0 : -1; })
+            };
+            this.commandBarOptions = new CommandBarOptions_1.CommandBarOptions([
+                newDocumentButtonOptions,
+                saveNewDocumentButtonOptions,
+                discardNewDocumentChangesButton,
+                saveExisitingDocumentButtonOptions,
+                discardExisitingDocumentChangesButton,
+                deleteExisitingDocumentButton
+            ]);
+        };
+        DocumentsTab.prototype._getPartitionKeyPropertyHeader = function () {
+            return this.partitionKey && this.partitionKey.paths && this.partitionKey.paths.length > 0 && this.partitionKey.paths[0] || null;
+        };
+        return DocumentsTab;
+    }(TabsBase));
+    return DocumentsTab;
+});
+Ã÷J&@,      [Õ¾á[Õ¾ó?§¶Á[×kX   E    :https://cosmos.azure.com/built/Explorer/Tabs/DocumentsTab.js?v=1.0.1 necko:classified 1 strongly-framed 1 security-info FnhllAKWRHGAlo+ESXykKAAAAAAAAAAAwAAAAAAAAEaphjojH6pBabDSgSnsfLHeAAQAAgAAAAAAAAAAAAAAAAAAAAAB4vFIJp5wRkeyPxAQ9RJGKPqbqVvKO0mKuIl8ec8o/uhmCjImkVxP+7sgiYWmMt8FvcOXmlQiTNWFiWlrbpbqgwAAAAAAAAOMMIIDiDCCAnCgAwIBAgIERTJgUjANBgkqhkiG9w0BAQsFADCBijEUMBIGA1UEBhMLUG9ydFN3aWdnZXIxFDASBgNVBAgTC1BvcnRTd2lnZ2VyMRQwEgYDVQQHEwtQb3J0U3dpZ2dlcjEUMBIGA1UEChMLUG9ydFN3aWdnZXIxFzAVBgNVBAsTDlBvcnRTd2lnZ2VyIENBMRcwFQYDVQQDEw5Qb3J0U3dpZ2dlciBDQTAeFw0xNDEwMjgxMzEyMTBaFw0zODEwMjgxMzEyMTBaMGAxFDASBgNVBAYTC1BvcnRTd2lnZ2VyMRQwEgYDVQQKEwtQb3J0U3dpZ2dlcjEXMBUGA1UECxMOUG9ydFN3aWdnZXIgQ0ExGTAXBgNVBAMTEGNvc21vcy5henVyZS5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCKn7emKINsnWqPZ+C/VsqbQf/l4NsmIh34bXBR0xdNg9bfb+xcoghRlmbPjhZ/A26A2gJ6Rrg2d0GGMLpbqA8nTlRRGXEAD39321zk4ye09ElXClvqguGqdqOJpPQ05DPFD6wSOq+KVAEblE5bi+LMqBLipDERzgUe7xzeqVVk0i0ldh9yQOIk3YuzcBR9igSEuw5qladmMYvXKHYM9YZz0R7axMc8xAtadK7C9KfFPfEI5LS2nhmy4vBrTgFyYhfkEvKfmIj6HTX0ISFCAC2llcBLpEDcuiW76tAHp1pXDeWtSeaV36AeOctdleVgrbmsGs3fu6ppuRcWjEZUbjE3AgMBAAGjHzAdMBsGA1UdEQQUMBKCEGNvc21vcy5henVyZS5jb20wDQYJKoZIhvcNAQELBQADggEBABYikT6Y5YgJJ4IVJldlFDF5MKxp26YegXhvT8EmAbgr0yQBIlY2DtKEiHf7Q8wRoJ9y5Ajst1D7HmRba+XLjS6s3IHJ7gtuvc3fZj9MPKpbqSKRfHDB8bDOVIzmjBseg2BqckHTkcYak3b/pTWCTqKHM3LxKsDwN8F3HNQ2pY4d5ma2kR1EtWdTpRiIbir3QxJDcWVp8CgHONZcoMn33NNwnWWjAQMX6d8e1CPuBZi0t+myaYduCqPgKKox9qMXSubF6uifQkAJ5RdLZrZ2pghENA/4r1oz51wqEmpjPsStSUxRPwJ6wJrB4gwGtX7++ZHLjAaNrTSUCGwIOlAT4LnALwEDAAAAAAEBAAAAAA== request-method GET request-Accept-Encoding gzip, deflate, br response-head HTTP/1.1 200 OK
+Content-Length: 46462
+Content-Type: application/x-javascript
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:39:47 GMT
+ original-response-headers Content-Length: 46462
+Content-Type: application/x-javascript
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:39:47 GMT
+Connection: close
+ uncompressed-len 0 net-response-time-onstart 18528 net-response-time-onstop 18528   µ~

@@ -1,0 +1,230 @@
+define(["require", "exports", "knockout", "../Constants", "../Utilities"], function (require, exports, ko, QueryBuilderConstants, Utilities) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    var QueryClauseViewModel = /** @class */ (function () {
+        function QueryClauseViewModel(queryBuilderViewModel, and_or, field, type, operator, value, canAnd, timeValue, customTimeValue, timestampType, 
+        //customLastTimestamp: CustomTimestampHelper.ILastQuery,
+        isLocal, id) {
+            var _this = this;
+            this._queryBuilderViewModel = queryBuilderViewModel;
+            this.checkedForGrouping = ko.observable(false);
+            this.isFirstInGroup = ko.observable(false);
+            this.and_or = ko.observable(and_or);
+            this.field = ko.observable(field);
+            this.type = ko.observable(type);
+            this.operator = ko.observable(operator);
+            this.value = ko.observable(value);
+            this.timeValue = ko.observable(timeValue);
+            this.customTimeValue = ko.observable(customTimeValue);
+            this.canAnd = ko.observable(canAnd);
+            this.isLocal = ko.observable(isLocal);
+            this._id = id ? id : Utilities.guid();
+            //this.customLastTimestamp = ko.observable<CustomTimestampHelper.ILastQuery>(customLastTimestamp);
+            //this.setCustomLastTimestamp();
+            this.timestampType = ko.observable(timestampType);
+            this.getValueType();
+            this.isOperaterEditable = ko.pureComputed(function () {
+                var isPreferredApiCassandra = _this._queryBuilderViewModel.tableEntityListViewModel.queryTablesTab.container.isPreferredApiCassandra();
+                var cassandraKeys = isPreferredApiCassandra ? _this._queryBuilderViewModel.tableEntityListViewModel.queryTablesTab.collection.cassandraKeys.partitionKeys.map(function (key) { return key.property; }) : [];
+                return (_this.isValue() || _this.isCustomRangeTimestamp()) &&
+                    (!isPreferredApiCassandra || !_.contains(cassandraKeys, _this.field()));
+            });
+            this.isTypeEditable = ko.pureComputed(function () { return (_this.field() !== "Timestamp"
+                && _this.field() !== "PartitionKey"
+                && _this.field() !== "RowKey"
+                && !_this._queryBuilderViewModel.tableEntityListViewModel.queryTablesTab.container.isPreferredApiCassandra()); });
+            this.and_or.subscribe(function (value) { _this._queryBuilderViewModel.checkIfClauseChanged(_this); });
+            this.field.subscribe(function (value) { _this.changeField(); });
+            this.type.subscribe(function (value) { _this.changeType(); });
+            this.timeValue.subscribe(function (value) {
+                // if (this.timeValue() === QueryBuilderConstants.timeOptions.custom) {
+                //     this.customTimestampDialog();
+                // }
+            });
+            this.customTimeValue.subscribe(function (value) { _this._queryBuilderViewModel.checkIfClauseChanged(_this); });
+            this.value.subscribe(function (value) { _this._queryBuilderViewModel.checkIfClauseChanged(_this); });
+            this.operator.subscribe(function (value) { _this._queryBuilderViewModel.checkIfClauseChanged(_this); });
+            this._groupCheckSubscription = this.checkedForGrouping.subscribe(function (value) { _this._queryBuilderViewModel.updateCanGroupClauses(); });
+            this.isAndOrFocused = ko.observable(false);
+            this.isDeleteButtonFocused = ko.observable(false);
+        }
+        // private setCustomLastTimestamp() : void {
+        //     if (this.customLastTimestamp() === null) {
+        //         var lastNumberandType: CustomTimestampHelper.ILastQuery = {
+        //             lastNumber: 7,
+        //             lastTimeUnit: "Days"
+        //     };
+        //         this.customLastTimestamp(lastNumberandType);
+        //     }
+        // }
+        QueryClauseViewModel.prototype.getValueType = function () {
+            switch (this.timestampType()) {
+                case "time":
+                    this.isValue = ko.observable(false);
+                    this.isTimestamp = ko.observable(true);
+                    this.isCustomLastTimestamp = ko.observable(false);
+                    this.isCustomRangeTimestamp = ko.observable(false);
+                    break;
+                case "last":
+                    this.isValue = ko.observable(false);
+                    this.isTimestamp = ko.observable(false);
+                    this.isCustomLastTimestamp = ko.observable(true);
+                    this.isCustomRangeTimestamp = ko.observable(false);
+                    break;
+                case "range":
+                    this.isValue = ko.observable(false);
+                    this.isTimestamp = ko.observable(false);
+                    this.isCustomLastTimestamp = ko.observable(false);
+                    this.isCustomRangeTimestamp = ko.observable(true);
+                    break;
+                default:
+                    this.isValue = ko.observable(true);
+                    this.isTimestamp = ko.observable(false);
+                    this.isCustomLastTimestamp = ko.observable(false);
+                    this.isCustomRangeTimestamp = ko.observable(false);
+            }
+        };
+        QueryClauseViewModel.prototype.changeField = function () {
+            this.isCustomLastTimestamp(false);
+            this.isCustomRangeTimestamp(false);
+            if (this.field() === "Timestamp") {
+                this.isValue(false);
+                this.isTimestamp(true);
+                this.type(QueryBuilderConstants.TableType.DateTime);
+                this.operator(QueryBuilderConstants.Operator.GreaterThanOrEqualTo);
+                this.timestampType("time");
+            }
+            else if (this.field() === "PartitionKey" || this.field() === "RowKey") {
+                this.resetFromTimestamp();
+                this.type(QueryBuilderConstants.TableType.String);
+            }
+            else {
+                this.resetFromTimestamp();
+                if (this._queryBuilderViewModel.tableEntityListViewModel.queryTablesTab.container.isPreferredApiCassandra()) {
+                    var cassandraSchema = this._queryBuilderViewModel.tableEntityListViewModel.queryTablesTab.collection.cassandraSchema;
+                    for (var i = 0, len = cassandraSchema.length; i < len; i++) {
+                        if (cassandraSchema[i].property === this.field()) {
+                            this.type(cassandraSchema[i].type);
+                            i = len;
+                        }
+                    }
+                }
+                else {
+                    this.type(QueryBuilderConstants.TableType.String);
+                }
+            }
+            this._queryBuilderViewModel.checkIfClauseChanged(this);
+        };
+        QueryClauseViewModel.prototype.resetFromTimestamp = function () {
+            this.isValue(true);
+            this.isTimestamp(false);
+            this.operator(QueryBuilderConstants.Operator.Equal);
+            this.value("");
+            this.timestampType("");
+            this.timeValue("");
+            this.customTimeValue("");
+        };
+        QueryClauseViewModel.prototype.changeType = function () {
+            this.isCustomLastTimestamp(false);
+            this.isCustomRangeTimestamp(false);
+            if (this.type() === QueryBuilderConstants.TableType.DateTime) {
+                this.isValue(false);
+                this.isTimestamp(true);
+                this.operator(QueryBuilderConstants.Operator.GreaterThanOrEqualTo);
+                this.timestampType("time");
+            }
+            else {
+                this.isValue(true);
+                this.isTimestamp(false);
+                this.timeValue("");
+                this.operator(QueryBuilderConstants.Operator.EqualTo);
+                this.value("");
+                this.timestampType("");
+                this.timeValue("");
+                this.customTimeValue("");
+            }
+            this._queryBuilderViewModel.checkIfClauseChanged(this);
+        };
+        // private customTimestampDialog(): Promise<any> {
+        //     var lastNumber = this.customLastTimestamp().lastNumber;
+        //     var lastTimeUnit = this.customLastTimestamp().lastTimeUnit;
+        //     return this._host.executeOperation("Environment.openDialog", [{
+        //         id: AzureConstants.registeredDialogs.customTimestampQueryDialog,
+        //         width: 500,
+        //         height: 300,
+        //         parameters: { lastNumber, lastTimeUnit }
+        //     }]).then((timestamp: CustomTimestampHelper.ITimestampQuery) => {
+        //         if (timestamp) {
+        //             this.isValue(false);
+        //             this.isTimestamp(false);
+        //             this.timestampType(timestamp.queryType);
+        //             if (timestamp.queryType === "last") {
+        //                 this.isCustomLastTimestamp(true);
+        //                 this.isCustomRangeTimestamp(false);
+        //                 var lastNumberandType: CustomTimestampHelper.ILastQuery = {
+        //                     lastNumber: timestamp.lastNumber,
+        //                     lastTimeUnit: timestamp.lastTimeUnit
+        //                 };
+        //                 this.customLastTimestamp(lastNumberandType);
+        //                 this.customTimeValue(`Last ${timestamp.lastNumber} ${timestamp.lastTimeUnit}`);
+        //             } else {
+        //                 if (timestamp.timeZone === "local") {
+        //                     this.isLocal = ko.observable(true);
+        //                 } else {
+        //                     this.isLocal = ko.observable(false);
+        //                 }
+        //                 this.isCustomLastTimestamp(false);
+        //                 this.isCustomRangeTimestamp(true);
+        //                 this.customTimeValue(timestamp.startTime);
+        //                 CustomTimestampHelper.addRangeTimestamp(timestamp, this._queryBuilderViewModel, this);
+        //             }
+        //         } else {
+        //             this.timeValue(QueryBuilderConstants.timeOptions.lastHour);
+        //         }
+        //     });
+        // }
+        QueryClauseViewModel.prototype.getId = function () {
+            return this._id;
+        };
+        Object.defineProperty(QueryClauseViewModel.prototype, "groupDepth", {
+            get: function () {
+                if (this.clauseGroup) {
+                    return this.clauseGroup.getCurrentGroupDepth();
+                }
+                return -1;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        QueryClauseViewModel.prototype.dispose = function () {
+            if (this._groupCheckSubscription) {
+                this._groupCheckSubscription.dispose();
+            }
+            this.clauseGroup = null;
+            this._queryBuilderViewModel = null;
+        };
+        return QueryClauseViewModel;
+    }());
+    exports.default = QueryClauseViewModel;
+});
+≠p°Î[      [÷Å[÷É?ßÂ°[◊Æ˘   \    :https://cosmos.azure.com/built/Explorer/Tables/QueryBuilder/QueryClauseViewModel.js?v=1.0.1 necko:classified 1 strongly-framed 1 security-info FnhllAKWRHGAlo+ESXykKAAAAAAAAAAAwAAAAAAAAEaphjojH6pBabDSgSnsfLHeAAQAAgAAAAAAAAAAAAAAAAAAAAAB4vFIJp5wRkeyPxAQ9RJGKPqbqVvKO0mKuIl8ec8o/uhmCjImkVxP+7sgiYWmMt8FvcOXmlQiTNWFiWlrbpbqgwAAAAAAAAOMMIIDiDCCAnCgAwIBAgIERTJgUjANBgkqhkiG9w0BAQsFADCBijEUMBIGA1UEBhMLUG9ydFN3aWdnZXIxFDASBgNVBAgTC1BvcnRTd2lnZ2VyMRQwEgYDVQQHEwtQb3J0U3dpZ2dlcjEUMBIGA1UEChMLUG9ydFN3aWdnZXIxFzAVBgNVBAsTDlBvcnRTd2lnZ2VyIENBMRcwFQYDVQQDEw5Qb3J0U3dpZ2dlciBDQTAeFw0xNDEwMjgxMzEyMTBaFw0zODEwMjgxMzEyMTBaMGAxFDASBgNVBAYTC1BvcnRTd2lnZ2VyMRQwEgYDVQQKEwtQb3J0U3dpZ2dlcjEXMBUGA1UECxMOUG9ydFN3aWdnZXIgQ0ExGTAXBgNVBAMTEGNvc21vcy5henVyZS5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCKn7emKINsnWqPZ+C/VsqbQf/l4NsmIh34bXBR0xdNg9bfb+xcoghRlmbPjhZ/A26A2gJ6Rrg2d0GGMLpbqA8nTlRRGXEAD39321zk4ye09ElXClvqguGqdqOJpPQ05DPFD6wSOq+KVAEblE5bi+LMqBLipDERzgUe7xzeqVVk0i0ldh9yQOIk3YuzcBR9igSEuw5qladmMYvXKHYM9YZz0R7axMc8xAtadK7C9KfFPfEI5LS2nhmy4vBrTgFyYhfkEvKfmIj6HTX0ISFCAC2llcBLpEDcuiW76tAHp1pXDeWtSeaV36AeOctdleVgrbmsGs3fu6ppuRcWjEZUbjE3AgMBAAGjHzAdMBsGA1UdEQQUMBKCEGNvc21vcy5henVyZS5jb20wDQYJKoZIhvcNAQELBQADggEBABYikT6Y5YgJJ4IVJldlFDF5MKxp26YegXhvT8EmAbgr0yQBIlY2DtKEiHf7Q8wRoJ9y5Ajst1D7HmRba+XLjS6s3IHJ7gtuvc3fZj9MPKpbqSKRfHDB8bDOVIzmjBseg2BqckHTkcYak3b/pTWCTqKHM3LxKsDwN8F3HNQ2pY4d5ma2kR1EtWdTpRiIbir3QxJDcWVp8CgHONZcoMn33NNwnWWjAQMX6d8e1CPuBZi0t+myaYduCqPgKKox9qMXSubF6uifQkAJ5RdLZrZ2pghENA/4r1oz51wqEmpjPsStSUxRPwJ6wJrB4gwGtX7++ZHLjAaNrTSUCGwIOlAT4LnALwEDAAAAAAEBAAAAAA== request-method GET request-Accept-Encoding gzip, deflate, br response-head HTTP/1.1 200 OK
+Content-Length: 11170
+Content-Type: application/x-javascript
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:40:02 GMT
+ original-response-headers Content-Length: 11170
+Content-Type: application/x-javascript
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:40:02 GMT
+Connection: close
+ uncompressed-len 0 net-response-time-onstart 1895 net-response-time-onstop 1896   +¢

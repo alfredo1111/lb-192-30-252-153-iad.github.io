@@ -1,0 +1,257 @@
+var __extends = (this && this.__extends) || (function () {
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    }
+    return function (d, b) {
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
+define(["require", "exports", "knockout", "../../Contracts/ViewModels", "../../Common/Constants", "./ContextualPaneBase", "../../Common/ErrorParserUtility", "../../Shared/Constants", "../../Utils/PricingUtils", "../../Shared/Telemetry/TelemetryConstants", "../../Shared/Telemetry/TelemetryProcessor", "../../Common/EditableUtility", "../../PlatformType"], function (require, exports, ko, ViewModels, Constants, ContextualPaneBase_1, ErrorParserUtility, SharedConstants, PricingUtils, TelemetryConstants_1, TelemetryProcessor_1, editable, PlatformType_1) {
+    "use strict";
+    var AddDatabasePane = /** @class */ (function (_super) {
+        __extends(AddDatabasePane, _super);
+        function AddDatabasePane(options) {
+            var _this = _super.call(this, options) || this;
+            _this.defaultFlight = ko.observable(SharedConstants.CollectionCreation.DefaultAddCollectionDefaultFlight);
+            _this.onMoreDetailsKeyPress = function (source, event) {
+                if (event.keyCode === Constants.KeyCodes.Space || event.keyCode === Constants.KeyCodes.Enter) {
+                    _this.showErrorDetails();
+                    return false;
+                }
+                return true;
+            };
+            _this.title((_this.container && _this.container.addDatabaseText()) || "New Database");
+            _this.databaseId = ko.observable();
+            _this.databaseCreateNewShared = ko.observable(false);
+            _this.databaseIdLabel = ko.computed(function () { return _this.container.isPreferredApiCassandra() ? "Keyspace id" : "Database id"; });
+            _this.databaseIdTooltipText = ko.computed(function () {
+                var isCassandraAccount = _this.container.isPreferredApiCassandra();
+                return "A " + (isCassandraAccount ? "keyspace" : "database") + " is a logical container of one or more " + (isCassandraAccount ? "tables" : "collections");
+            });
+            _this.databaseLevelThroughputTooltipText = ko.computed(function () {
+                var isCassandraAccount = _this.container.isPreferredApiCassandra();
+                var databaseLabel = isCassandraAccount ? "keyspace" : "database";
+                var collectionsLabel = isCassandraAccount ? "tables" : "collections";
+                return "Provisioned throughput at the " + databaseLabel + " level will be shared across unlimited number of " + collectionsLabel + " within the " + databaseLabel + ".";
+            });
+            _this.throughput = editable.observable();
+            _this.maxThroughputRU = ko.observable();
+            _this.minThroughputRU = ko.observable();
+            _this.maxThroughputRUText = ko.observable();
+            _this.throughputRangeText = ko.observable();
+            _this.throughputSpendAckText = ko.observable();
+            _this.throughputSpendAck = ko.observable(false);
+            _this.sharedThroughputConfiguration = ko.pureComputed(function () {
+                return _this.container && _this.container.sharedThroughputRange();
+            });
+            _this.requestUnitsUsageCost = ko.computed(function () {
+                var offerThroughput = _this.throughput();
+                if (offerThroughput < _this.minThroughputRU() || offerThroughput > _this.maxThroughputRU()) {
+                    return "";
+                }
+                var hourlyPrice = PricingUtils.computeRUUsagePriceHourly(_this.container.serverId(), false, offerThroughput);
+                var dailyPrice = hourlyPrice * 24;
+                var currency = PricingUtils.getPriceCurrency(_this.container.serverId());
+                _this.throughputSpendAckText("I acknowledge the estimated $" + PricingUtils.calculateEstimateNumber(dailyPrice) + " daily charge for the throughput above.");
+                return "Estimated spend (" + currency + "): $" + PricingUtils.calculateEstimateNumber(hourlyPrice) + " hourly / $" + PricingUtils.calculateEstimateNumber(dailyPrice) + " daily.";
+            });
+            _this.canRequestSupport = ko.pureComputed(function () {
+                if (!_this.container.isEmulator && !_this.container.isTryCosmosDBSubscription() && _this.container.getPlatformType() !== PlatformType_1.PlatformType.Portal) {
+                    var offerThroughput = _this.throughput();
+                    return offerThroughput <= 100000;
+                }
+                return false;
+            });
+            _this.maxThroughputRUText = ko.pureComputed(function () {
+                return _this.maxThroughputRU().toLocaleString();
+            });
+            _this.costsVisible = ko.pureComputed(function () {
+                return !_this.container.isEmulator;
+            });
+            _this.throughputSpendAckVisible = ko.pureComputed(function () {
+                var selectedThroughput = _this.throughput();
+                var maxRU = _this.maxThroughputRU && _this.maxThroughputRU();
+                return maxRU > Constants.BackendDefaults.multiplePartitionMaxThroughput && selectedThroughput > Constants.BackendDefaults.multiplePartitionMaxThroughput;
+            });
+            _this.databaseCreateNewShared.subscribe(function (useShared) {
+                _this._updateThroughputLimitByDatabase();
+            });
+            _this.isSharedThroughputEnabled = ko.pureComputed(function () { return window.dataExplorerPlatform !== PlatformType_1.PlatformType.Emulator; });
+            _this.resetData();
+            _this.defaultFlight.subscribe(function () {
+                _this.resetData();
+            });
+            return _this;
+        }
+        AddDatabasePane.prototype.open = function () {
+            _super.prototype.open.call(this);
+            this.resetData();
+            var addDatabasePaneOpenMessage = {
+                databaseAccountName: this.container.databaseAccount().name,
+                defaultExperience: this.container.defaultExperience(),
+                subscriptionType: ViewModels.SubscriptionType[this.container.subscriptionType()],
+                subscriptionQuotaId: this.container.quotaId(),
+                defaultsCheck: {
+                    throughput: this.throughput(),
+                    defaultFlight: this.defaultFlight()
+                },
+                dataExplorerArea: Constants.Areas.ContextualPane
+            };
+            TelemetryProcessor_1.default.trace(TelemetryConstants_1.Action.CreateDatabase, TelemetryConstants_1.ActionModifiers.Open, addDatabasePaneOpenMessage);
+        };
+        AddDatabasePane.prototype.submit = function () {
+            if (!this._isValid()) {
+                return;
+            }
+            var offerThroughput = this._getThroughput();
+            var addDatabasePaneStartMessage = {
+                databaseAccountName: this.container.databaseAccount().name,
+                defaultExperience: this.container.defaultExperience(),
+                database: ko.toJS({
+                    id: this.databaseId(),
+                    shared: this.databaseCreateNewShared()
+                }),
+                offerThroughput: offerThroughput,
+                subscriptionType: ViewModels.SubscriptionType[this.container.subscriptionType()],
+                subscriptionQuotaId: this.container.quotaId(),
+                defaultsCheck: {
+                    defaultFlight: this.defaultFlight()
+                },
+                dataExplorerArea: Constants.Areas.ContextualPane
+            };
+            var startKey = TelemetryProcessor_1.default.traceStart(TelemetryConstants_1.Action.CreateDatabase, addDatabasePaneStartMessage);
+            this.formErrors("");
+            this.isExecuting(true);
+            if (!this.container.isPreferredApiCassandra()) {
+                this._createDatabase(offerThroughput, startKey);
+            }
+            else {
+                this._createKeyspace(offerThroughput, startKey);
+            }
+        };
+        AddDatabasePane.prototype.resetData = function () {
+            this.databaseId("");
+            this.databaseCreateNewShared(false);
+            this._updateThroughputLimitByDatabase();
+            var sharedThroughputConfiguration = this.sharedThroughputConfiguration();
+            this.throughput(sharedThroughputConfiguration.defaultRU);
+            _super.prototype.resetData.call(this);
+        };
+        AddDatabasePane.prototype._createDatabase = function (offerThroughput, telemetryStartKey) {
+            var _this = this;
+            var createRequest = {
+                databaseId: this.databaseId(),
+                offerThroughput: offerThroughput,
+                databaseLevelThroughput: this.databaseCreateNewShared()
+            };
+            this.container.documentClientUtility.createDatabase(createRequest, null /*options*/).then(function (database) {
+                _this._onCreateDatabaseSuccess(offerThroughput, telemetryStartKey);
+            }, function (reason) {
+                _this._onCreateDatabaseFailure(reason, offerThroughput, reason);
+            });
+        };
+        AddDatabasePane.prototype._createKeyspace = function (offerThroughput, telemetryStartKey) {
+            var _this = this;
+            var provisionThroughputQueryPart = this.databaseCreateNewShared() ? "AND cosmosdb_provisioned_throughput=" + offerThroughput : "";
+            var createKeyspaceQuery = "CREATE KEYSPACE " + this.databaseId() + " WITH REPLICATION = { 'class' : 'SimpleStrategy', 'replication_factor' : 3 } " + provisionThroughputQueryPart + ";";
+            this.container.tableDataClient.createKeyspace(this.container.databaseAccount().properties.cassandraEndpoint, this.container.databaseAccount().id, this.container, createKeyspaceQuery).then(function () {
+                _this._onCreateDatabaseSuccess(offerThroughput, telemetryStartKey);
+            }, function (reason) {
+                _this._onCreateDatabaseFailure(reason, offerThroughput, telemetryStartKey);
+            });
+        };
+        AddDatabasePane.prototype._onCreateDatabaseSuccess = function (offerThroughput, startKey) {
+            this.isExecuting(false);
+            this.close();
+            this.container.refreshAllDatabases();
+            var addDatabasePaneSuccessMessage = {
+                databaseAccountName: this.container.databaseAccount().name,
+                defaultExperience: this.container.defaultExperience(),
+                database: ko.toJS({
+                    id: this.databaseId(),
+                    shared: this.databaseCreateNewShared()
+                }),
+                offerThroughput: offerThroughput,
+                subscriptionType: ViewModels.SubscriptionType[this.container.subscriptionType()],
+                subscriptionQuotaId: this.container.quotaId(),
+                defaultsCheck: {
+                    defaultFlight: this.defaultFlight()
+                },
+                dataExplorerArea: Constants.Areas.ContextualPane
+            };
+            TelemetryProcessor_1.default.traceSuccess(TelemetryConstants_1.Action.CreateDatabase, addDatabasePaneSuccessMessage, startKey);
+            this.resetData();
+        };
+        AddDatabasePane.prototype._onCreateDatabaseFailure = function (reason, offerThroughput, startKey) {
+            this.isExecuting(false);
+            var message = ErrorParserUtility.parse(reason);
+            this.formErrors(message[0].message);
+            this.formErrorsDetails(message[0].message);
+            var addDatabasePaneFailedMessage = {
+                databaseAccountName: this.container.databaseAccount().name,
+                defaultExperience: this.container.defaultExperience(),
+                database: ko.toJS({
+                    id: this.databaseId(),
+                    shared: this.databaseCreateNewShared()
+                }),
+                offerThroughput: offerThroughput,
+                subscriptionType: ViewModels.SubscriptionType[this.container.subscriptionType()],
+                subscriptionQuotaId: this.container.quotaId(),
+                defaultsCheck: {
+                    defaultFlight: this.defaultFlight()
+                },
+                dataExplorerArea: Constants.Areas.ContextualPane,
+                error: reason
+            };
+            TelemetryProcessor_1.default.traceFailure(TelemetryConstants_1.Action.CreateDatabase, addDatabasePaneFailedMessage, startKey);
+        };
+        AddDatabasePane.prototype._getThroughput = function () {
+            var throughput = this.throughput();
+            return isNaN(throughput) ? 0 : Number(throughput);
+        };
+        AddDatabasePane.prototype._isValid = function () {
+            // TODO add feature flag that disables validation for customers with custom accounts
+            var throughput = this._getThroughput();
+            if (throughput > Constants.BackendDefaults.multiplePartitionMaxThroughput && !this.throughputSpendAck()) {
+                this.formErrors("Please acknowledge the estimated daily spend.");
+                return false;
+            }
+            return true;
+        };
+        AddDatabasePane.prototype._updateThroughputLimitByDatabase = function () {
+            var sharedThroughputConfiguration = this.sharedThroughputConfiguration();
+            this.maxThroughputRU(sharedThroughputConfiguration.maximumRU);
+            this.minThroughputRU(sharedThroughputConfiguration.minimumRU);
+            this.throughputRangeText("Throughput (" + this.minThroughputRU().toLocaleString() + " - " + this.maxThroughputRU().toLocaleString() + " RU/s)");
+        };
+        return AddDatabasePane;
+    }(ContextualPaneBase_1.ContextualPaneBase));
+    return AddDatabasePane;
+});
+¦U
+rW      [Õ¾Ê[Õ¾Ð?§¶²[×k>   I    :https://cosmos.azure.com/built/Explorer/Panes/AddDatabasePane.js?v=1.0.1 necko:classified 1 strongly-framed 1 security-info FnhllAKWRHGAlo+ESXykKAAAAAAAAAAAwAAAAAAAAEaphjojH6pBabDSgSnsfLHeAAQAAgAAAAAAAAAAAAAAAAAAAAAB4vFIJp5wRkeyPxAQ9RJGKPqbqVvKO0mKuIl8ec8o/uhmCjImkVxP+7sgiYWmMt8FvcOXmlQiTNWFiWlrbpbqgwAAAAAAAAOMMIIDiDCCAnCgAwIBAgIERTJgUjANBgkqhkiG9w0BAQsFADCBijEUMBIGA1UEBhMLUG9ydFN3aWdnZXIxFDASBgNVBAgTC1BvcnRTd2lnZ2VyMRQwEgYDVQQHEwtQb3J0U3dpZ2dlcjEUMBIGA1UEChMLUG9ydFN3aWdnZXIxFzAVBgNVBAsTDlBvcnRTd2lnZ2VyIENBMRcwFQYDVQQDEw5Qb3J0U3dpZ2dlciBDQTAeFw0xNDEwMjgxMzEyMTBaFw0zODEwMjgxMzEyMTBaMGAxFDASBgNVBAYTC1BvcnRTd2lnZ2VyMRQwEgYDVQQKEwtQb3J0U3dpZ2dlcjEXMBUGA1UECxMOUG9ydFN3aWdnZXIgQ0ExGTAXBgNVBAMTEGNvc21vcy5henVyZS5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCKn7emKINsnWqPZ+C/VsqbQf/l4NsmIh34bXBR0xdNg9bfb+xcoghRlmbPjhZ/A26A2gJ6Rrg2d0GGMLpbqA8nTlRRGXEAD39321zk4ye09ElXClvqguGqdqOJpPQ05DPFD6wSOq+KVAEblE5bi+LMqBLipDERzgUe7xzeqVVk0i0ldh9yQOIk3YuzcBR9igSEuw5qladmMYvXKHYM9YZz0R7axMc8xAtadK7C9KfFPfEI5LS2nhmy4vBrTgFyYhfkEvKfmIj6HTX0ISFCAC2llcBLpEDcuiW76tAHp1pXDeWtSeaV36AeOctdleVgrbmsGs3fu6ppuRcWjEZUbjE3AgMBAAGjHzAdMBsGA1UdEQQUMBKCEGNvc21vcy5henVyZS5jb20wDQYJKoZIhvcNAQELBQADggEBABYikT6Y5YgJJ4IVJldlFDF5MKxp26YegXhvT8EmAbgr0yQBIlY2DtKEiHf7Q8wRoJ9y5Ajst1D7HmRba+XLjS6s3IHJ7gtuvc3fZj9MPKpbqSKRfHDB8bDOVIzmjBseg2BqckHTkcYak3b/pTWCTqKHM3LxKsDwN8F3HNQ2pY4d5ma2kR1EtWdTpRiIbir3QxJDcWVp8CgHONZcoMn33NNwnWWjAQMX6d8e1CPuBZi0t+myaYduCqPgKKox9qMXSubF6uifQkAJ5RdLZrZ2pghENA/4r1oz51wqEmpjPsStSUxRPwJ6wJrB4gwGtX7++ZHLjAaNrTSUCGwIOlAT4LnALwEDAAAAAAEBAAAAAA== request-method GET request-Accept-Encoding gzip, deflate, br response-head HTTP/1.1 200 OK
+Content-Length: 14142
+Content-Type: application/x-javascript
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:39:12 GMT
+ original-response-headers Content-Length: 14142
+Content-Type: application/x-javascript
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:39:12 GMT
+Connection: close
+ uncompressed-len 0 net-response-time-onstart 5921 net-response-time-onstop 5921   7>

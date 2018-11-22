@@ -1,0 +1,202 @@
+var __extends = (this && this.__extends) || (function () {
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    }
+    return function (d, b) {
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
+define(["require", "exports", "knockout", "q", "../../Common/Constants", "../../Shared/Telemetry/TelemetryConstants", "../../RouteHandlers/RouteHandler", "../WaitsForTemplateViewModel", "../../Shared/Telemetry/TelemetryProcessor", "../../Common/ThemeUtility"], function (require, exports, ko, Q, Constants, TelemetryConstants_1, RouteHandler_1, WaitsForTemplateViewModel_1, TelemetryProcessor_1, ThemeUtility_1) {
+    "use strict";
+    // TODO: Use specific actions for logging telemetry data
+    var TabsBase = /** @class */ (function (_super) {
+        __extends(TabsBase, _super);
+        function TabsBase(options) {
+            var _this = _super.call(this) || this;
+            _this.onKeyPressActivate = function (source, event) {
+                return _this.onSpaceOrEnterKeyPress(event, function () { return _this.onTabClick(); });
+            };
+            _this.onKeyPressClose = function (source, event) {
+                return _this.onSpaceOrEnterKeyPress(event, function () { return _this.onCloseTabButtonClick(); });
+            };
+            _this.onErrorDetailsClick = function (src, event) {
+                _this.collection && _this.collection.container.expandConsole();
+                return false;
+            };
+            _this.onErrorDetailsKeyPress = function (src, event) {
+                if (event.keyCode === Constants.KeyCodes.Space || event.keyCode === Constants.KeyCodes.Enter) {
+                    _this.onErrorDetailsClick(src, null);
+                    return false;
+                }
+                return true;
+            };
+            var id = new Date().getTime().toString();
+            _this._theme = ThemeUtility_1.default.getMonacoTheme(options.theme);
+            _this.documentClientUtility = options.documentClientUtility;
+            _this.daytonaContext = options.daytonaContext;
+            _this.node = options.node;
+            _this.collection = options.collection;
+            _this.database = options.database;
+            _this.rid = options.rid || (_this.collection && _this.collection.rid) || "";
+            _this.hasFocus = ko.observable(false);
+            _this.isActive = options.isActive || ko.observable(false);
+            _this.isMouseOver = ko.observable(false);
+            _this.tabId = "tab" + id;
+            _this.tabKind = options.tabKind;
+            _this.tabTitle = ko.observable(options.title);
+            _this.tabPath = (options.tabPath && ko.observable(options.tabPath)) || _this.collection && ko.observable(_this.collection.database.id() + ">" + _this.collection.id() + ">" + _this.tabTitle());
+            _this.nextTab = ko.observable();
+            _this.previousTab = ko.observable();
+            _this.closeButtonTabIndex = ko.computed(function () { return _this.isActive() ? 0 : null; });
+            _this.errorDetailsTabIndex = ko.computed(function () { return _this.isActive() ? 0 : null; });
+            _this.isExecutionError = ko.observable(false);
+            _this.isExecuting = ko.observable(false);
+            _this.isRunningOnDaytona = options.isRunningOnDaytona;
+            _this.onLoadStartKey = options.onLoadStartKey;
+            _this.hashLocation = ko.observable(options.hashLocation || "");
+            _this.hashLocation.subscribe(function (newLocation) { return _this.updateGlobalHash(newLocation); });
+            _this.isActive.subscribe(function (isActive) {
+                if (isActive) {
+                    _this.onActivate();
+                }
+            });
+            _this.closeTabButton = {
+                enabled: ko.computed(function () {
+                    return true;
+                }),
+                visible: ko.computed(function () {
+                    return true;
+                })
+            };
+            if (!options.isRunningOnDaytona) {
+                var container = _this.getContainer();
+                var openedTabs = container && container.openedTabs();
+                if (openedTabs && openedTabs.length && openedTabs.length > 0) {
+                    var lastTab = openedTabs[openedTabs.length - 1];
+                    lastTab && lastTab.nextTab(_this);
+                    _this.previousTab(lastTab);
+                }
+            }
+            return _this;
+        }
+        TabsBase.prototype.onCloseTabButtonClick = function () {
+            var _this = this;
+            // if the tab is running on Daytona, the function should not be called, just in case
+            if (this.isRunningOnDaytona) {
+                return Q();
+            }
+            var openedTabs = this.getContainer().openedTabs();
+            var previousTab = this.previousTab();
+            var nextTab = this.nextTab();
+            previousTab && previousTab.nextTab(nextTab);
+            nextTab && nextTab.previousTab(previousTab);
+            this.getContainer().openedTabs.remove(function (tab) { return tab.tabId === _this.tabId; });
+            var tabToActivate = nextTab || previousTab;
+            if (!tabToActivate) {
+                this.getContainer().selectedNode(null);
+            }
+            else {
+                tabToActivate.isActive(true);
+            }
+            TelemetryProcessor_1.default.trace(TelemetryConstants_1.Action.Tab, TelemetryConstants_1.ActionModifiers.Close, {
+                databaseAccountName: this.getContainer().databaseAccount().name,
+                defaultExperience: this.getContainer().defaultExperience(),
+                dataExplorerArea: Constants.Areas.Tab,
+                tabTitle: this.tabTitle()
+            });
+            return Q();
+        };
+        TabsBase.prototype.onTabClick = function () {
+            if (this.isRunningOnDaytona) {
+                return Q();
+            }
+            for (var i = 0; i < this.getContainer().openedTabs().length; i++) {
+                var tab = this.getContainer().openedTabs()[i];
+                tab.isActive(false);
+            }
+            this.isActive(true);
+            return Q();
+        };
+        TabsBase.prototype.updateSelectedNode = function () {
+            var relatedDatabase = (this.collection && this.collection.database) || this.database;
+            if (relatedDatabase && !relatedDatabase.isDatabaseExpanded()) {
+                this.getContainer().selectedNode(relatedDatabase);
+            }
+            else if (this.collection && !this.collection.isCollectionExpanded()) {
+                this.getContainer().selectedNode(this.collection);
+            }
+            else {
+                this.getContainer().selectedNode(this.node);
+            }
+        };
+        TabsBase.prototype.onSpaceOrEnterKeyPress = function (event, callback) {
+            if (event.keyCode === Constants.KeyCodes.Space || event.keyCode === Constants.KeyCodes.Enter) {
+                callback();
+                event.stopPropagation();
+                return false;
+            }
+            return true;
+        };
+        TabsBase.prototype.onActivate = function () {
+            this.updateSelectedNode();
+            if (!!this.collection) {
+                this.collection.selectedSubnodeKind(this.tabKind);
+            }
+            if (!!this.database) {
+                this.database.selectedSubnodeKind(this.tabKind);
+            }
+            this.hasFocus(true);
+            this.updateGlobalHash(this.hashLocation());
+            TelemetryProcessor_1.default.trace(TelemetryConstants_1.Action.Tab, TelemetryConstants_1.ActionModifiers.Open, {
+                databaseAccountName: this.getContainer().databaseAccount().name,
+                defaultExperience: this.getContainer().defaultExperience(),
+                dataExplorerArea: Constants.Areas.Tab,
+                tabTitle: this.tabTitle()
+            });
+            return Q();
+        };
+        TabsBase.prototype.refresh = function () {
+            location.reload();
+            return Q();
+        };
+        TabsBase.prototype.getContainer = function () {
+            return this.collection && this.collection.container || this.database && this.database.container;
+        };
+        /** Renders a Javascript object to be displayed inside Monaco Editor */
+        TabsBase.prototype.renderObjectForEditor = function (value, replacer, space) {
+            return JSON.stringify(value, replacer, space);
+        };
+        TabsBase.prototype.updateGlobalHash = function (newHash) {
+            RouteHandler_1.RouteHandler.getInstance().updateRouteHashLocation(newHash);
+        };
+        return TabsBase;
+    }(WaitsForTemplateViewModel_1.WaitsForTemplateViewModel));
+    return TabsBase;
+});
+o
+ÞÓ      [Õ¾á[Õ¾ó?§¶Á[×kX   A    :https://cosmos.azure.com/built/Explorer/Tabs/TabsBase.js?v=1.0.1 necko:classified 1 strongly-framed 1 security-info FnhllAKWRHGAlo+ESXykKAAAAAAAAAAAwAAAAAAAAEaphjojH6pBabDSgSnsfLHeAAQAAgAAAAAAAAAAAAAAAAAAAAAB4vFIJp5wRkeyPxAQ9RJGKPqbqVvKO0mKuIl8ec8o/uhmCjImkVxP+7sgiYWmMt8FvcOXmlQiTNWFiWlrbpbqgwAAAAAAAAOMMIIDiDCCAnCgAwIBAgIERTJgUjANBgkqhkiG9w0BAQsFADCBijEUMBIGA1UEBhMLUG9ydFN3aWdnZXIxFDASBgNVBAgTC1BvcnRTd2lnZ2VyMRQwEgYDVQQHEwtQb3J0U3dpZ2dlcjEUMBIGA1UEChMLUG9ydFN3aWdnZXIxFzAVBgNVBAsTDlBvcnRTd2lnZ2VyIENBMRcwFQYDVQQDEw5Qb3J0U3dpZ2dlciBDQTAeFw0xNDEwMjgxMzEyMTBaFw0zODEwMjgxMzEyMTBaMGAxFDASBgNVBAYTC1BvcnRTd2lnZ2VyMRQwEgYDVQQKEwtQb3J0U3dpZ2dlcjEXMBUGA1UECxMOUG9ydFN3aWdnZXIgQ0ExGTAXBgNVBAMTEGNvc21vcy5henVyZS5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCKn7emKINsnWqPZ+C/VsqbQf/l4NsmIh34bXBR0xdNg9bfb+xcoghRlmbPjhZ/A26A2gJ6Rrg2d0GGMLpbqA8nTlRRGXEAD39321zk4ye09ElXClvqguGqdqOJpPQ05DPFD6wSOq+KVAEblE5bi+LMqBLipDERzgUe7xzeqVVk0i0ldh9yQOIk3YuzcBR9igSEuw5qladmMYvXKHYM9YZz0R7axMc8xAtadK7C9KfFPfEI5LS2nhmy4vBrTgFyYhfkEvKfmIj6HTX0ISFCAC2llcBLpEDcuiW76tAHp1pXDeWtSeaV36AeOctdleVgrbmsGs3fu6ppuRcWjEZUbjE3AgMBAAGjHzAdMBsGA1UdEQQUMBKCEGNvc21vcy5henVyZS5jb20wDQYJKoZIhvcNAQELBQADggEBABYikT6Y5YgJJ4IVJldlFDF5MKxp26YegXhvT8EmAbgr0yQBIlY2DtKEiHf7Q8wRoJ9y5Ajst1D7HmRba+XLjS6s3IHJ7gtuvc3fZj9MPKpbqSKRfHDB8bDOVIzmjBseg2BqckHTkcYak3b/pTWCTqKHM3LxKsDwN8F3HNQ2pY4d5ma2kR1EtWdTpRiIbir3QxJDcWVp8CgHONZcoMn33NNwnWWjAQMX6d8e1CPuBZi0t+myaYduCqPgKKox9qMXSubF6uifQkAJ5RdLZrZ2pghENA/4r1oz51wqEmpjPsStSUxRPwJ6wJrB4gwGtX7++ZHLjAaNrTSUCGwIOlAT4LnALwEDAAAAAAEBAAAAAA== request-method GET request-Accept-Encoding gzip, deflate, br response-head HTTP/1.1 200 OK
+Content-Length: 9123
+Content-Type: application/x-javascript
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:39:46 GMT
+ original-response-headers Content-Length: 9123
+Content-Type: application/x-javascript
+Last-Modified: Tue, 16 Oct 2018 01:58:30 GMT
+Accept-Ranges: bytes
+Etag: "06753bcf364d41:0"
+Vary: Accept-Encoding
+Server: Microsoft-IIS/10.0
+X-Powered-By: ASP.NET
+Date: Sun, 28 Oct 2018 18:39:46 GMT
+Connection: close
+ uncompressed-len 0 net-response-time-onstart 18180 net-response-time-onstop 18181   #£

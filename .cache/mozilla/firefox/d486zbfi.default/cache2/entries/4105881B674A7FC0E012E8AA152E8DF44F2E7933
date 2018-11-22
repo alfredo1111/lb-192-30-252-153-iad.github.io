@@ -1,0 +1,269 @@
+define(["require", "exports", "../scripts/AppContext", "../scripts/MonitoringViewContext", "../_generated/Framework", "Hulljs", "../scripts/Framework/Util/Log", "../scripts/Framework/Model/Contracts/ActivityWindow", "text!./Templates/GraphNodeStatusTemplate.html"], function (require, exports, AppContext, MonitoringViewContext_1, Framework, Hulljs, Log, ActivityWindowModel) {
+    "use strict";
+    var DataConstants = Framework.DataConstants;
+    var StatusCalendar = Framework.StatusCalendar;
+    var LifetimeManager = Framework.Disposable.DisposableLifetimeManager;
+    var Util = Framework.Util;
+    var logger = Log.getLogger({
+        loggerName: "StatusCalendarFlyoutKnockoutBinding"
+    });
+    (function (FlyoutBindingType) {
+        FlyoutBindingType[FlyoutBindingType["Activity"] = 0] = "Activity";
+        FlyoutBindingType[FlyoutBindingType["Table"] = 1] = "Table";
+    })(exports.FlyoutBindingType || (exports.FlyoutBindingType = {}));
+    var FlyoutBindingType = exports.FlyoutBindingType;
+    ;
+    ;
+    ;
+    var flyoutClickeaterSelector = ".win-flyoutmenuclickeater";
+    var actionForShow = "mouseenter";
+    var calendarId = "graphNodeStatusHover";
+    var flyoutSelector = ".adfGraphNodeStatusFlyout";
+    var GraphNodeStatusBindingHandler = (function () {
+        function GraphNodeStatusBindingHandler() {
+        }
+        GraphNodeStatusBindingHandler.prototype.init = function (element, valueAccessor, allBindingsAccessor, viewModel, bindingContext) {
+            if (!viewModel) {
+                return;
+            }
+            var value = valueAccessor();
+            element.innerHTML = GraphNodeStatusBindingHandler.template;
+            var appContext = AppContext.AppContext.getInstance();
+            var viewContext = appContext.getViewContext(MonitoringViewContext_1.MonitoringViewContext);
+            var nodeStatus = ko.observable([]);
+            var shouldDisplay = ko.observable(true);
+            ko.applyBindingsToDescendants({
+                nodeStatus: nodeStatus,
+                shouldDisplay: shouldDisplay
+            }, element);
+            if (value.additionalQueryFilter === null) {
+                shouldDisplay(false);
+                return { controlsDescendantBindings: true };
+            }
+            var lifetimeManager = new LifetimeManager();
+            var availability = null;
+            value.availabilityPromise.then(function (valueAvailability) {
+                availability = valueAvailability;
+            });
+            if (value.recentActivityWindows) {
+                lifetimeManager.registerForDispose(Util.subscribeAndCall(value.recentActivityWindows, function (recentActivityWindows) {
+                    value.availabilityPromise.then(function () {
+                        nodeStatus(getLastFewStatusBoxes(availability.frequency(), availability.interval(), recentActivityWindows, viewContext.dateRange().endDate));
+                    }, function (reason) {
+                        if (reason) {
+                            logger.logError("Failed to display graph node status for {0}, reason: {1}".format(value.calendarHeader, reason), reason);
+                        }
+                    });
+                }));
+            }
+            var flyoutHostDiv = bindingContext.$root.func.element.parent()[0].querySelector(flyoutSelector);
+            var flyout = flyoutHostDiv.winControl;
+            var clickEaterElement = $(flyoutClickeaterSelector)[0];
+            var statusCalendar = StatusCalendar.StatusCalendar.statusCalendars[calendarId];
+            var boundedConvexPolygon = null;
+            var afterFlyoutShows, beforeFlyoutHides;
+            var clickEaterMouseMoveListener;
+            afterFlyoutShows = function () {
+                flyout.addEventListener("beforehide", beforeFlyoutHides);
+                var verticesToCover = getRectVertices(flyoutHostDiv.getBoundingClientRect());
+                verticesToCover = verticesToCover.concat(getRectVertices(element.getBoundingClientRect()));
+                boundedConvexPolygon = Hulljs(verticesToCover, Infinity, [".x", ".y"]);
+                clickEaterElement.addEventListener("mousemove", clickEaterMouseMoveListener);
+            };
+            beforeFlyoutHides = function () {
+                clickEaterElement.removeEventListener("mousemove", clickEaterMouseMoveListener);
+                boundedConvexPolygon = null;
+                flyout.removeEventListener("aftershow", afterFlyoutShows);
+                flyout.removeEventListener("beforehide", beforeFlyoutHides);
+            };
+            clickEaterMouseMoveListener = function (mouseevent) {
+                var curPos = { x: mouseevent.clientX, y: mouseevent.clientY };
+                if (!isPointInsideConvexPolygon(curPos, boundedConvexPolygon)) {
+                    flyout.hide();
+                }
+            };
+            var frequency = null;
+            var interval = null;
+            var hightlightedDates = ko.pureComputed(function () {
+                var hightlighted = [];
+                nodeStatus().forEach(function (nodeStatusRow) {
+                    nodeStatusRow.forEach(function (nodeStatusField) {
+                        hightlighted.push(nodeStatusField.date.getTime());
+                    });
+                });
+                return hightlighted;
+            });
+            var calendarPageCallback = function (dateRange) {
+                var deferred = Q.defer();
+                getActivityWindows(value.additionalQueryFilter, dateRange.startDate, dateRange.endDate).then(function (activityWindows) {
+                    if (activityWindows.length > 0 && value.recentActivityWindows && value.recentActivityWindows().length === 0) {
+                        value.recentActivityWindows.push(activityWindows[0]);
+                    }
+                    else if (activityWindows.length === 0 && value.recentActivityWindows && value.recentActivityWindows().length > 0) {
+                        activityWindows.push(value.recentActivityWindows()[0]);
+                    }
+                    var data = activityWindows.map(function (activityWindow) {
+                        var windowStartTime = new Date(activityWindow().windowStart);
+                        var statusBox = {
+                            date: windowStartTime,
+                            status: ko.pureComputed(function () { return activityWindow().statusCalendarStatus; }),
+                            tooltip: ko.pureComputed(function () {
+                                return ClientResources.statusCalendarBoxTooltip.format(activityWindow().displayState, activityWindow().windowStartPair.UTC, activityWindow().windowEndPair.UTC);
+                            })
+                        };
+                        statusBox.clickCallback = function (statusBoxArg) {
+                            statusCalendar.updateSelection(statusBoxArg.date);
+                            AppContext.AppContext.getInstance().selectionHandler.pushState(GraphNodeStatusBindingHandler.className, [new ActivityWindowModel.Encodable(activityWindow)]);
+                        };
+                        statusBox.doubleClickCallback = function (statusBoxArg) {
+                            statusBox.clickCallback(statusBoxArg);
+                            AppContext.AppContext.getInstance().openActivityWindowExplorer();
+                        };
+                        return statusBox;
+                    });
+                    deferred.resolve(data);
+                }, function (reason) {
+                    logger.logError("Could not load data: {0}".format(reason.responseText));
+                    deferred.reject("StatusCalendarFlyoutKnockoutBinding: Could not load data.");
+                });
+                return deferred.promise;
+            };
+            var showFlyout = function () {
+                setTimeout(function () {
+                    if ((value.availabilityPromise.isFulfilled() && !value.availabilityPromise.isRejected()) && $(element).is(":hover")) {
+                        frequency = availability.frequency();
+                        interval = availability.interval();
+                        var footer = [ClientResources.frequencyAndIntervalText.format(frequency, interval), ClientResources.datetimeInUTCLabel];
+                        var returnVal = StatusCalendar.findCorrectFrequencyAndInterval(frequency, interval);
+                        frequency = returnVal[0];
+                        interval = returnVal[1];
+                        var curDate = viewContext.dateRange().endDate;
+                        statusCalendar.update({
+                            header: value.calendarHeader,
+                            subHeader: ClientResources.activityWindowListTitle,
+                            footer: footer,
+                            frequency: frequency,
+                            interval: interval,
+                            pageCallback: calendarPageCallback,
+                            baseDate: curDate,
+                            dateRange: viewContext.dateRange(),
+                            highlightedDates: hightlightedDates
+                        }).then(function (updateResult) {
+                            flyout.addEventListener("aftershow", afterFlyoutShows);
+                            flyout.show(element);
+                        }, function (reason) {
+                            if (reason.result !== StatusCalendar.StatusCalendarUpdateResultEnum.aborted) {
+                                logger.logError("Failed to update hover calendar: " + reason.reason);
+                            }
+                        });
+                    }
+                }, 200);
+            };
+            element.addEventListener(actionForShow, showFlyout);
+            ko.utils.domNodeDisposal.addDisposeCallback(element, function () {
+                element.removeEventListener(actionForShow, showFlyout);
+                flyout.removeEventListener("aftershow", afterFlyoutShows);
+                flyout.removeEventListener("beforehide", beforeFlyoutHides);
+                lifetimeManager.dispose();
+            });
+            return { controlsDescendantBindings: true };
+        };
+        GraphNodeStatusBindingHandler.className = DataConstants.GraphNodeStatusBindingHandler;
+        GraphNodeStatusBindingHandler.template = require("text!./Templates/GraphNodeStatusTemplate.html");
+        return GraphNodeStatusBindingHandler;
+    }());
+    exports.GraphNodeStatusBindingHandler = GraphNodeStatusBindingHandler;
+    function sideSign(a, l1, l2) {
+        var mf = l1.y - l2.y;
+        var mc = l2.y * l1.x - l1.y * l2.x;
+        return mf * a.x + mc - a.y * (l1.x - l2.x);
+    }
+    function isPointInsideConvexPolygon(p, polygon) {
+        if (polygon.length < 3) {
+            logger.logError("Too few points specified for polygon");
+        }
+        var centroid = { x: 0, y: 0 };
+        for (var i = 0; i < polygon.length; i++) {
+            centroid.x += polygon[i].x / polygon.length;
+            centroid.y += polygon[i].y / polygon.length;
+        }
+        for (var i = 0; i < polygon.length; i++) {
+            var a = polygon[i];
+            var b = polygon[(i + 1) % polygon.length];
+            if (sideSign(p, a, b) * sideSign(centroid, a, b) < 0) {
+                return false;
+            }
+        }
+        return true;
+    }
+    function getRectVertices(clientRect) {
+        var x1 = clientRect.left;
+        var x2 = clientRect.left + clientRect.width;
+        var y1 = clientRect.top;
+        var y2 = clientRect.top + clientRect.height;
+        return [{ x: x1, y: y1 }, { x: x2, y: y1 }, { x: x2, y: y2 }, { x: x1, y: y2 }];
+    }
+    function getActivityWindows(filter, slotStart, slotEnd, top) {
+        var deferred = Q.defer();
+        if (!top) {
+            top = StatusCalendar.maxNumberOfSlotsInACalendar;
+        }
+        var colNames = ActivityWindowModel.ServiceColumnNames.ExtendedProperties;
+        var finalFilter = "{0} le {1} and {2} lt {3} and ({4})"
+            .format(slotStart.toISOString(), colNames.WindowStart, colNames.WindowStart, slotEnd.toISOString(), filter);
+        AppContext.AppContext.getInstance().viewContext.activityWindowCache.fetchTop(finalFilter, "{0} desc".format(colNames.WindowStart), top)
+            .then(function (activityRunPrimaryEvents) {
+            activityRunPrimaryEvents.reverse();
+            deferred.resolve(activityRunPrimaryEvents);
+        }, function (reason) {
+            logger.logError("Failed to fetch activity window: {0}".format(reason.responseText));
+            deferred.reject(ClientResources.failedToFetchActivityWindowText);
+        });
+        return deferred.promise;
+    }
+    function getLastFewStatusBoxes(frequency, interval, recentActivityWindows, baseDate) {
+        var recentStatus = [];
+        recentActivityWindows.forEach(function (activityWindow) {
+            recentStatus.push({
+                date: new Date(activityWindow().windowStart),
+                status: ko.pureComputed(function () { return activityWindow().statusCalendarStatus; })
+            });
+        });
+        var returnVal = StatusCalendar.findCorrectFrequencyAndInterval(frequency, interval);
+        frequency = returnVal[0];
+        interval = returnVal[1];
+        var hasGenericCalendar = StatusCalendar.hasGenericCalendar(frequency, interval);
+        var dateRange = StatusCalendar.getStartEndDateRange(baseDate, frequency, interval, hasGenericCalendar, false);
+        var data = StatusCalendar.sanitizeIncomingData(recentStatus, dateRange, frequency, interval, hasGenericCalendar, false);
+        return data;
+    }
+});
+//# sourceMappingURL=StatusCalendarFlyoutKnockoutBinding.js.mapšŽØ      [Öú[Öý?§çX[ØåS   ¡    :https://datafactory-endpoint.azureedge.net/node_modules/@ms-atlas-module/datastudio-datafactory/bootstrapper/StatusCalendarFlyoutKnockoutBinding.js?v=1.0.4164.1 necko:classified 1 strongly-framed 1 security-info FnhllAKWRHGAlo+ESXykKAAAAAAAAAAAwAAAAAAAAEaphjojH6pBabDSgSnsfLHeAAQAAgAAAAAAAAAAAAAAAAAAAAAB4vFIJp5wRkeyPxAQ9RJGKPqbqVvKO0mKuIl8ec8o/uhmCjImkVxP+7sgiYWmMt8FvcOXmlQiTNWFiWlrbpbqgwAAAAAAAAOwMIIDrDCCApSgAwIBAgIERTJgTjANBgkqhkiG9w0BAQsFADCBijEUMBIGA1UEBhMLUG9ydFN3aWdnZXIxFDASBgNVBAgTC1BvcnRTd2lnZ2VyMRQwEgYDVQQHEwtQb3J0U3dpZ2dlcjEUMBIGA1UEChMLUG9ydFN3aWdnZXIxFzAVBgNVBAsTDlBvcnRTd2lnZ2VyIENBMRcwFQYDVQQDEw5Qb3J0U3dpZ2dlciBDQTAeFw0xNDEwMjgxMzEyMTBaFw0zODEwMjgxMzEyMTBaMHIxFDASBgNVBAYTC1BvcnRTd2lnZ2VyMRQwEgYDVQQKEwtQb3J0U3dpZ2dlcjEXMBUGA1UECxMOUG9ydFN3aWdnZXIgQ0ExKzApBgNVBAMTImRhdGFmYWN0b3J5LWVuZHBvaW50LmF6dXJlZWRnZS5uZXQwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCKn7emKINsnWqPZ+C/VsqbQf/l4NsmIh34bXBR0xdNg9bfb+xcoghRlmbPjhZ/A26A2gJ6Rrg2d0GGMLpbqA8nTlRRGXEAD39321zk4ye09ElXClvqguGqdqOJpPQ05DPFD6wSOq+KVAEblE5bi+LMqBLipDERzgUe7xzeqVVk0i0ldh9yQOIk3YuzcBR9igSEuw5qladmMYvXKHYM9YZz0R7axMc8xAtadK7C9KfFPfEI5LS2nhmy4vBrTgFyYhfkEvKfmIj6HTX0ISFCAC2llcBLpEDcuiW76tAHp1pXDeWtSeaV36AeOctdleVgrbmsGs3fu6ppuRcWjEZUbjE3AgMBAAGjMTAvMC0GA1UdEQQmMCSCImRhdGFmYWN0b3J5LWVuZHBvaW50LmF6dXJlZWRnZS5uZXQwDQYJKoZIhvcNAQELBQADggEBAD5nTga0zudMitI/u0TfDiXUvU9MHWtnM1QsCR52LG8/P3zHlMPdW01WDRZUWTzCGka9MJHNjppqHPNsxY69i49nAksLYLzG7nK57bfwfvJQH/v27QUFGFMmKZNtpz+523V8pi+RJR9/DcmY0SQslyt1+Cj1SViKKOJYr8DiCwrYSUxWRp0XCM6ACnyoVhILHxIff7DQUE7Qq8eLX2UMcsrHHrlmbWpSCkEMtikIahIK4D2jjHj/CFWVzmKApRGZHRCenGUCvwPc6+mdefq6dna4yuo/9sC8unizedWeSL+sIj+Qxy7egEU4w3ZyvM8xUIozSNHY/VVwXW5ypPYqSlDALwEDAAAAAAEBAAAAAA== request-method GET request-Accept-Encoding gzip, deflate, br response-head HTTP/1.1 200 OK
+Content-Type: application/javascript
+Last-Modified: Sat, 06 Oct 2018 23:13:01 GMT
+Accept-Ranges: bytes
+Etag: "f853d420ca5dd41:0"
+Server: Microsoft-IIS/8.5
+X-Frame-Options: AllowAll
+X-XSS-Protection: 1; mode=block
+X-Content-Type-Options: nosniff
+Strict-Transport-Security: max-age=15724800; includeSubDomains
+Access-Control-Allow-Origin: *
+Vary: Accept-Encoding
+Content-Length: 13929
+Date: Sun, 28 Oct 2018 18:50:37 GMT
+ original-response-headers Content-Type: application/javascript
+Last-Modified: Sat, 06 Oct 2018 23:13:01 GMT
+Accept-Ranges: bytes
+Etag: "f853d420ca5dd41:0"
+Server: Microsoft-IIS/8.5
+X-Frame-Options: AllowAll
+X-XSS-Protection: 1; mode=block
+X-Content-Type-Options: nosniff
+Strict-Transport-Security: max-age=15724800; includeSubDomains
+Access-Control-Allow-Origin: *
+Vary: Accept-Encoding
+Content-Length: 13929
+Date: Sun, 28 Oct 2018 18:50:37 GMT
+Connection: close
+ uncompressed-len 0 net-response-time-onstart 2725 net-response-time-onstop 2725   6i
